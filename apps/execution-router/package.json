@@ -1,0 +1,17 @@
+{
+  "name": "@iati/execution-router",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/server.ts",
+  "scripts": {
+    "start": "tsx src/server.ts"
+  },
+  "dependencies": {
+    "@iati/core": "*",
+    "@iati/core-types": "*",
+    "@iati/database": "*",
+    "@iati/event-bus": "*",
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  }
+}

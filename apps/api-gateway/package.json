@@ -1,0 +1,19 @@
+{
+  "name": "api-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/server.ts",
+  "scripts": {
+    "start": "node dist/server.cjs",
+    "dev": "tsx src/server.ts"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "cors": "^2.8.5",
+    "@iati/core": "*",
+    "@iati/database": "*",
+    "@iati/cache": "*",
+    "@iati/event-bus": "*",
+    "@iati/security": "*"
+  }
+}

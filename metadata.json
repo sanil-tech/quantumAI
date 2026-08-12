@@ -1,0 +1,6 @@
+{
+  "name": "Quantum AI Trading Mentor & Robot Desk",
+  "description": "Comprehensive Forex & Market Trading Desk with Live AI Mentor Coaching, Behavioral Pattern Learning Engine, Pre-Trade Entry Guard, and Autonomous AI Trading Robot for Maximum Profit Protection.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

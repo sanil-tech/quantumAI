@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "module": "ESNext",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "allowJs": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"],
+      "@iati/core-types": ["packages/core-types/src/index.ts"],
+      "@iati/core/marketDataValidator": ["packages/core/src/marketDataValidator.ts"],
+      "@iati/core/smc": ["packages/core/src/smc.ts"],
+      "@iati/core": ["packages/core/src/index.ts"],
+      "@iati/event-bus": ["packages/event-bus/src/index.ts"],
+      "@iati/database": ["packages/database/src/index.ts"],
+      "@iati/cache": ["packages/cache/src/index.ts"],
+      "@iati/security": ["packages/security/src/index.ts"]
+    },
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  }
+}
