@@ -457,6 +457,9 @@ export class TradingRepository {
   }
 
   async getPositionByIdempotencyKeyOrSetupId(idempotencyKey?: string, setupId?: string): Promise<PositionRecord | null> {
+    const isConnected = await checkDbConnection();
+    if (!isConnected) return null;
+
     if (idempotencyKey) {
       const resKey = await this.query(`SELECT * FROM positions WHERE idempotency_key = $1 LIMIT 1`, [idempotencyKey]);
       if (resKey.rows.length) return this.mapPositionRow(resKey.rows[0]);
@@ -1571,162 +1574,275 @@ export class TradingRepository {
     return { learningRecords, total };
   }
 
-  async getAdminDataHealth(): Promise<{
-    dbConnection: 'HEALTHY' | 'DEGRADED' | 'DISCONNECTED';
-    latestTrade: PositionRecord | null;
-    latestTradeEvent: TradeEventRecord | null;
-    totalTrades: number;
-    openPositions: number;
-    closedTrades: number;
-    learningRecordsCount: number;
-    lastDatabaseWrite: Date | null;
-    persistenceStatus: string;
-    anomalies: {
-      duplicateTradesCount: number;
-      orphanPositionsCount: number;
-      orphanLearningRecordsCount: number;
-      missingTradeEventsCount: number;
-      missingBrokerIdsCount: number;
-    };
-  }> {
-    let dbConnection: 'HEALTHY' | 'DEGRADED' | 'DISCONNECTED' = 'HEALTHY';
+  async updateBrokerPositionIds(params: {
+    positionId?: string;
+    setupId?: string;
+    proposalId?: string;
+    idempotencyKey?: string;
+    ticketId?: string;
+    brokerOrderId?: string;
+    brokerPositionId?: string;
+    brokerDealId?: string;
+  }): Promise<{ updated: boolean; position?: PositionRecord }> {
+    const isConnected = await checkDbConnection();
+    if (!isConnected) return { updated: false };
+
+    const targetId = params.positionId || params.setupId || params.proposalId || params.idempotencyKey || params.ticketId;
+    if (!targetId) return { updated: false };
+
+    const text = `
+      UPDATE positions
+      SET
+        broker_order_id = COALESCE($1, broker_order_id),
+        broker_position_id = COALESCE($2, broker_position_id),
+        broker_deal_id = COALESCE($3, broker_deal_id),
+        reconciliation_status = CASE 
+          WHEN broker = 'PAPER' THEN 'MATCHED'
+          WHEN COALESCE($1, broker_order_id) IS NOT NULL OR COALESCE($2, broker_position_id) IS NOT NULL THEN 'MATCHED'
+          ELSE 'MISMATCH'
+        END,
+        updated_at = NOW()
+      WHERE position_id = $4
+         OR setup_id = $4
+         OR proposal_id = $4
+         OR idempotency_key = $4
+         OR ticket_id = $4
+      RETURNING *;
+    `;
     try {
-      await this.query('SELECT 1');
-    } catch (e) {
-      dbConnection = 'DISCONNECTED';
+      const res = await this.query(text, [
+        params.brokerOrderId || null,
+        params.brokerPositionId || null,
+        params.brokerDealId || null,
+        targetId
+      ]);
+      if (res.rows.length > 0) {
+        return { updated: true, position: this.mapPositionRow(res.rows[0]) };
+      }
+    } catch (err: any) {
+      logger.error(`[DB-REPOSITORY] Failed to update broker position IDs for ${targetId}: ${err.message}`);
+    }
+    return { updated: false };
+  }
+
+  async getAdminDataHealth(): Promise<any> {
+    const isConnected = await checkDbConnection();
+    if (!isConnected) {
+      return {
+        dbConnection: 'DATABASE_UNAVAILABLE',
+        persistenceStatus: 'PERSISTENCE_UNAVAILABLE',
+        healthStatus: 'DATABASE_UNAVAILABLE',
+        latestTrade: null,
+        latestTradeEvent: null,
+        totalTrades: 0,
+        openPositions: 0,
+        closedTrades: 0,
+        learningRecordsCount: 0,
+        lastDatabaseWrite: null,
+        anomalies: {
+          duplicateTradesCount: 0,
+          orphanPositionsCount: 0,
+          orphanLearningRecordsCount: 0,
+          missingTradeEventsCount: 0,
+          missingBrokerIdsCount: 0,
+          reconciliationMismatchesCount: 0
+        }
+      };
     }
 
-    const posCountRes = await this.query(`
-      SELECT
-        COUNT(*)::int as total_trades,
-        COUNT(CASE WHEN status = 'OPEN' THEN 1 END)::int as open_positions,
-        COUNT(CASE WHEN status = 'CLOSED' THEN 1 END)::int as closed_trades
-      FROM positions
-    `);
+    try {
+      const posCountRes = await this.query(`
+        SELECT
+          COUNT(*)::int as total_trades,
+          COUNT(CASE WHEN status = 'OPEN' THEN 1 END)::int as open_positions,
+          COUNT(CASE WHEN status = 'CLOSED' THEN 1 END)::int as closed_trades
+        FROM positions
+      `);
 
-    const totalTrades = posCountRes.rows[0]?.total_trades || 0;
-    const openPositions = posCountRes.rows[0]?.open_positions || 0;
-    const closedTrades = posCountRes.rows[0]?.closed_trades || 0;
+      const totalTrades = posCountRes.rows[0]?.total_trades || 0;
+      const openPositions = posCountRes.rows[0]?.open_positions || 0;
+      const closedTrades = posCountRes.rows[0]?.closed_trades || 0;
 
-    const pmCountRes = await this.query(`SELECT COUNT(*)::int as total FROM post_mortem_reviews`);
-    const learningRecordsCount = pmCountRes.rows[0]?.total || 0;
+      const pmCountRes = await this.query(`SELECT COUNT(*)::int as total FROM post_mortem_reviews`);
+      const learningRecordsCount = pmCountRes.rows[0]?.total || 0;
 
-    const latestTradeRes = await this.query(`SELECT * FROM positions ORDER BY updated_at DESC LIMIT 1`);
-    const latestTrade = latestTradeRes.rows.length ? this.mapPositionRow(latestTradeRes.rows[0]) : null;
+      const latestTradeRes = await this.query(`SELECT * FROM positions ORDER BY updated_at DESC LIMIT 1`);
+      const latestTrade = latestTradeRes.rows.length ? this.mapPositionRow(latestTradeRes.rows[0]) : null;
 
-    const latestEventRes = await this.query(`SELECT * FROM trade_events ORDER BY timestamp DESC LIMIT 1`);
-    const latestTradeEvent = latestEventRes.rows.length ? {
-      id: latestEventRes.rows[0].id,
-      tradeId: latestEventRes.rows[0].trade_id,
-      orderId: latestEventRes.rows[0].order_id,
-      setupId: latestEventRes.rows[0].setup_id,
-      eventType: latestEventRes.rows[0].event_type,
-      actor: latestEventRes.rows[0].actor,
-      details: latestEventRes.rows[0].details,
-      timestamp: latestEventRes.rows[0].timestamp ? new Date(latestEventRes.rows[0].timestamp) : undefined
-    } : null;
+      const latestEventRes = await this.query(`SELECT * FROM trade_events ORDER BY timestamp DESC LIMIT 1`);
+      const latestTradeEvent = latestEventRes.rows.length ? {
+        id: latestEventRes.rows[0].id,
+        tradeId: latestEventRes.rows[0].trade_id,
+        orderId: latestEventRes.rows[0].order_id,
+        setupId: latestEventRes.rows[0].setup_id,
+        eventType: latestEventRes.rows[0].event_type,
+        actor: latestEventRes.rows[0].actor,
+        details: latestEventRes.rows[0].details,
+        timestamp: latestEventRes.rows[0].timestamp ? new Date(latestEventRes.rows[0].timestamp) : undefined
+      } : null;
 
-    const lastDatabaseWrite = latestTrade?.updatedAt || latestTradeEvent?.timestamp || new Date();
+      const lastDatabaseWrite = latestTrade?.updatedAt || latestTradeEvent?.timestamp || new Date();
 
-    // Anomaly checks
-    const dupRes = await this.query(`
-      SELECT idempotency_key, COUNT(*)::int as cnt
-      FROM positions
-      WHERE idempotency_key IS NOT NULL
-      GROUP BY idempotency_key
-      HAVING COUNT(*) > 1
-    `);
-    const duplicateTradesCount = dupRes.rows.length;
+      // Anomaly checks
+      const dupRes = await this.query(`
+        SELECT idempotency_key, COUNT(*)::int as cnt
+        FROM positions
+        WHERE idempotency_key IS NOT NULL
+        GROUP BY idempotency_key
+        HAVING COUNT(*) > 1
+      `);
+      const duplicateTradesCount = dupRes.rows.length;
 
-    const orphanPosRes = await this.query(`
-      SELECT p.position_id
-      FROM positions p
-      LEFT JOIN trade_events e ON p.position_id = e.trade_id OR p.setup_id = e.setup_id
-      WHERE e.id IS NULL
-    `);
-    const orphanPositionsCount = orphanPosRes.rows.length;
+      const orphanPosRes = await this.query(`
+        SELECT p.position_id
+        FROM positions p
+        LEFT JOIN trade_events e ON p.position_id = e.trade_id OR p.setup_id = e.setup_id
+        WHERE e.id IS NULL
+      `);
+      const orphanPositionsCount = orphanPosRes.rows.length;
 
-    const orphanPmRes = await this.query(`
-      SELECT pm.id
-      FROM post_mortem_reviews pm
-      LEFT JOIN positions p ON pm.trade_id = p.position_id OR pm.trade_id = p.setup_id
-      WHERE p.position_id IS NULL
-    `);
-    const orphanLearningRecordsCount = orphanPmRes.rows.length;
+      const orphanPmRes = await this.query(`
+        SELECT pm.id
+        FROM post_mortem_reviews pm
+        LEFT JOIN positions p ON pm.trade_id = p.position_id OR pm.trade_id = p.setup_id
+        WHERE p.position_id IS NULL
+      `);
+      const orphanLearningRecordsCount = orphanPmRes.rows.length;
 
-    const missingEventsRes = await this.query(`
-      SELECT p.position_id
-      FROM positions p
-      LEFT JOIN trade_events e ON (p.position_id = e.trade_id AND e.event_type IN ('POSITION_OPENED', 'TRADE_OPENED', 'TRADE_CLOSED'))
-      WHERE e.id IS NULL
-    `);
-    const missingTradeEventsCount = missingEventsRes.rows.length;
+      const missingEventsRes = await this.query(`
+        SELECT p.position_id
+        FROM positions p
+        LEFT JOIN trade_events e ON (p.position_id = e.trade_id AND e.event_type IN ('POSITION_OPENED', 'TRADE_OPENED', 'TRADE_CLOSED'))
+        WHERE e.id IS NULL
+      `);
+      const missingTradeEventsCount = missingEventsRes.rows.length;
 
-    const missingBrokerRes = await this.query(`
-      SELECT position_id
-      FROM positions
-      WHERE status = 'CLOSED' AND broker != 'PAPER' AND (broker_order_id IS NULL AND broker_position_id IS NULL)
-    `);
-    const missingBrokerIdsCount = missingBrokerRes.rows.length;
+      const missingBrokerRes = await this.query(`
+        SELECT position_id
+        FROM positions
+        WHERE status = 'CLOSED' AND broker != 'PAPER' AND (broker_order_id IS NULL AND broker_position_id IS NULL)
+      `);
+      const missingBrokerIdsCount = missingBrokerRes.rows.length;
 
-    return {
-      dbConnection,
-      latestTrade,
-      latestTradeEvent,
-      totalTrades,
-      openPositions,
-      closedTrades,
-      learningRecordsCount,
-      lastDatabaseWrite,
-      persistenceStatus: 'ACTIVE_POSTGRESQL_PERSISTENT',
-      anomalies: {
-        duplicateTradesCount,
-        orphanPositionsCount,
-        orphanLearningRecordsCount,
-        missingTradeEventsCount,
-        missingBrokerIdsCount
-      }
-    };
+      const mismatchesRes = await this.query(`
+        SELECT COUNT(*)::int as cnt
+        FROM positions
+        WHERE reconciliation_status = 'MISMATCH'
+      `);
+      const reconciliationMismatchesCount = mismatchesRes.rows[0]?.cnt || 0;
+
+      const hasAnomalies = duplicateTradesCount > 0 || orphanPositionsCount > 0 || reconciliationMismatchesCount > 0;
+      const dbConnection = hasAnomalies ? 'DATA_INTEGRITY_ERROR' : 'DATABASE_CONNECTED';
+
+      return {
+        dbConnection,
+        latestTrade,
+        latestTradeEvent,
+        totalTrades,
+        openPositions,
+        closedTrades,
+        learningRecordsCount,
+        lastDatabaseWrite,
+        persistenceStatus: 'ACTIVE_POSTGRESQL_PERSISTENT',
+        anomalies: {
+          duplicateTradesCount,
+          orphanPositionsCount,
+          orphanLearningRecordsCount,
+          missingTradeEventsCount,
+          missingBrokerIdsCount,
+          reconciliationMismatchesCount
+        }
+      };
+    } catch (err: any) {
+      return {
+        dbConnection: 'DATABASE_UNAVAILABLE',
+        persistenceStatus: 'PERSISTENCE_UNAVAILABLE',
+        healthStatus: 'DATABASE_UNAVAILABLE',
+        error: err.message,
+        latestTrade: null,
+        latestTradeEvent: null,
+        totalTrades: 0,
+        openPositions: 0,
+        closedTrades: 0,
+        learningRecordsCount: 0,
+        lastDatabaseWrite: null,
+        anomalies: {
+          duplicateTradesCount: 0,
+          orphanPositionsCount: 0,
+          orphanLearningRecordsCount: 0,
+          missingTradeEventsCount: 0,
+          missingBrokerIdsCount: 0,
+          reconciliationMismatchesCount: 0
+        }
+      };
+    }
   }
 
   async reconcileBrokerPositions(broker: string = 'PAPER'): Promise<{
     reconciledCount: number;
     matchedCount: number;
     mismatchCount: number;
+    pendingCount: number;
+    unknownCount: number;
   }> {
-    const openRes = await this.query(`SELECT * FROM positions WHERE status = 'OPEN' AND broker = $1`, [broker]);
+    const isConnected = await checkDbConnection();
+    if (!isConnected) {
+      return { reconciledCount: 0, matchedCount: 0, mismatchCount: 0, pendingCount: 0, unknownCount: 0 };
+    }
+
+    const openRes = await this.query(`SELECT * FROM positions WHERE status = 'OPEN' AND (broker = $1 OR $1 = 'ALL')`, [broker]);
     let matchedCount = 0;
     let mismatchCount = 0;
+    let pendingCount = 0;
+    let unknownCount = 0;
 
     for (const row of openRes.rows) {
       const pos = this.mapPositionRow(row);
-      // Verify broker ids and pricing bounds
-      const isOk = !!pos.positionId && pos.entryPrice > 0 && pos.quantity > 0;
-      const status = isOk ? 'MATCHED' : 'MISMATCH';
+      let status: 'MATCHED' | 'MISMATCH' | 'PENDING' | 'UNKNOWN' = 'UNKNOWN';
 
-      if (isOk) matchedCount++;
-      else mismatchCount++;
+      if (!pos.positionId || pos.entryPrice <= 0 || pos.quantity <= 0) {
+        status = 'MISMATCH';
+      } else if (pos.broker === 'PAPER') {
+        status = 'MATCHED';
+      } else {
+        const hasBrokerId = !!(pos.brokerOrderId || pos.brokerPositionId || pos.brokerDealId);
+        const ageMs = pos.openedAt ? Date.now() - new Date(pos.openedAt).getTime() : 0;
+
+        if (hasBrokerId) {
+          status = 'MATCHED';
+        } else if (ageMs < 30000) {
+          status = 'PENDING';
+        } else {
+          status = 'MISMATCH';
+        }
+      }
+
+      if (status === 'MATCHED') matchedCount++;
+      else if (status === 'MISMATCH') mismatchCount++;
+      else if (status === 'PENDING') pendingCount++;
+      else unknownCount++;
 
       await this.query(`UPDATE positions SET reconciliation_status = $1, updated_at = NOW() WHERE position_id = $2`, [status, pos.positionId]);
 
-      // Record audit
       await this.query(`
         INSERT INTO reconciliation_records (id, account_id, broker, action, target_id, details, timestamp)
         VALUES ($1, $2, $3, $4, $5, $6, NOW())
       `, [
-        `rec_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+        `rec_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
         pos.accountId,
-        broker,
+        pos.broker || broker,
         'POSITION_RECONCILED',
         pos.positionId,
-        JSON.stringify({ status, symbol: pos.symbol, entryPrice: pos.entryPrice })
+        JSON.stringify({ status, symbol: pos.symbol, entryPrice: pos.entryPrice, brokerOrderId: pos.brokerOrderId, brokerPositionId: pos.brokerPositionId })
       ]);
     }
 
     return {
       reconciledCount: openRes.rows.length,
       matchedCount,
-      mismatchCount
+      mismatchCount,
+      pendingCount,
+      unknownCount
     };
   }
 

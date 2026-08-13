@@ -106,6 +106,16 @@ export function mapPositionToClosedTrade(pos: PositionRecord): SharedClosedTrade
  */
 executionRouter.get('/autotrader/state', async (req: Request, res: Response) => {
   try {
+    const isConnected = await checkDbConnection();
+    if (!isConnected) {
+      res.status(503).json({
+        success: false,
+        persistenceStatus: 'PERSISTENCE_UNAVAILABLE',
+        error: 'PERSISTENCE_UNAVAILABLE: Database is down or unreachable'
+      });
+      return;
+    }
+
     const accountId = (req.query.accountId as string) || '5877246';
 
     const [openPositions, closedPositions, performance, accountStateRecord, pendingCommands] = await Promise.all([
@@ -161,6 +171,16 @@ executionRouter.get('/autotrader/state', async (req: Request, res: Response) => 
  */
 executionRouter.get('/autotrader/trades', async (req: Request, res: Response) => {
   try {
+    const isConnected = await checkDbConnection();
+    if (!isConnected) {
+      res.status(503).json({
+        success: false,
+        persistenceStatus: 'PERSISTENCE_UNAVAILABLE',
+        error: 'PERSISTENCE_UNAVAILABLE: Database is down or unreachable'
+      });
+      return;
+    }
+
     const accountId = (req.query.accountId as string) || '5877246';
     const status = (req.query.status as string) || 'ALL';
     const limit = Number(req.query.limit || 50);
@@ -382,32 +402,42 @@ export async function handleExecuteTrade(req: Request, res: Response) {
       openedAt: new Date()
     };
 
-    const savedPos = await tradingRepo.savePosition(posRecord);
+    // Save Position Record in PostgreSQL Database if connected
+    const isConnected = await checkDbConnection();
+    let savedPos: PositionRecord = posRecord;
 
-    // Save Trade Audit Events
-    await tradingRepo.saveTradeEvent({
-      id: `evt_sig_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      tradeId,
-      setupId: tradeSetupId,
-      eventType: 'AI_SIGNAL',
-      details: { pair, direction, entryPrice, stopLoss, takeProfit1 }
-    });
+    if (isConnected) {
+      try {
+        savedPos = await tradingRepo.savePosition(posRecord);
 
-    await tradingRepo.saveTradeEvent({
-      id: `evt_risk_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      tradeId,
-      setupId: tradeSetupId,
-      eventType: 'RISK_APPROVED',
-      details: { proposalId: proposal.id, approvalId: token?.approvalId }
-    });
+        // Save Trade Audit Events
+        await tradingRepo.saveTradeEvent({
+          id: `evt_sig_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          tradeId,
+          setupId: tradeSetupId,
+          eventType: 'AI_SIGNAL',
+          details: { pair, direction, entryPrice, stopLoss, takeProfit1 }
+        });
 
-    await tradingRepo.saveTradeEvent({
-      id: `evt_open_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      tradeId,
-      setupId: tradeSetupId,
-      eventType: 'POSITION_OPENED',
-      details: { ticket, broker: targetBroker, environment: targetEnv }
-    });
+        await tradingRepo.saveTradeEvent({
+          id: `evt_risk_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          tradeId,
+          setupId: tradeSetupId,
+          eventType: 'RISK_APPROVED',
+          details: { proposalId: proposal.id, approvalId: token?.approvalId }
+        });
+
+        await tradingRepo.saveTradeEvent({
+          id: `evt_open_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          tradeId,
+          setupId: tradeSetupId,
+          eventType: 'POSITION_OPENED',
+          details: { ticket, broker: targetBroker, environment: targetEnv }
+        });
+      } catch (dbErr: any) {
+        console.warn(`[EXECUTION_ROUTE] Database save warning: ${dbErr.message}`);
+      }
+    }
 
     const newTrade = mapPositionToAutoTrade(savedPos);
 
@@ -442,8 +472,49 @@ executionRouter.post('/autotrader/trade/close', async (req: Request, res: Respon
   try {
     const { tradeId, exitPrice, closeReason, clientClosedTrade, pnlDollars, pnlPips, pair, direction, accountId } = req.body;
     const targetAccountId = accountId || '5877246';
-
     const targetId = tradeId || (clientClosedTrade && clientClosedTrade.id);
+
+    const isConnected = await checkDbConnection();
+    if (!isConnected) {
+      const existingInRam = sharedAutoTraderState.openTrades.find(t => t.id === targetId || t.pair === pair);
+      const actualExit = Number(exitPrice || existingInRam?.currentPrice || existingInRam?.entryPrice || 1.085);
+      const calculatedPnlDollars = pnlDollars !== undefined ? Number(pnlDollars) : 0;
+      const calculatedPnlPips = pnlPips !== undefined ? Number(pnlPips) : 0;
+      const reason = closeReason || 'MANUAL_CLOSE';
+
+      const closedTrade: SharedClosedTrade = {
+        id: targetId || `trade_${Date.now()}`,
+        pair: pair || existingInRam?.pair || 'EUR/USD',
+        direction: direction || existingInRam?.direction || 'BUY',
+        entryPrice: existingInRam?.entryPrice || actualExit,
+        stopLoss: existingInRam?.stopLoss || 0,
+        takeProfit1: existingInRam?.takeProfit1 || 0,
+        lotSize: existingInRam?.lotSize || 0.1,
+        openTime: existingInRam?.openTime || Date.now(),
+        status: 'CLOSED',
+        closeTime: Date.now(),
+        exitPrice: actualExit,
+        pnlDollars: calculatedPnlDollars,
+        pnlPips: calculatedPnlPips,
+        closeReason: reason,
+        accountId: targetAccountId
+      };
+
+      const ramIdx = sharedAutoTraderState.openTrades.findIndex(t => t.id === closedTrade.id || t.pair === closedTrade.pair);
+      if (ramIdx !== -1) sharedAutoTraderState.openTrades.splice(ramIdx, 1);
+      if (!sharedAutoTraderState.closedTrades.some(t => t.id === closedTrade.id)) {
+        sharedAutoTraderState.closedTrades.unshift(closedTrade);
+      }
+
+      res.json({
+        success: true,
+        closedTrade,
+        performance: sharedAutoTraderState.performance,
+        newBalance: 10000 + calculatedPnlDollars
+      });
+      return;
+    }
+
     let pos = targetId ? await tradingRepo.getPositionById(targetId) : null;
 
     if (!pos && targetId) {

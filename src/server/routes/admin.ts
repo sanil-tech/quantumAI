@@ -11,44 +11,51 @@ const repo = new TradingRepository();
  * Only authenticated authorized admin users may access admin endpoints.
  */
 export const adminAuthMiddleware = (req: Request, res: Response, next: NextFunction) => {
-  const adminKey = req.headers['x-admin-key'] || req.headers['x-api-key'];
+  const adminKey = (req.headers['x-admin-key'] || req.headers['x-api-key']) as string | undefined;
   const authHeader = req.headers.authorization;
-  const expectedAdminKey = process.env.ADMIN_API_KEY || 'quantum-admin-secret-2026';
+  const configuredAdminKey = process.env.ADMIN_API_KEY;
+  const configuredJwtSecret = process.env.JWT_SECRET;
 
-  // 1. Check direct admin API key
-  if (adminKey && adminKey === expectedAdminKey) {
+  // 1. Direct admin API key matching
+  if (adminKey && configuredAdminKey && adminKey === configuredAdminKey) {
     (req as any).user = { role: 'admin', userId: 'admin-system' };
     return next();
   }
 
-  // 2. Check Bearer token
+  // 2. Authorization Bearer header
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.split(' ')[1];
-    if (token === expectedAdminKey) {
+
+    if (configuredAdminKey && token === configuredAdminKey) {
       (req as any).user = { role: 'admin', userId: 'admin-system' };
       return next();
     }
-    const jwtSecret = process.env.JWT_SECRET || 'development-secret-do-not-use-in-prod';
-    try {
-      const decoded: any = jwt.verify(token, jwtSecret);
-      if (decoded && (decoded.role === 'admin' || decoded.isAdmin)) {
-        (req as any).user = decoded;
-        return next();
+
+    if (configuredJwtSecret) {
+      try {
+        const decoded: any = jwt.verify(token, configuredJwtSecret);
+        if (decoded && (decoded.role === 'admin' || decoded.isAdmin === true)) {
+          (req as any).user = decoded;
+          return next();
+        } else if (decoded) {
+          return res.status(403).json({
+            success: false,
+            error: 'FORBIDDEN_ADMIN_ACCESS: Authenticated user does not possess required admin permissions.'
+          });
+        }
+      } catch (e) {
+        return res.status(401).json({
+          success: false,
+          error: 'UNAUTHORIZED_ADMIN_ACCESS: Invalid or expired authorization token.'
+        });
       }
-    } catch (e) {
-      // ignore token error
     }
   }
 
-  // 3. Dev / UI session role bypass check
-  if (req.headers['x-user-role'] === 'admin' || req.query.adminBypass === 'true' || process.env.NODE_ENV !== 'production') {
-    (req as any).user = { role: 'admin', userId: 'admin-dev' };
-    return next();
-  }
-
+  // Fail closed - reject any missing or unauthorized request
   return res.status(401).json({
     success: false,
-    error: 'UNAUTHORIZED_ADMIN_ACCESS: Valid admin key or authorized admin token required.'
+    error: 'UNAUTHORIZED_ADMIN_ACCESS: Valid admin API key or authorized admin token required.'
   });
 };
 
