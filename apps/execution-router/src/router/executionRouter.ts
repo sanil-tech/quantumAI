@@ -21,6 +21,34 @@ export class ExecutionRouter {
     this.brokerAdapters.set(adapter.id, adapter);
   }
 
+  async getAllPositions(): Promise<any[]> {
+    const positions: any[] = [];
+    for (const adapter of this.brokerAdapters.values()) {
+      if (adapter.getPositions) {
+        try {
+          const adapterPositions = await adapter.getPositions();
+          positions.push(...adapterPositions);
+        } catch (err) {
+          // Ignore individual adapter position lookup errors
+        }
+      }
+    }
+    return positions;
+  }
+
+  async getAccountStatuses(): Promise<any[]> {
+    const statuses: any[] = [];
+    for (const adapter of this.brokerAdapters.values()) {
+      try {
+        const status = await adapter.getAccountStatus();
+        statuses.push(status);
+      } catch (err) {
+        // Ignore individual adapter status lookup errors
+      }
+    }
+    return statuses;
+  }
+
   async handleRiskCleared(payload: RiskClearedPayload): Promise<{ order: Order; report: ExecutionReport }> {
     const startTime = Date.now();
     const { proposal_id, approval_id, symbol, account_id, trade_proposal } = payload;
@@ -129,6 +157,13 @@ export class ExecutionRouter {
         return { order: existingOrder, report };
       }
 
+      const stopLoss = token.stopLoss ?? token.stop_loss ?? trade_proposal.stopLoss ?? trade_proposal.stop_loss;
+      const takeProfit = token.takeProfit ?? token.take_profit ?? trade_proposal.takeProfit ?? trade_proposal.take_profit;
+      const riskPercent = token.riskPercent ?? token.risk_percent ?? trade_proposal.riskPercent ?? trade_proposal.risk_percent;
+      const riskAmount = token.calculatedRiskAmount;
+      const strategyId = token.strategyId || (trade_proposal as any).strategyId || trade_proposal.strategy_id;
+      const strategyVersion = token.strategyVersion || (trade_proposal as any).strategyVersion || trade_proposal.strategy_version;
+
       // 1. Create Order in OMS
       const order = this.orderManager.createOrder(
         proposal_id,
@@ -139,13 +174,23 @@ export class ExecutionRouter {
         quantity,
         'MARKET',
         undefined,
-        this.defaultBrokerId
+        this.defaultBrokerId,
+        {
+          stop_loss: stopLoss,
+          take_profit: takeProfit,
+          risk_percent: riskPercent,
+          risk_amount: riskAmount,
+          strategy_id: strategyId,
+          strategy_version: strategyVersion
+        }
       );
 
       observabilityService.recordTrace(executionId, 'ORDER_CREATED', {
         brokerOrderId: order.order_id,
         quantity: order.quantity,
-        symbol: order.symbol
+        symbol: order.symbol,
+        stopLoss: order.stop_loss,
+        takeProfit: order.take_profit
       });
 
       // Publish OrderPlaced Event
@@ -158,6 +203,8 @@ export class ExecutionRouter {
         quantity: order.quantity,
         order_type: order.order_type,
         price: order.price,
+        stop_loss: order.stop_loss,
+        take_profit: order.take_profit,
         timestamp: new Date()
       };
 

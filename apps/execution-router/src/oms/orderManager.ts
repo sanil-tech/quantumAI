@@ -12,7 +12,15 @@ export class OrderManager {
     quantity: number,
     orderType: OrderType = 'MARKET',
     price?: number,
-    brokerId: string = 'paper-broker-01'
+    brokerId: string = 'paper-broker-01',
+    extra?: {
+      stop_loss?: number;
+      take_profit?: number;
+      risk_percent?: number;
+      risk_amount?: number;
+      strategy_id?: string;
+      strategy_version?: string;
+    }
   ): Order {
     const orderId = `ord-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
     const order: Order = {
@@ -27,7 +35,13 @@ export class OrderManager {
       price,
       status: 'PENDING',
       created_at: new Date(),
-      broker_id: brokerId
+      broker_id: brokerId,
+      stop_loss: extra?.stop_loss,
+      take_profit: extra?.take_profit,
+      risk_percent: extra?.risk_percent,
+      risk_amount: extra?.risk_amount,
+      strategy_id: extra?.strategy_id,
+      strategy_version: extra?.strategy_version
     };
 
     this.orders.set(orderId, order);

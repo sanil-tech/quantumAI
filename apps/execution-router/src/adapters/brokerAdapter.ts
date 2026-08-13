@@ -20,5 +20,6 @@ export interface BrokerAdapter {
   placeOrder(order: Order): Promise<ExecutionReport>;
   cancelOrder(orderId: string): Promise<boolean>;
   getPosition(symbol: string): Promise<Position | undefined>;
+  getPositions?(): Promise<Position[]>;
   getAccountStatus(): Promise<AccountStatus>;
 }

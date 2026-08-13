@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { aiDecisionEngine } from '../../../apps/decision-agent/src/services/aiDecisionEngine';
 import { backtestEngine } from '../../../apps/decision-agent/src/services/backtestEngine';
+import { learningService } from '../services/learningService';
 
 export const decisionRouter = Router();
 
@@ -73,10 +74,24 @@ function handlePostMortemLessonsGet(req: Request, res: Response) {
 // Handle Post-Mortem POST
 async function handlePostMortemPost(req: Request, res: Response) {
   try {
-    const review = await aiDecisionEngine.createPostMortem(req.body);
+    const tradeId = req.body?.tradeId || req.body?.positionId || req.body?.id;
+    const notes = req.body?.userNotes || req.body?.notes;
+
+    if (!tradeId) {
+      return res.status(400).json({ error: "TRADE_ID_REQUIRED: POST /api/post-mortem requires a valid tradeId or positionId" });
+    }
+
+    const review = await learningService.processClosedTrade({ tradeId }, notes);
     res.json({ success: true, review, totalLessons: aiDecisionEngine.getPostMortemReviews().length });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    const msg = err?.message || String(err);
+    if (msg.includes("NONEXISTENT_TRADE")) {
+      return res.status(404).json({ error: msg });
+    }
+    if (msg.includes("OPEN_TRADE") || msg.includes("INVALID_LEARNING") || msg.includes("TRADE_ID_REQUIRED")) {
+      return res.status(400).json({ error: msg });
+    }
+    res.status(500).json({ error: msg });
   }
 }
 

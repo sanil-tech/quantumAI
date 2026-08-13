@@ -44,7 +44,9 @@ export class PaperBrokerAdapter implements BrokerAdapter {
         order.symbol,
         order.direction,
         order.quantity,
-        report.filled_price
+        report.filled_price,
+        order.stop_loss,
+        order.take_profit
       );
     }
 
@@ -57,6 +59,10 @@ export class PaperBrokerAdapter implements BrokerAdapter {
 
   async getPosition(symbol: string): Promise<Position | undefined> {
     return this.positionManager.getPosition('DEFAULT', symbol);
+  }
+
+  async getPositions(): Promise<Position[]> {
+    return this.positionManager.getAllPositions();
   }
 
   async getAccountStatus(): Promise<AccountStatus> {

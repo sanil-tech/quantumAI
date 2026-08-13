@@ -272,6 +272,9 @@ export interface MultiPairOneYearBacktestResult {
 
 export interface PostMortemReview {
   id: string;
+  tradeId?: string;
+  positionId?: string;
+  learningVersion?: string;
   timestamp: number;
   pair: CurrencyPair;
   direction: 'BUY' | 'SELL';
@@ -280,6 +283,7 @@ export interface PostMortemReview {
   stopLoss: number;
   takeProfit: number;
   pnlDollars: number;
+  pnlPips?: number;
   outcome: 'WIN' | 'LOSS';
   rootCauseMs: string;
   rootCauseEn: string;
@@ -288,6 +292,10 @@ export interface PostMortemReview {
   adaptiveRuleMs: string;
   adaptiveRuleEn: string;
   ratingScore: number;
+  proposalId?: string;
+  approvalId?: string;
+  strategyId?: string;
+  strategyVersion?: string;
 }
 
 export interface TraderProfile {

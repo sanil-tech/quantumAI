@@ -8,7 +8,9 @@ export class PositionManager {
     symbol: string,
     direction: MarketDirection,
     quantity: number,
-    filledPrice: number
+    filledPrice: number,
+    stopLoss?: number,
+    takeProfit?: number
   ): Position {
     const existingPositionKey = `${accountId}:${symbol}`;
     let position = this.positions.get(existingPositionKey);
@@ -27,7 +29,9 @@ export class PositionManager {
         realized_profit: 0,
         status: 'OPEN',
         opened_at: new Date(),
-        updated_at: new Date()
+        updated_at: new Date(),
+        stop_loss: stopLoss,
+        take_profit: takeProfit
       };
     } else {
       // Position exists: check if adding to position or closing/reversing
@@ -37,6 +41,8 @@ export class PositionManager {
         const totalCost = (position.quantity * position.entry_price) + (quantity * filledPrice);
         position.entry_price = Number((totalCost / totalQty).toFixed(5));
         position.quantity = totalQty;
+        if (stopLoss !== undefined) position.stop_loss = stopLoss;
+        if (takeProfit !== undefined) position.take_profit = takeProfit;
       } else {
         // Closing or partial closing
         const closedQty = Math.min(position.quantity, quantity);

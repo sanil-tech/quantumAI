@@ -38,6 +38,28 @@ export class InMemoryEventBus implements IEventBus {
 
 export const globalEventBus = new InMemoryEventBus();
 
+export interface TradeClosedPayload {
+  tradeId: string;
+  positionId: string;
+  accountId?: string;
+  symbol: string;
+  direction: string;
+  entryPrice: number;
+  exitPrice: number;
+  stopLoss: number;
+  takeProfit: number;
+  pnlDollars: number;
+  pnlPips: number;
+  proposalId?: string;
+  approvalId?: string;
+  strategyId?: string;
+  strategyVersion?: string;
+  environment?: string;
+  closedAt: Date | string;
+  userNotes?: string;
+  learningVersion?: string;
+}
+
 export const EventTypes = {
   MarketDataUpdated: 'MarketDataUpdated',
   MarketStateUpdated: 'MarketStateUpdated',
@@ -47,5 +69,6 @@ export const EventTypes = {
   GovernanceApproved: 'GovernanceApproved',
   OrderPlaced: 'OrderPlaced',
   OrderFilled: 'OrderFilled',
-  PositionUpdated: 'PositionUpdated'
+  PositionUpdated: 'PositionUpdated',
+  TradeClosed: 'TradeClosed'
 } as const;

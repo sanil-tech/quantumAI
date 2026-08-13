@@ -161,6 +161,17 @@ export interface TradeProposal {
   why_direction: string;
   invalidate_conditions: string[];
   timestamp: Date;
+  stop_loss?: number;
+  take_profit?: number;
+  stopLoss?: number;
+  takeProfit?: number;
+  lotSize?: number;
+  risk_percent?: number;
+  riskPercent?: number;
+  strategyId?: string;
+  strategyVersion?: string;
+  strategy_id?: string;
+  strategy_version?: string;
 }
 
 export interface MarketDataUpdatedPayload {
@@ -227,6 +238,12 @@ export interface RiskApprovalToken {
   governanceSignature: string;
   strategyId?: string;
   strategyVersion?: string;
+  stopLoss?: number;
+  takeProfit?: number;
+  riskPercent?: number;
+  stop_loss?: number;
+  take_profit?: number;
+  risk_percent?: number;
 }
 
 export interface GovernanceDecision {
@@ -281,6 +298,12 @@ export interface Order {
   created_at: Date;
   filled_at?: Date;
   broker_id: string;
+  stop_loss?: number;
+  take_profit?: number;
+  risk_percent?: number;
+  risk_amount?: number;
+  strategy_id?: string;
+  strategy_version?: string;
 }
 
 export interface ExecutionReport {
@@ -309,6 +332,8 @@ export interface Position {
   status: 'OPEN' | 'CLOSED' | 'LIQUIDATED';
   opened_at: Date;
   updated_at: Date;
+  stop_loss?: number;
+  take_profit?: number;
 }
 
 export interface OrderPlacedPayload {
@@ -320,6 +345,8 @@ export interface OrderPlacedPayload {
   quantity: number;
   order_type: OrderType;
   price?: number;
+  stop_loss?: number;
+  take_profit?: number;
   timestamp: Date;
 }
 

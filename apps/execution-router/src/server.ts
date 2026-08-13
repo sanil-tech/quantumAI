@@ -43,25 +43,27 @@ app.get('/api/execution/orders', (req: Request, res: Response) => {
 });
 
 app.get('/api/execution/positions', async (req: Request, res: Response) => {
-  const paperBroker = executionRouter.brokerAdapters.get(executionRouter.defaultBrokerId) as PaperBrokerAdapter;
-  const positions = paperBroker ? paperBroker.positionManager.getAllPositions() : [];
+  const positions = await executionRouter.getAllPositions();
   res.json({ count: positions.length, positions });
 });
 
 app.get('/api/execution/performance', async (req: Request, res: Response) => {
+  const accountStatuses = await executionRouter.getAccountStatuses();
+  const defaultStatus = accountStatuses.length > 0 ? accountStatuses[0] : undefined;
   const paperBroker = executionRouter.brokerAdapters.get(executionRouter.defaultBrokerId) as PaperBrokerAdapter;
-  const accountStatus = paperBroker ? await paperBroker.getAccountStatus() : undefined;
   const orders = executionRouter.orderManager.getAllOrders();
   const filledCount = orders.filter(o => o.status === 'FILLED').length;
   const rejectedCount = orders.filter(o => o.status === 'REJECTED').length;
 
   res.json({
-    account_status: accountStatus,
+    account_status: defaultStatus,
+    accounts: accountStatuses,
     metrics: {
       total_orders: orders.length,
       filled_orders: filledCount,
       rejected_orders: rejectedCount,
-      average_slippage_pips: paperBroker ? paperBroker.simulationEngine.getSlippageEngine().getAverageSlippagePips() : 0
+      average_slippage_pips: paperBroker?.simulationEngine ? paperBroker.simulationEngine.getSlippageEngine().getAverageSlippagePips() : 0,
+      active_brokers: Array.from(executionRouter.brokerAdapters.keys())
     }
   });
 });

@@ -335,16 +335,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
           setInitialCapital(st.initialCapital ?? 1000.27);
           setIsAutoEnabled(st.isAutoEnabled ?? true);
           setOpenTrades(st.openTrades || []);
-
-          // Smart merge closed trades so local closed trades are never wiped out
-          setClosedTrades(prev => {
-            const serverClosed = (st.closedTrades || []).map((c: any) => sanitizeClosedTrade(c));
-            const serverIds = new Set(serverClosed.map((c: any) => c.id));
-            const clientOnly = prev.filter(c => !serverIds.has(c.id)).map(c => sanitizeClosedTrade(c));
-            const merged = [...clientOnly, ...serverClosed];
-            merged.sort((a, b) => (b.closeTime || 0) - (a.closeTime || 0));
-            return merged;
-          });
+          setClosedTrades((st.closedTrades || []).map((c: any) => sanitizeClosedTrade(c)));
 
           // Only sync balance from server if server balance is non-zero and reasonable
           if (typeof st.balance === 'number' && st.balance > 0 && st.balance < 10000000) {
@@ -379,7 +370,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
     };
   }, [syncMode]);
 
-  // Auto-sync state changes to server when in CLOUD mode
+  // Auto-sync state preferences to server when in CLOUD mode
   useEffect(() => {
     if (syncMode !== 'CLOUD' || !isServerStateLoadedRef.current) return;
     const timer = setTimeout(() => {
@@ -390,14 +381,12 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
           isAutoEnabled,
           balance,
           initialCapital,
-          latestAiRule: latestLearnedRule,
-          closedTrades,
-          openTrades
+          latestAiRule: latestLearnedRule
         })
       }).catch(e => console.error('Cloud auto-sync error:', e));
     }, 1200);
     return () => clearTimeout(timer);
-  }, [balance, initialCapital, isAutoEnabled, closedTrades, openTrades, latestLearnedRule, syncMode]);
+  }, [balance, initialCapital, isAutoEnabled, latestLearnedRule, syncMode]);
 
   // Sync active pair price smoothly without price jumps
   useEffect(() => {

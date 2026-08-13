@@ -3,8 +3,9 @@ import {
   Zap, ShieldCheck, AlertTriangle, Activity, Bot, Cpu, Key, UserCheck, 
   BarChart3, RefreshCw, Layers, CheckCircle, XCircle, Terminal, Play, Pause,
   DollarSign, Sliders, Server, Lock, TrendingUp, TrendingDown, History,
-  Flame, Target, Award, BookOpen, Cloud, ArrowUpRight, ArrowDownRight, PieChart
+  Flame, Target, Award, BookOpen, Cloud, ArrowUpRight, ArrowDownRight, PieChart, Database
 } from 'lucide-react';
+import { AdminTradingCenter } from './AdminTradingCenter';
 
 interface AdminDeveloperDashboardProps {
   isMalay: boolean;
@@ -15,6 +16,7 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
   isMalay,
   onOpenBrokerModal
 }) => {
+  const [adminSection, setAdminSection] = useState<'GOVERNANCE' | 'BRIDGE_DIAGNOSTICS'>('GOVERNANCE');
   // Admin Global States
   const [maxGlobalLot, setMaxGlobalLot] = useState(1.00);
   const [maxDailyLoss, setMaxDailyLoss] = useState(500);
@@ -178,9 +180,39 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* SECTION 1: REAL CLOUD AI MONITORING STATS (WIN/LOSS, PNL, BEST PAIRS) */}
-      {/* ========================================================================= */}
+      {/* Admin Sub-Section Switcher Bar */}
+      <div className="flex items-center gap-2 p-1.5 bg-slate-900 border border-slate-800 rounded-xl shadow">
+        <button
+          onClick={() => setAdminSection('GOVERNANCE')}
+          className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 ${
+            adminSection === 'GOVERNANCE'
+              ? 'bg-purple-600 text-white shadow-lg'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800'
+          }`}
+        >
+          <Database className="w-4 h-4" />
+          <span>Admin Trading Center &amp; Data Governance (PostgreSQL)</span>
+        </button>
+        <button
+          onClick={() => setAdminSection('BRIDGE_DIAGNOSTICS')}
+          className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 ${
+            adminSection === 'BRIDGE_DIAGNOSTICS'
+              ? 'bg-purple-600 text-white shadow-lg'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800'
+          }`}
+        >
+          <Activity className="w-4 h-4" />
+          <span>Pemantauan AI Cloud &amp; Diagnostic Bridge</span>
+        </button>
+      </div>
+
+      {adminSection === 'GOVERNANCE' ? (
+        <AdminTradingCenter isMalay={isMalay} />
+      ) : (
+        <>
+          {/* ========================================================================= */}
+          {/* SECTION 1: REAL CLOUD AI MONITORING STATS (WIN/LOSS, PNL, BEST PAIRS) */}
+          {/* ========================================================================= */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -728,6 +760,8 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
           ))}
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 };

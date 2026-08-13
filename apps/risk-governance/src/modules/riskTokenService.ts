@@ -43,6 +43,12 @@ export interface CreateTokenParams {
   rejectionReason?: string;
   strategyId?: string;
   strategyVersion?: string;
+  stopLoss?: number;
+  takeProfit?: number;
+  riskPercent?: number;
+  stop_loss?: number;
+  take_profit?: number;
+  risk_percent?: number;
   timestamp?: number;
 }
 
@@ -58,6 +64,10 @@ export function createRiskApprovalToken(params: CreateTokenParams): RiskApproval
     riskCheckTimestamp
   });
 
+  const stopLoss = params.stopLoss ?? params.stop_loss;
+  const takeProfit = params.takeProfit ?? params.take_profit;
+  const riskPercent = params.riskPercent ?? params.risk_percent;
+
   return {
     approvalId: params.approvalId,
     signalId: params.signalId,
@@ -71,6 +81,12 @@ export function createRiskApprovalToken(params: CreateTokenParams): RiskApproval
     rejectionReason: params.rejectionReason,
     governanceSignature: signature,
     strategyId: params.strategyId || 'DEFAULT_STRATEGY',
-    strategyVersion: params.strategyVersion || '1.0'
+    strategyVersion: params.strategyVersion || '1.0',
+    stopLoss,
+    takeProfit,
+    riskPercent,
+    stop_loss: stopLoss,
+    take_profit: takeProfit,
+    risk_percent: riskPercent
   };
 }

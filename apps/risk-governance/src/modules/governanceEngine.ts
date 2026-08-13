@@ -94,8 +94,11 @@ export class RiskGovernanceEngine {
       calculatedRiskAmount: posRisk.expectedRisk,
       status,
       rejectionReason: rejectionReasons.length > 0 ? rejectionReasons.join(' | ') : undefined,
-      strategyId: (proposal as any).strategyId,
-      strategyVersion: (proposal as any).strategyVersion
+      strategyId: (proposal as any).strategyId || proposal.strategy_id,
+      strategyVersion: (proposal as any).strategyVersion || proposal.strategy_version,
+      stopLoss: proposal.stopLoss ?? proposal.stop_loss,
+      takeProfit: proposal.takeProfit ?? proposal.take_profit,
+      riskPercent: proposal.riskPercent ?? proposal.risk_percent
     });
 
     const decision: GovernanceDecision = {

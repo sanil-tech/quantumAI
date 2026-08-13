@@ -18,8 +18,10 @@ import { riskRouter } from "./src/server/routes/risk";
 import { brokerRouter, serverBrokerConnection } from "./src/server/routes/broker";
 import { executionRouter as executionApiRouter, sharedAutoTraderState } from "./src/server/routes/execution";
 import { observabilityRouter } from "./src/server/routes/observability";
+import { adminRouter } from "./src/server/routes/admin";
 import { backtestEngine } from "./apps/decision-agent/src/services/backtestEngine";
 import { aiDecisionEngine } from "./apps/decision-agent/src/services/aiDecisionEngine";
+import { learningService } from "./src/server/services/learningService";
 
 async function startServer() {
   const app = express();
@@ -71,14 +73,20 @@ async function startServer() {
   app.use("/api/decision", decisionRouter);
   app.use("/api/forex", decisionRouter);
 
-  // Risk Governance, Broker Integration, Execution, and Observability Routers
+  // Risk Governance, Broker Integration, Execution, Observability, and Admin Data Governance Routers
   app.use("/api", riskRouter);
   app.use("/api", brokerRouter);
   app.use("/api", executionApiRouter);
   app.use("/api", observabilityRouter);
+  app.use("/api/admin", adminRouter);
 
   // Start background 1-year backtesting & continuous learning cycle
   backtestEngine.startBackgroundTimer();
+
+  // Load persistent adaptive learning lessons from PostgreSQL database
+  learningService.loadPersistedLearning().catch(err => {
+    console.warn("Could not load persisted learning state on boot:", err.message);
+  });
 
   // Server UTC Clock Anchor for Economic Calendar Events
   const SERVER_CALENDAR_ANCHOR_TIME = Date.now();
