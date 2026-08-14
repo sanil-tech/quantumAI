@@ -1,0 +1,26 @@
+syntax = "proto2";
+package openapi;
+import "OpenApiCommonMessages.proto";
+enum ProtoOATradeSide { BUY = 1; SELL = 2; }
+enum ProtoOAOrderType { MARKET = 1; LIMIT = 2; STOP = 3; STOP_LOSS_TAKE_PROFIT = 4; MARKET_RANGE = 5; }
+message ProtoOAApplicationAuthReq { required uint32 payloadType = 1 [default = 2100]; required string clientId = 2; required string clientSecret = 3; }
+message ProtoOAApplicationAuthRes { required uint32 payloadType = 1 [default = 2101]; }
+message ProtoOAAccountAuthReq { required uint32 payloadType = 1 [default = 2102]; required int64 cTraderAccountId = 2; required string accessToken = 3; }
+message ProtoOAAccountAuthRes { required uint32 payloadType = 1 [default = 2103]; required int64 cTraderAccountId = 2; }
+message ProtoOASymbol { required int64 symbolId = 1; required string symbolName = 2; optional bool enabled = 3; optional int64 baseAssetId = 4; optional int64 quoteAssetId = 5; optional int32 digits = 6; optional int32 pipPosition = 7; }
+message ProtoOASymbolsListReq { required uint32 payloadType = 1 [default = 2114]; required int64 cTraderAccountId = 2; optional bool includeArchivedSymbols = 3 [default = false]; }
+message ProtoOASymbolsListRes { required uint32 payloadType = 1 [default = 2115]; required int64 cTraderAccountId = 2; repeated ProtoOASymbol symbol = 3; }
+message ProtoOATrader { required int64 cTraderAccountId = 1; required int64 balance = 2; optional int64 leverageInCents = 3; optional string depositAsset = 4; }
+message ProtoOATraderReq { required uint32 payloadType = 1 [default = 2121]; required int64 cTraderAccountId = 2; }
+message ProtoOATraderRes { required uint32 payloadType = 1 [default = 2122]; required int64 cTraderAccountId = 2; required ProtoOATrader trader = 3; }
+message ProtoOAPosition { required int64 positionId = 1; required int64 symbolId = 2; required ProtoOATradeSide tradeSide = 3; required int64 volume = 4; required double entryPrice = 5; optional double stopLoss = 6; optional double takeProfit = 7; }
+message ProtoOAOrder { required int64 orderId = 1; required int64 symbolId = 2; required ProtoOAOrderType orderType = 3; required ProtoOATradeSide tradeSide = 4; required int64 volume = 5; optional double limitPrice = 6; optional double stopPrice = 7; }
+message ProtoOAReconcileReq { required uint32 payloadType = 1 [default = 2124]; required int64 cTraderAccountId = 2; }
+message ProtoOAReconcileRes { required uint32 payloadType = 1 [default = 2125]; required int64 cTraderAccountId = 2; repeated ProtoOAPosition position = 3; repeated ProtoOAOrder order = 4; }
+
+
+message ProtoOAErrorRes {
+  optional uint32 payloadType = 1;
+  optional string errorCode = 2;
+  optional string description = 3;
+}

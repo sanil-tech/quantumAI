@@ -9,7 +9,11 @@
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "ctrader:demo:connectivity": "tsx scripts/ctrader-demo-connectivity.ts",
+    "test:ctrader:demo": "tsx scripts/ctrader-demo-connectivity.ts",
+    "ctrader:demo:trade": "tsx scripts/ctrader-demo-trade.ts",
+    "ctrader:diagnose": "tsx scripts/ctrader-demo-account-state.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
