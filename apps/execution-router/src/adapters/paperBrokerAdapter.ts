@@ -34,19 +34,25 @@ export class PaperBrokerAdapter implements BrokerAdapter {
     // Default reference price for symbol if not supplied
     const referencePrice = order.price || (order.symbol === 'EURUSD' ? 1.0850 : 1.2500);
 
+    // Explicit SL / TP preservation
+    const stopLoss = order.stop_loss ?? order.stopLoss;
+    const takeProfit = order.take_profit ?? order.takeProfit;
+
     // Simulate execution
     const report = await this.simulationEngine.simulateExecution(order, referencePrice);
+    report.broker_id = this.id;
+    report.brokerId = this.id;
 
     if (report.status === 'FILLED') {
-      // Update positions
+      // Update positions with explicit SL/TP
       this.positionManager.updatePositionOnFill(
-        order.account_id,
+        order.account_id || order.accountId || 'DEFAULT',
         order.symbol,
         order.direction,
         order.quantity,
         report.filled_price,
-        order.stop_loss,
-        order.take_profit
+        stopLoss,
+        takeProfit
       );
     }
 
@@ -57,8 +63,13 @@ export class PaperBrokerAdapter implements BrokerAdapter {
     return true;
   }
 
-  async getPosition(symbol: string): Promise<Position | undefined> {
-    return this.positionManager.getPosition('DEFAULT', symbol);
+  async getPosition(symbol: string, accountId?: string): Promise<Position | undefined> {
+    if (accountId) {
+      const pos = this.positionManager.getPosition(accountId, symbol);
+      if (pos) return pos;
+    }
+    const openPositions = this.positionManager.getOpenPositions();
+    return openPositions.find(p => p.symbol === symbol);
   }
 
   async getPositions(): Promise<Position[]> {

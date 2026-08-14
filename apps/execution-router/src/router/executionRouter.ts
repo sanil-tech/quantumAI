@@ -1,6 +1,9 @@
 import { RiskClearedPayload, Order, ExecutionReport, OrderPlacedPayload, OrderFilledPayload } from '@iati/core-types';
 import { BrokerAdapter } from '../adapters/brokerAdapter';
 import { PaperBrokerAdapter } from '../adapters/paperBrokerAdapter';
+import { CTraderAdapter } from '../adapters/ctraderAdapter';
+import { BrokerRegistry, DEFAULT_BROKER_ID } from '../adapters/brokerRegistry';
+import { validateExecutionEnvironmentSafety, ExecutionEnvironmentMode } from '../adapters/executionSafetyGate';
 import { OrderManager } from '../oms/orderManager';
 import { globalEventBus, EventTypes } from '@iati/event-bus';
 import { logger, ErrorCategory } from '@iati/core';
@@ -8,22 +11,30 @@ import { verifyGovernanceSignature } from '../../../risk-governance/src/modules/
 import { observabilityService } from '../../../../src/server/services/observabilityService';
 
 export class ExecutionRouter {
+  public brokerRegistry = new BrokerRegistry();
   public brokerAdapters: Map<string, BrokerAdapter> = new Map();
   public orderManager = new OrderManager();
-  public defaultBrokerId = 'paper-broker-01';
+  public defaultBrokerId = DEFAULT_BROKER_ID;
 
   constructor() {
     const paperAdapter = new PaperBrokerAdapter();
-    this.brokerAdapters.set(paperAdapter.id, paperAdapter);
+    const ctraderAdapter = new CTraderAdapter();
+    this.registerBroker(paperAdapter);
+    this.registerBroker(ctraderAdapter);
   }
 
   registerBroker(adapter: BrokerAdapter): void {
+    this.brokerRegistry.register(adapter);
     this.brokerAdapters.set(adapter.id, adapter);
+  }
+
+  getBroker(brokerId?: string): BrokerAdapter | undefined {
+    return this.brokerRegistry.get(brokerId) || this.brokerAdapters.get(brokerId || this.defaultBrokerId);
   }
 
   async getAllPositions(): Promise<any[]> {
     const positions: any[] = [];
-    for (const adapter of this.brokerAdapters.values()) {
+    for (const adapter of this.brokerRegistry.listAdapters()) {
       if (adapter.getPositions) {
         try {
           const adapterPositions = await adapter.getPositions();
@@ -38,7 +49,7 @@ export class ExecutionRouter {
 
   async getAccountStatuses(): Promise<any[]> {
     const statuses: any[] = [];
-    for (const adapter of this.brokerAdapters.values()) {
+    for (const adapter of this.brokerRegistry.listAdapters()) {
       try {
         const status = await adapter.getAccountStatus();
         statuses.push(status);
@@ -105,6 +116,29 @@ export class ExecutionRouter {
         throw new Error(`Execution Router Violation: Token direction '${token.direction}' does not match trade proposal direction '${trade_proposal.direction}'.`);
       }
 
+      // Server-Side Execution Environment Safety Gate Check
+      const targetBrokerId = payload.broker_id || payload.brokerId || token.brokerId || token.broker_id || (trade_proposal as any).brokerId || this.defaultBrokerId;
+      const targetEnv: ExecutionEnvironmentMode = (payload as any).environment || (process.env.EXECUTION_ENVIRONMENT as any) || 'PAPER';
+      const quantity = token.approvedLotSize || 0.10;
+      const stopLoss = token.stopLoss ?? token.stop_loss ?? trade_proposal.stopLoss ?? trade_proposal.stop_loss;
+      const takeProfit = token.takeProfit ?? token.take_profit ?? trade_proposal.takeProfit ?? trade_proposal.take_profit;
+
+      const safetyResult = validateExecutionEnvironmentSafety({
+        environment: targetEnv,
+        brokerId: targetBrokerId,
+        symbol,
+        direction: trade_proposal.direction,
+        requestedLotSize: quantity,
+        stopLoss,
+        takeProfit,
+        token
+      });
+
+      if (!safetyResult.allowed) {
+        observabilityService.metrics.incCounter('execution_failure_total');
+        throw new Error(`Execution Router Violation (${safetyResult.code}): ${safetyResult.reason}`);
+      }
+
       // Validate execution request & check risk approval exists
       if (!approval_id || !proposal_id) {
         observabilityService.metrics.incCounter('execution_failure_total');
@@ -121,8 +155,6 @@ export class ExecutionRouter {
         direction: trade_proposal.direction,
         status: 'PROCESSING'
       });
-
-      const quantity = token.approvedLotSize || 0.10;
 
       const requestedLot = (trade_proposal as any).lotSize;
       if (requestedLot && requestedLot > token.approvedLotSize) {
@@ -157,8 +189,6 @@ export class ExecutionRouter {
         return { order: existingOrder, report };
       }
 
-      const stopLoss = token.stopLoss ?? token.stop_loss ?? trade_proposal.stopLoss ?? trade_proposal.stop_loss;
-      const takeProfit = token.takeProfit ?? token.take_profit ?? trade_proposal.takeProfit ?? trade_proposal.take_profit;
       const riskPercent = token.riskPercent ?? token.risk_percent ?? trade_proposal.riskPercent ?? trade_proposal.risk_percent;
       const riskAmount = token.calculatedRiskAmount;
       const strategyId = token.strategyId || (trade_proposal as any).strategyId || trade_proposal.strategy_id;
@@ -174,7 +204,7 @@ export class ExecutionRouter {
         quantity,
         'MARKET',
         undefined,
-        this.defaultBrokerId,
+        targetBrokerId,
         {
           stop_loss: stopLoss,
           take_profit: takeProfit,
@@ -216,12 +246,23 @@ export class ExecutionRouter {
       });
 
       // 2. Select Broker Adapter
-      const broker = this.brokerAdapters.get(order.broker_id);
-      if (!broker || !broker.isConnected()) {
+      const broker = this.getBroker(order.broker_id);
+      if (!broker) {
         this.orderManager.updateOrderStatus(order.order_id, 'REJECTED');
         observabilityService.metrics.incCounter('execution_failure_total');
         observabilityService.metrics.incCounter('broker_error_total');
         throw new Error(`Broker Adapter ${order.broker_id} unavailable.`);
+      }
+
+      if (!broker.isConnected()) {
+        try {
+          await broker.connect();
+        } catch (connErr: any) {
+          this.orderManager.updateOrderStatus(order.order_id, 'REJECTED');
+          observabilityService.metrics.incCounter('execution_failure_total');
+          observabilityService.metrics.incCounter('broker_error_total');
+          throw new Error(`Broker Adapter ${order.broker_id} connection failed: ${connErr.message}`);
+        }
       }
 
       // 3. Submit Order to Broker

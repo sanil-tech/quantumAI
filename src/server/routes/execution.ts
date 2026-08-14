@@ -1,3 +1,4 @@
+import { AccountService } from '../services/accountService';
 import { Router, Request, Response } from 'express';
 import { executionQueueService } from '../services/executionQueueService';
 import { validateExecutionSafety } from '../services/liveExecutionSafetyGuard';
@@ -7,7 +8,7 @@ import { authorizeExecution } from '../../../apps/risk-governance/src/modules/ex
 import { TradeProposal, RiskApprovalToken, RiskClearedPayload } from '@iati/core-types';
 import { ExecutionRouter } from '../../../apps/execution-router/src/router/executionRouter';
 import { PaperBrokerAdapter } from '../../../apps/execution-router/src/adapters/paperBrokerAdapter';
-import { TradingRepository, PositionRecord, AccountStateRecord } from '@iati/database';
+import { TradingRepository, PositionRecord, AccountStateRecord, checkDbConnection } from '@iati/database';
 import { globalEventBus, EventTypes, TradeClosedPayload } from '@iati/event-bus';
 import { learningService } from '../services/learningService';
 
@@ -21,6 +22,7 @@ export interface SharedAutoTrade {
   pair: string;
   direction: 'BUY' | 'SELL';
   entryPrice: number;
+  currentPrice?: number;
   stopLoss: number;
   takeProfit1: number;
   takeProfit2?: number;
@@ -116,7 +118,7 @@ executionRouter.get('/autotrader/state', async (req: Request, res: Response) => 
       return;
     }
 
-    const accountId = (req.query.accountId as string) || '5877246';
+    const accountId = AccountService.resolveAccountId(req.query.accountId as string);
 
     const [openPositions, closedPositions, performance, accountStateRecord, pendingCommands] = await Promise.all([
       tradingRepo.getOpenPositions(accountId).catch(() => []),
@@ -181,7 +183,7 @@ executionRouter.get('/autotrader/trades', async (req: Request, res: Response) =>
       return;
     }
 
-    const accountId = (req.query.accountId as string) || '5877246';
+    const accountId = AccountService.resolveAccountId(req.query.accountId as string);
     const status = (req.query.status as string) || 'ALL';
     const limit = Number(req.query.limit || 50);
     const offset = Number(req.query.offset || 0);
@@ -265,7 +267,7 @@ export async function handleExecuteTrade(req: Request, res: Response) {
     }
 
     const targetEnv: ExecutionEnvironment = environment || req.body.targetEnv || 'DEMO';
-    const targetAccount = accountNumber || '5877246';
+    const targetAccount = AccountService.resolveAccountId(accountNumber);
     const targetBroker = broker || 'CTRADER';
     const tradeSetupId = setupId || req.body.tradeSetupId || `setup_${pair.replace('/', '')}_${direction}_${Date.now()}`;
 
@@ -471,7 +473,7 @@ executionRouter.post('/execution/autotrader-submit', handleExecuteTrade);
 executionRouter.post('/autotrader/trade/close', async (req: Request, res: Response) => {
   try {
     const { tradeId, exitPrice, closeReason, clientClosedTrade, pnlDollars, pnlPips, pair, direction, accountId } = req.body;
-    const targetAccountId = accountId || '5877246';
+    const targetAccountId = AccountService.resolveAccountId(accountId);
     const targetId = tradeId || (clientClosedTrade && clientClosedTrade.id);
 
     const isConnected = await checkDbConnection();
@@ -627,7 +629,7 @@ executionRouter.post('/autotrader/reset', async (req: Request, res: Response) =>
   try {
     sharedAutoTraderState.openTrades = [];
     sharedAutoTraderState.closedTrades = [];
-    await executionQueueService.clearPendingCommands('5877246');
+    await executionQueueService.clearPendingCommands(AccountService.resolveAccountId());
     res.json({ success: true, message: "Shared AutoTrader state and pending execution commands reset successfully." });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -641,7 +643,7 @@ executionRouter.post('/autotrader/reset', async (req: Request, res: Response) =>
 executionRouter.post('/autotrader/sync', async (req: Request, res: Response) => {
   try {
     const { isAutoEnabled, balance, initialCapital, latestAiRule, accountId } = req.body;
-    const targetAccount = accountId || '5877246';
+    const targetAccount = AccountService.resolveAccountId(accountId);
 
     if (typeof balance === 'number' || isAutoEnabled !== undefined || latestAiRule) {
       const existingState = await tradingRepo.getAccountState(targetAccount).catch(() => null);
@@ -692,11 +694,10 @@ executionRouter.get('/execution/orders', (req: Request, res: Response) => {
 
 /**
  * GET /api/execution/positions
- * Returns all open positions from default paper broker adapter
+ * Returns all open positions from configured broker adapters
  */
 executionRouter.get('/execution/positions', async (req: Request, res: Response) => {
-  const paperBroker = canonicalExecutionRouter.brokerAdapters.get(canonicalExecutionRouter.defaultBrokerId) as PaperBrokerAdapter;
-  const positions = paperBroker ? paperBroker.positionManager.getAllPositions() : [];
+  const positions = await canonicalExecutionRouter.getAllPositions();
   res.json({ count: positions.length, positions });
 });
 
@@ -705,19 +706,22 @@ executionRouter.get('/execution/positions', async (req: Request, res: Response) 
  * Returns performance metrics from ExecutionRouter
  */
 executionRouter.get('/execution/performance', async (req: Request, res: Response) => {
-  const paperBroker = canonicalExecutionRouter.brokerAdapters.get(canonicalExecutionRouter.defaultBrokerId) as PaperBrokerAdapter;
-  const accountStatus = paperBroker ? await paperBroker.getAccountStatus() : undefined;
+  const accountStatuses = await canonicalExecutionRouter.getAccountStatuses();
+  const primaryAccountStatus = accountStatuses[0];
   const orders = canonicalExecutionRouter.orderManager.getAllOrders();
   const filledCount = orders.filter(o => o.status === 'FILLED').length;
   const rejectedCount = orders.filter(o => o.status === 'REJECTED').length;
 
+  const paperBroker = canonicalExecutionRouter.getBroker(canonicalExecutionRouter.defaultBrokerId) as PaperBrokerAdapter;
+
   res.json({
-    account_status: accountStatus,
+    account_status: primaryAccountStatus,
+    account_statuses: accountStatuses,
     metrics: {
       total_orders: orders.length,
       filled_orders: filledCount,
       rejected_orders: rejectedCount,
-      average_slippage_pips: paperBroker ? paperBroker.simulationEngine.getSlippageEngine().getAverageSlippagePips() : 0
+      average_slippage_pips: paperBroker && paperBroker.simulationEngine ? paperBroker.simulationEngine.getSlippageEngine().getAverageSlippagePips() : 0
     }
   });
 });
