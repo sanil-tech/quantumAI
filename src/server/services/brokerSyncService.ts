@@ -4,6 +4,8 @@ import { executionQueueService } from './executionQueueService';
 
 const processedWebhookEvents = new Set<string>();
 
+import { AccountService } from './accountService';
+
 export class BrokerSyncService {
   /**
    * Processes incoming broker webhook idempotently using Webhook Inbox Pattern
@@ -86,7 +88,7 @@ export class BrokerSyncService {
             } else {
               updatedCommand = command;
             }
-          } else if (normEventType.includes('FILL') || normEventType.includes('EXECUTE') || normEventType.includes('TRADE_OPENED')) {
+          } else if (normEventType.includes('FILL') || normEventType.includes('EXECUTE') || normEventType.includes('TRADE_OPENED') || normEventType.includes('POSITION_OPENED')) {
             if (['PENDING', 'CLAIMED', 'SENT', 'ACKNOWLEDGED'].includes(command.status)) {
               if (command.status === 'PENDING') await executionQueueService.claimCommand(command.id);
               if (command.status === 'CLAIMED' || command.status === 'PENDING') await executionQueueService.updateStatus(command.id, 'SENT');
@@ -107,6 +109,41 @@ export class BrokerSyncService {
             } else {
               updatedCommand = command;
             }
+          }
+        }
+
+        // Reconcile and update PostgreSQL canonical positions record with broker IDs
+        if (isConnected) {
+          try {
+            const pool = getDbPool();
+            const brokerOrderId = params.payload.brokerOrderId || params.payload.broker_order_id || targetOrderId || (updatedCommand ? updatedCommand.brokerOrderId : null);
+            const brokerPositionId = params.payload.brokerPositionId || params.payload.broker_position_id || params.payload.positionId;
+            const brokerDealId = params.payload.brokerDealId || params.payload.broker_deal_id || params.payload.dealId;
+            const setupId = targetSetupId || (updatedCommand ? updatedCommand.setupId : null);
+
+            if (brokerOrderId || brokerPositionId || brokerDealId) {
+              await pool.query(
+                `UPDATE positions 
+                 SET broker_order_id = COALESCE($1, broker_order_id),
+                     broker_position_id = COALESCE($2, broker_position_id),
+                     broker_deal_id = COALESCE($3, broker_deal_id),
+                     reconciliation_status = 'MATCHED',
+                     updated_at = NOW()
+                 WHERE (setup_id = $4 AND $4 IS NOT NULL)
+                    OR (position_id = $5 AND $5 IS NOT NULL)
+                    OR (ticket_id = $5 AND $5 IS NOT NULL)
+                    OR (broker_order_id = $1 AND $1 IS NOT NULL)`,
+                [
+                  brokerOrderId || null,
+                  brokerPositionId || null,
+                  brokerDealId || null,
+                  setupId || null,
+                  targetOrderId || null
+                ]
+              );
+            }
+          } catch (dbSyncErr) {
+            console.error('[BROKER_SYNC_ERROR] Position broker ID reconciliation failed:', dbSyncErr);
           }
         }
       }

@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { CurrencyPair, AiTradeOpportunity, TradingStyle } from '../types';
 import { Brain, TrendingUp, TrendingDown, Clock, Sparkles, ArrowRight } from 'lucide-react';
 import { Language } from '../lib/translations';
-import { PAIR_CONFIGS, generateCandleHistory } from '../lib/marketDataGenerator';
+import { PAIR_CONFIGS } from '../lib/marketDataGenerator';
 import { calculateAllIndicators } from '../lib/indicators';
 import { analyzeSmcStructures } from '../lib/smcEngine';
 
@@ -64,7 +64,11 @@ export const AiOpportunitiesScanner: React.FC<AiOpportunitiesScannerProps> = ({
       if (loadingPairs[pair]) return;
       setLoadingPairs(prev => ({ ...prev, [pair]: true }));
       try {
-        const history = generateCandleHistory(pair, 'M15', 100);
+        const candleRes = await fetch(`/api/forex/candles?pair=${encodeURIComponent(pair)}&timeframe=M15&count=100`);
+        if (!candleRes.ok) { setLoadingPairs(prev => ({ ...prev, [pair]: false })); return; }
+        const candleData = await candleRes.json();
+        const history = candleData.candles;
+        if (!Array.isArray(history) || history.length === 0) { setLoadingPairs(prev => ({ ...prev, [pair]: false })); return; }
         const latest = history[history.length - 1];
         const basePrice = latest ? latest.close : (PAIR_CONFIGS[pair]?.basePrice || 1.0);
         const calculatedIndicators = calculateAllIndicators(history);
@@ -114,7 +118,7 @@ export const AiOpportunitiesScanner: React.FC<AiOpportunitiesScannerProps> = ({
     // Periodic refresh
     const interval = setInterval(() => {
       const inactivePairs = ALL_PAIRS.filter(p => p !== activePair);
-      const randomPair = inactivePairs[Math.floor(Math.random() * inactivePairs.length)];
+      const randomPair = inactivePairs[0];
       if (randomPair) scanPair(randomPair);
     }, 30000);
 
@@ -217,3 +221,5 @@ export const AiOpportunitiesScanner: React.FC<AiOpportunitiesScannerProps> = ({
     </div>
   );
 };
+
+

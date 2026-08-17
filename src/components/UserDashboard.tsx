@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { CurrencyPair, CandleData, IndicatorValues, SmcStructures, SupportResistanceZone } from '../types';
 import { 
   Zap, ShieldCheck, CheckCircle, CheckCircle2, Download, AlertTriangle, TrendingUp, TrendingDown, 
@@ -122,10 +122,10 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   const [liveAutoTrades, setLiveAutoTrades] = useState<any[]>([]);
   const [closedAutoTrades, setClosedAutoTrades] = useState<any[]>([]);
   const [autoTraderLogs, setAutoTraderLogs] = useState<any[]>([
-    { id: '1', timestamp: new Date().toLocaleTimeString(), text: '🤖 Quantum AI Engine initialized in Autonomous Mode.', type: 'INFO' },
-    { id: '2', timestamp: new Date().toLocaleTimeString(), text: '🔌 Live cTrader Open API Bridge active (#5877246 - demo-uk-eqx-01.p.c-trader.com).', type: 'INFO' },
-    { id: '3', timestamp: new Date().toLocaleTimeString(), text: '🎯 Active Strategy: Quantum SMC Liquidity Hunter (H1/H4 Order Block Confirmation).', type: 'INFO' },
-    { id: '4', timestamp: new Date().toLocaleTimeString(), text: '🛡️ Capital Guard: Risk 1.0% per trade ($100), Hard Stop Daily $250.00.', type: 'INFO' }
+    { id: '1', timestamp: new Date().toLocaleTimeString(), text: 'ðŸ¤– Quantum AI Engine initialized in Autonomous Mode.', type: 'INFO' },
+    { id: '2', timestamp: new Date().toLocaleTimeString(), text: 'ðŸ”Œ Live cTrader Open API Bridge active (#5877246 - demo-uk-eqx-01.p.c-trader.com).', type: 'INFO' },
+    { id: '3', timestamp: new Date().toLocaleTimeString(), text: 'ðŸŽ¯ Active Strategy: Quantum SMC Liquidity Hunter (H1/H4 Order Block Confirmation).', type: 'INFO' },
+    { id: '4', timestamp: new Date().toLocaleTimeString(), text: 'ðŸ›¡ï¸ Capital Guard: Risk 1.0% per trade ($100), Hard Stop Daily $250.00.', type: 'INFO' }
   ]);
   const [isDispatchingSignal, setIsDispatchingSignal] = useState<boolean>(false);
 
@@ -270,7 +270,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
     if (e) e.preventDefault();
     setIsSubmittingManualSync(true);
     try {
-      const ticket = manualSyncForm.ticketId || `587${Math.floor(10000 + Math.random() * 90000)}`;
+      const ticket = manualSyncForm.ticketId || `ticket_${Date.now()}`;
       const price = Number(manualSyncForm.entryPrice) || (manualSyncForm.symbol === 'XAU/USD' ? 2425.50 : 1.08520);
       
       const payload = {
@@ -297,7 +297,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
       if (data.success) {
         setIsManualSyncModalOpen(false);
         fetchAllServerStates();
-        alert(`✅ Trade cTrader #${ticket} (${manualSyncForm.direction} ${manualSyncForm.symbol}) berjaya disinkronkan ke Web App!`);
+        alert(`âœ… Trade cTrader #${ticket} (${manualSyncForm.direction} ${manualSyncForm.symbol}) berjaya disinkronkan ke Web App!`);
       }
     } catch (err: any) {
       console.error(err);
@@ -347,7 +347,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
           {
             id: `dispatch-${Date.now()}`,
             timestamp: new Date().toLocaleTimeString(),
-            text: `⚡ [LIVE DISPATCH SUCCESS] AI Trade ${direction} ${pair} @ ${entry.toFixed(5)} dispatched directly to connected ${selectedBrokerAccount} account! Ticket #${data.mt5Ticket || 'FIX-8849201'}.`,
+            text: `âš¡ [LIVE DISPATCH SUCCESS] AI Trade ${direction} ${pair} @ ${entry.toFixed(5)} dispatched directly to connected ${selectedBrokerAccount} account! Ticket #${data.mt5Ticket || 'FIX-8849201'}.`,
             type: 'WIN'
           },
           ...prev
@@ -391,7 +391,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
           {
             id: `close-log-${Date.now()}`,
             timestamp: new Date().toLocaleTimeString(),
-            text: `🖐️ [MANUAL CLOSE SUCCESS] Posisi ${tradeToClose?.direction || ''} ${tradeToClose?.pair || ''} ditutup pada harga ${exitPrice.toFixed(5)}. Diselaras ke bridge broker!`,
+            text: `ðŸ–ï¸ [MANUAL CLOSE SUCCESS] Posisi ${tradeToClose?.direction || ''} ${tradeToClose?.pair || ''} ditutup pada harga ${exitPrice.toFixed(5)}. Diselaras ke bridge broker!`,
             type: 'INFO'
           },
           ...prev
@@ -421,7 +421,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
           {
             id: `close-all-${Date.now()}`,
             timestamp: new Date().toLocaleTimeString(),
-            text: `🚨 [CLOSE ALL SUCCESS] Semua posisi aktif telah ditutup dan diselaraskan ke cTrader bridge!`,
+            text: `ðŸš¨ [CLOSE ALL SUCCESS] Semua posisi aktif telah ditutup dan diselaraskan ke cTrader bridge!`,
             type: 'INFO'
           },
           ...prev
@@ -667,11 +667,11 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-extrabold text-white tracking-tight">{userProfile.name}</h2>
                 <span className="px-2 py-0.5 bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/40 text-[10px] font-mono font-bold text-purple-300 rounded-full uppercase">
-                  👑 VIP Premium SaaS Member
+                  ðŸ‘‘ VIP Premium SaaS Member
                 </span>
               </div>
               <p className="text-xs text-slate-400 font-mono mt-0.5">
-                {userProfile.email} • ID Akaun: <strong className="text-blue-400">#5877246</strong>
+                {userProfile.email} â€¢ ID Akaun: <strong className="text-blue-400">#5877246</strong>
               </p>
             </div>
           </div>
@@ -801,7 +801,7 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 font-mono mt-0.5">
-                    Email: <span className="text-slate-200">{serverTraderProfileData?.email || userProfile.email}</span> • Status Akaun: <strong className="text-cyan-300">{serverTraderProfileData?.kycVerified ? 'DISAHKAN (KYC PASSED)' : 'VERIFIED'}</strong>
+                    Email: <span className="text-slate-200">{serverTraderProfileData?.email || userProfile.email}</span> â€¢ Status Akaun: <strong className="text-cyan-300">{serverTraderProfileData?.kycVerified ? 'DISAHKAN (KYC PASSED)' : 'VERIFIED'}</strong>
                   </p>
                 </div>
               </div>
@@ -815,7 +815,7 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
                   title="Sambung / Kemaskini Akaun Broker"
                 >
                   <Sliders className="w-4 h-4 text-cyan-200" />
-                  <span>⚙️ Sambung / Kemaskini Broker</span>
+                  <span>âš™ï¸ Sambung / Kemaskini Broker</span>
                 </button>
 
                 <button
@@ -828,7 +828,7 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
                   }`}
                 >
                   <Power className={`w-4 h-4 ${isAiAutoPilotActive ? 'text-white animate-pulse' : 'text-slate-500'}`} />
-                  <span>{isAiAutoPilotActive ? '⚡ AI AUTO-PILOT : ACTIVE' : '⏸️ AI AUTO-PILOT : PAUSED'}</span>
+                  <span>{isAiAutoPilotActive ? 'âš¡ AI AUTO-PILOT : ACTIVE' : 'â¸ï¸ AI AUTO-PILOT : PAUSED'}</span>
                 </button>
 
                 <button
@@ -850,7 +850,7 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
                   <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
                   <div>
                     <span className="font-bold text-amber-300 block text-xs sm:text-sm">
-                      Sync Interrupted — Awaiting Signal Engine / cTrader Bridge...
+                      Sync Interrupted â€” Awaiting Signal Engine / cTrader Bridge...
                     </span>
                     <span className="text-[11px] text-amber-200/80">
                       Sambungan Webhook/WebSocket terputus sementara. Semua isyarat dipelihara dan akan dipancar semula sebaik sahaja cBot / bridge aktif.
@@ -881,17 +881,17 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
                   </span>
                 </div>
                 <span className="text-[10px] text-slate-400 block">
-                  Akaun: <strong className="text-amber-300">#{serverBrokerConn?.accountNumber || serverTraderProfileData?.accountNumber || '5877246'}</strong> • Server: <strong className="text-slate-300">{serverBrokerConn?.serverHost || 'demo-uk-eqx-01.p.c-trader.com'}</strong>
+                  Akaun: <strong className="text-amber-300">#{serverBrokerConn?.accountNumber || serverTraderProfileData?.accountNumber || '5877246'}</strong> â€¢ Server: <strong className="text-slate-300">{serverBrokerConn?.serverHost || 'demo-uk-eqx-01.p.c-trader.com'}</strong>
                 </span>
               </div>
 
               <div className="p-3 bg-slate-950/90 border border-slate-800 rounded-xl space-y-1">
                 <span className="text-[10px] text-slate-400 uppercase font-bold block">Baki Modal Akaun (Balance)</span>
                 <div className="text-base font-black text-emerald-400">
-                  €{(serverBrokerConn?.liveBalance ?? serverAutoTraderStateData?.balance ?? 1000.27).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
+                  â‚¬{(serverBrokerConn?.liveBalance ?? serverAutoTraderStateData?.balance ?? 1000.27).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
                 </div>
                 <span className="text-[10px] text-slate-400 block">
-                  Modal Asal: <strong className="text-slate-200">€1,000.00 EUR</strong> • Leverage: <strong className="text-slate-200">1:500</strong>
+                  Modal Asal: <strong className="text-slate-200">â‚¬1,000.00 EUR</strong> â€¢ Leverage: <strong className="text-slate-200">1:500</strong>
                 </span>
               </div>
 
@@ -904,11 +904,11 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
                   return (
                     <>
                       <div className="text-base font-black text-cyan-300">
-                        €{equity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
+                        â‚¬{equity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
                       </div>
                       <span className="text-[10px] text-slate-400 block">
                         Floating PnL: <strong className={floatingPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
-                          {floatingPnl >= 0 ? '+' : ''}€{floatingPnl.toFixed(2)} EUR
+                          {floatingPnl >= 0 ? '+' : ''}â‚¬{floatingPnl.toFixed(2)} EUR
                         </strong>
                       </span>
                     </>
@@ -919,16 +919,16 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
               <div className="p-3 bg-slate-950/90 border border-slate-800 rounded-xl space-y-1">
                 <span className="text-[10px] text-slate-400 uppercase font-bold block">Margin Terguna (Used Margin)</span>
                 {(() => {
-                  // Standard margin calculation: sum of (lotSize * 100,000 / leverage) or crypto margin ~ €22.50 per 0.05 BTC
+                  // Standard margin calculation: sum of (lotSize * 100,000 / leverage) or crypto margin ~ â‚¬22.50 per 0.05 BTC
                   const usedMargin = liveAutoTrades.reduce((acc, t) => acc + (t.lotSize ? t.lotSize * 450 : 22.50), 0);
                   return (
                     <>
                       <div className="text-base font-black text-amber-300">
-                        €{usedMargin.toFixed(2)} EUR
+                        â‚¬{usedMargin.toFixed(2)} EUR
                       </div>
                       <span className="text-[10px] text-slate-400 block">
                         Free Margin: <strong className="text-emerald-300">
-                          €{((serverBrokerConn?.liveBalance ?? serverAutoTraderStateData?.balance ?? 1000.27) + liveAutoTrades.reduce((acc, t) => acc + calculateFloatingPnl(t), 0) - usedMargin).toFixed(2)} EUR
+                          â‚¬{((serverBrokerConn?.liveBalance ?? serverAutoTraderStateData?.balance ?? 1000.27) + liveAutoTrades.reduce((acc, t) => acc + calculateFloatingPnl(t), 0) - usedMargin).toFixed(2)} EUR
                         </strong>
                       </span>
                     </>
@@ -975,7 +975,7 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
                   className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   <Zap className="w-3.5 h-3.5" />
-                  <span>{isDispatchingSignal ? 'Dipancar...' : '⚡ Pancar BUY AI'}</span>
+                  <span>{isDispatchingSignal ? 'Dipancar...' : 'âš¡ Pancar BUY AI'}</span>
                 </button>
 
                 <button
@@ -985,7 +985,7 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
                   className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg shadow transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   <Zap className="w-3.5 h-3.5" />
-                  <span>{isDispatchingSignal ? 'Dipancar...' : '⚡ Pancar SELL AI'}</span>
+                  <span>{isDispatchingSignal ? 'Dipancar...' : 'âš¡ Pancar SELL AI'}</span>
                 </button>
 
                 {liveAutoTrades.length > 0 && (
@@ -995,7 +995,7 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
                     className="px-3 py-1.5 bg-rose-950 border border-rose-600/60 hover:bg-rose-900 text-rose-200 font-bold rounded-lg shadow transition flex items-center gap-1 cursor-pointer"
                   >
                     <XCircle className="w-3.5 h-3.5 text-rose-400" />
-                    <span>🚨 Close All</span>
+                    <span>ðŸš¨ Close All</span>
                   </button>
                 )}
               </div>
@@ -1026,7 +1026,7 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
                   className="px-2.5 py-1 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/40 rounded-lg text-emerald-300 font-bold transition flex items-center gap-1 cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>📥 Selaras Trade Manual</span>
+                  <span>ðŸ“¥ Selaras Trade Manual</span>
                 </button>
                 <span className="px-2.5 py-1 bg-slate-950 border border-slate-800 rounded-lg text-slate-300">
                   Open Positions: <strong className="text-cyan-400">{liveAutoTrades.length}</strong>
@@ -1057,7 +1057,7 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
                     className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-mono font-bold text-xs rounded-xl shadow-lg transition inline-flex items-center gap-1.5 cursor-pointer"
                   >
                     <Zap className="w-4 h-4 text-amber-300" />
-                    <span>⚡ Pancar Trade AI Ujian Ke Akaun Broker Sanil</span>
+                    <span>âš¡ Pancar Trade AI Ujian Ke Akaun Broker Sanil</span>
                   </button>
                   <button
                     type="button"
@@ -1065,7 +1065,7 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
                     className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-mono font-bold text-xs rounded-xl shadow-lg transition inline-flex items-center gap-1.5 cursor-pointer"
                   >
                     <Download className="w-4 h-4 text-white" />
-                    <span>📥 Selaras Trade Manual cTrader</span>
+                    <span>ðŸ“¥ Selaras Trade Manual cTrader</span>
                   </button>
                 </div>
               </div>
@@ -1159,7 +1159,7 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
                     closedAutoTrades.reduce((acc, t) => acc + (t.pnlDollars || t.pnl || 0), 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'
                   }>
                     {closedAutoTrades.reduce((acc, t) => acc + (t.pnlDollars || t.pnl || 0), 0) >= 0 ? '+' : ''}
-                    €{closedAutoTrades.reduce((acc, t) => acc + (t.pnlDollars || t.pnl || 0), 0).toFixed(2)}
+                    â‚¬{closedAutoTrades.reduce((acc, t) => acc + (t.pnlDollars || t.pnl || 0), 0).toFixed(2)}
                   </strong>
                 </span>
               </div>
@@ -1183,7 +1183,7 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
                       <th className="p-3">Harga Entri</th>
                       <th className="p-3">Harga Penutup</th>
                       <th className="p-3">Sebab Penutupan</th>
-                      <th className="p-3 text-right">Net PnL (€)</th>
+                      <th className="p-3 text-right">Net PnL (â‚¬)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
@@ -1210,7 +1210,7 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
                             </span>
                           </td>
                           <td className={`p-3 text-right font-black text-sm ${isWin ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            {isWin ? '+' : ''}€{pnlVal.toFixed(2)}
+                            {isWin ? '+' : ''}â‚¬{pnlVal.toFixed(2)}
                           </td>
                         </tr>
                       );
@@ -1258,7 +1258,7 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
                             <span>cTrader FIX API</span>
                             <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-300 text-[9px] rounded">ONLINE</span>
                           </div>
-                          <div className="text-[10px] text-slate-400 mt-0.5">Akaun #5877246 • demo-uk-eqx-01</div>
+                          <div className="text-[10px] text-slate-400 mt-0.5">Akaun #5877246 â€¢ demo-uk-eqx-01</div>
                         </div>
                         <Radio className={`w-4 h-4 ${selectedBrokerAccount === 'CTRADER' ? 'text-cyan-400' : 'text-slate-600'}`} />
                       </button>
@@ -1277,7 +1277,7 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
                             <span>MetaTrader 5 EA</span>
                             <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-300 text-[9px] rounded">ONLINE</span>
                           </div>
-                          <div className="text-[10px] text-slate-400 mt-0.5">Akaun #11075236 • MetaQuotes-Demo</div>
+                          <div className="text-[10px] text-slate-400 mt-0.5">Akaun #11075236 â€¢ MetaQuotes-Demo</div>
                         </div>
                         <Radio className={`w-4 h-4 ${selectedBrokerAccount === 'MT5' ? 'text-blue-400' : 'text-slate-600'}`} />
                       </button>
@@ -1297,8 +1297,8 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
                             : 'bg-slate-950 border-slate-800 text-slate-400'
                         }`}
                       >
-                        <div className="font-bold text-purple-300 text-xs">🎯 Quantum SMC Liquidity Hunter</div>
-                        <div className="text-[10px] text-slate-400">Order Blocks H1/H4 + FVG • RR 1:3+</div>
+                        <div className="font-bold text-purple-300 text-xs">ðŸŽ¯ Quantum SMC Liquidity Hunter</div>
+                        <div className="text-[10px] text-slate-400">Order Blocks H1/H4 + FVG â€¢ RR 1:3+</div>
                       </button>
 
                       <button
@@ -1310,8 +1310,8 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
                             : 'bg-slate-950 border-slate-800 text-slate-400'
                         }`}
                       >
-                        <div className="font-bold text-amber-300 text-xs">⚡ Scalper Pro AI (M5 Breakouts)</div>
-                        <div className="text-[10px] text-slate-400">Momentum M5 • Win Rate 88% • Fast Exit</div>
+                        <div className="font-bold text-amber-300 text-xs">âš¡ Scalper Pro AI (M5 Breakouts)</div>
+                        <div className="text-[10px] text-slate-400">Momentum M5 â€¢ Win Rate 88% â€¢ Fast Exit</div>
                       </button>
 
                       <button
@@ -1323,8 +1323,8 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
                             : 'bg-slate-950 border-slate-800 text-slate-400'
                         }`}
                       >
-                        <div className="font-bold text-emerald-300 text-xs">📈 Institutional Swing Algo</div>
-                        <div className="text-[10px] text-slate-400">H4 Trend Follower • Trailing Stop</div>
+                        <div className="font-bold text-emerald-300 text-xs">ðŸ“ˆ Institutional Swing Algo</div>
+                        <div className="text-[10px] text-slate-400">H4 Trend Follower â€¢ Trailing Stop</div>
                       </button>
                     </div>
                   </div>
@@ -1466,7 +1466,7 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
                 <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Kadar Kemenangan (Win Rate)</div>
                 <div className="text-2xl font-black text-emerald-400 mt-1 flex items-baseline gap-1">
                   84.6%
-                  <span className="text-[10px] text-emerald-500 font-normal">▲ +3.2% m/m</span>
+                  <span className="text-[10px] text-emerald-500 font-normal">â–² +3.2% m/m</span>
                 </div>
                 <div className="text-[10px] text-slate-500 mt-1">Daripada 1,240 Isyarat Auto</div>
               </div>
@@ -1560,7 +1560,7 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
                           {trade.pair}
                         </span>
                         <span className={`font-bold ${(trade.pnl || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                          {(trade.pnl || 0) >= 0 ? '+' : ''}€{(trade.pnl || 0).toFixed(2)}
+                          {(trade.pnl || 0) >= 0 ? '+' : ''}â‚¬{(trade.pnl || 0).toFixed(2)}
                         </span>
                       </div>
                       <div className="flex justify-between text-[11px] text-slate-400">
@@ -1572,7 +1572,7 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
                 )}
 
                 <div className="p-3.5 bg-blue-950/40 border border-blue-500/30 rounded-xl text-[11px] text-blue-200 leading-relaxed">
-                  💡 <strong>Info Auto-Trader:</strong> Semua posisi dibuka secara automatik oleh robot berdasarkan pengesahan Liquidity Sweep H4.
+                  ðŸ’¡ <strong>Info Auto-Trader:</strong> Semua posisi dibuka secara automatik oleh robot berdasarkan pengesahan Liquidity Sweep H4.
                 </div>
               </div>
             </div>
@@ -1674,13 +1674,13 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
                             </p>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[10px]">
                               <div className="p-2 bg-slate-950 rounded border border-emerald-500/30 text-emerald-300">
-                                <strong className="block text-emerald-400 mb-1">✓ Kekuatan Entri:</strong>
+                                <strong className="block text-emerald-400 mb-1">âœ“ Kekuatan Entri:</strong>
                                 <ul className="list-disc pl-3 space-y-0.5">
                                   {t.aiFeedback.strengths.map((s, idx) => <li key={idx}>{s}</li>)}
                                 </ul>
                               </div>
                               <div className="p-2 bg-slate-950 rounded border border-amber-500/30 text-amber-300">
-                                <strong className="block text-amber-400 mb-1">💡 Penambahbaikan:</strong>
+                                <strong className="block text-amber-400 mb-1">ðŸ’¡ Penambahbaikan:</strong>
                                 <ul className="list-disc pl-3 space-y-0.5">
                                   {t.aiFeedback.improvements.map((s, idx) => <li key={idx}>{s}</li>)}
                                 </ul>
@@ -1876,4 +1876,5 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
     </div>
   );
 };
+
 

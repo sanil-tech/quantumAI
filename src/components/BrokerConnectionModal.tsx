@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Building2, Key, ShieldCheck, Zap, Wifi, AlertTriangle, CheckCircle, RefreshCw, Lock, Power, X, Sliders, DollarSign, Send } from 'lucide-react';
 import { BrokerConnectionConfig, BrokerPlatform } from '../types';
 import { Language } from '../lib/translations';
@@ -93,7 +93,7 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
       const data = await res.json();
       setHandshakeResult(data);
       if (data && data.success) {
-        setConnectSuccessMsg(isMalay ? '✅ Ujian Handshake Bridge Berjaya! Semua saluran REST API & Webhook sedia untuk eksekusi.' : '✅ Bridge Handshake Test Passed! All REST API & Webhook channels ready for execution.');
+        setConnectSuccessMsg(isMalay ? 'âœ… Ujian Handshake Bridge Berjaya! Semua saluran REST API & Webhook sedia untuk eksekusi.' : 'âœ… Bridge Handshake Test Passed! All REST API & Webhook channels ready for execution.');
       }
     } catch (err: any) {
       setConnectErrMsg('Diagnostic test error: ' + err.message);
@@ -288,8 +288,8 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
         setConnection(data.connection);
         setShowFormWhenConnected(false);
         setConnectSuccessMsg(isMalay 
-          ? '⚡ BERJAYA BERSAMBUNG! Akaun MetaQuotes-Demo (11075236) telah disambungkan. Modal $100,000.00 USD disinkronkan.' 
-          : '⚡ CONNECTED SUCCESSFULLY! MetaQuotes-Demo Account 11075236 connected. $100,000.00 USD balance synced.'
+          ? 'âš¡ BERJAYA BERSAMBUNG! Akaun MetaQuotes-Demo (11075236) telah disambungkan. Modal $100,000.00 USD disinkronkan.' 
+          : 'âš¡ CONNECTED SUCCESSFULLY! MetaQuotes-Demo Account 11075236 connected. $100,000.00 USD balance synced.'
         );
         if (onConnectionChange) onConnectionChange(data.connection);
       } else {
@@ -343,8 +343,8 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
         setConnection(data.connection);
         setShowFormWhenConnected(false);
         setConnectSuccessMsg(isMalay 
-          ? '⚡ BERJAYA BERSAMBUNG! Akaun cTrader FIX API #5877246 (demo-uk-eqx-01.p.c-trader.com) telah disambungkan!' 
-          : '⚡ CONNECTED SUCCESSFULLY! cTrader FIX API Account #5877246 (demo-uk-eqx-01.p.c-trader.com) connected!'
+          ? 'âš¡ BERJAYA BERSAMBUNG! Akaun cTrader FIX API #5877246 (demo-uk-eqx-01.p.c-trader.com) telah disambungkan!' 
+          : 'âš¡ CONNECTED SUCCESSFULLY! cTrader FIX API Account #5877246 (demo-uk-eqx-01.p.c-trader.com) connected!'
         );
         if (onConnectionChange) onConnectionChange(data.connection);
       } else {
@@ -377,8 +377,8 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
         setConnection(data.connection);
         setShowFormWhenConnected(false);
         setConnectSuccessMsg(isMalay 
-          ? `⚡ BERJAYA BERSAMBUNG VIA TOKEN! Akaun cTrader / ${data.connection.brokerName} (#${data.connection.accountNumber}) telah disahkan!` 
-          : `⚡ CONNECTED VIA TOKEN! cTrader Account ${data.connection.brokerName} (#${data.connection.accountNumber}) authenticated successfully!`
+          ? `âš¡ BERJAYA BERSAMBUNG VIA TOKEN! Akaun cTrader / ${data.connection.brokerName} (#${data.connection.accountNumber}) telah disahkan!` 
+          : `âš¡ CONNECTED VIA TOKEN! cTrader Account ${data.connection.brokerName} (#${data.connection.accountNumber}) authenticated successfully!`
         );
         if (onConnectionChange) onConnectionChange(data.connection);
       } else {
@@ -398,7 +398,7 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
     setConnectErrMsg(null);
 
     try {
-      const simulatedAccountNo = portalEmail.includes('@') ? `ACC-${Math.floor(1000000 + Math.random() * 9000000)}` : (portalEmail || 'MT5-9018471');
+      const simulatedAccountNo = portalEmail || 'UNASSIGNED';
       const res = await fetch('/api/broker/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -625,7 +625,7 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
             {pingResult && (
               <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs font-mono bg-slate-900/60 p-2.5 rounded-lg border border-cyan-500/20">
                 <div className="flex items-center gap-2">
-                  <span className="text-cyan-400 font-bold">📡 MetaQuotes Ping:</span>
+                  <span className="text-cyan-400 font-bold">ðŸ“¡ MetaQuotes Ping:</span>
                   <span className="text-slate-200">{pingResult.serverHost}</span>
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                     pingResult.status === 'ONLINE' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
@@ -690,7 +690,7 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
                 <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
                   <span className="text-[10px] text-slate-400 block mb-0.5 font-medium">{isMalay ? 'Mod Eksekusi' : 'Execution Mode'}</span>
                   <span className="text-xs font-bold text-emerald-300 font-mono">
-                    {connection.autoExecuteRealMoney ? '⚡ REAL MONEY' : '👁️ MONITORING'}
+                    {connection.autoExecuteRealMoney ? 'âš¡ REAL MONEY' : 'ðŸ‘ï¸ MONITORING'}
                   </span>
                   <span className="text-[10px] text-slate-400 block">Cap: {connection.maxLotSizeCap} Lot</span>
                 </div>
@@ -720,7 +720,7 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
                       className="px-3 py-1 bg-cyan-950 border border-cyan-500/40 hover:bg-cyan-900 text-cyan-300 font-bold text-[11px] rounded-lg transition flex items-center gap-1 shadow-sm disabled:opacity-50"
                     >
                       <Zap className={`w-3 h-3 ${isTestingHandshake ? 'animate-spin text-amber-400' : 'text-cyan-400'}`} />
-                      <span>{isTestingHandshake ? 'Testing...' : '🧪 Handshake Test'}</span>
+                      <span>{isTestingHandshake ? 'Testing...' : 'ðŸ§ª Handshake Test'}</span>
                     </button>
                     <button
                       type="button"
@@ -735,7 +735,7 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
                       className="text-[10px] bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 px-2 py-1 rounded font-mono font-bold transition"
                       title={isMalay ? 'Kosongkan giliran arahan' : 'Clear pending commands'}
                     >
-                      🧹 Clear Queue
+                      ðŸ§¹ Clear Queue
                     </button>
                   </div>
                 </div>
@@ -805,7 +805,7 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-blue-300">MetaTrader 5 MQL5 EA Bridge</span>
                       <a href="/api/broker/download-mq5" download="Quantum_AI_MT5_Bridge.mq5" className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded text-[11px]">
-                        📥 Download .mq5
+                        ðŸ“¥ Download .mq5
                       </a>
                     </div>
                     <div className="p-2 bg-slate-950 border border-slate-800 rounded text-[10px] font-mono flex items-center justify-between">
@@ -820,7 +820,7 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-blue-300">MetaTrader 4 MQL4 EA Bridge</span>
                       <a href="/api/broker/download-mq4" download="Quantum_AI_MT4_Bridge.mq4" className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded text-[11px]">
-                        📥 Download .mq4
+                        ðŸ“¥ Download .mq4
                       </a>
                     </div>
                     <div className="p-2 bg-slate-950 border border-slate-800 rounded text-[10px] font-mono flex items-center justify-between">
@@ -834,7 +834,7 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
                   <div className="p-3.5 bg-slate-900 border border-emerald-500/40 rounded-xl space-y-3 text-xs">
                     <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                       <div>
-                        <span className="font-bold text-emerald-300 block">🤖 QuantumAI.cs — cTrader cBot Autonomous Robot</span>
+                        <span className="font-bold text-emerald-300 block">ðŸ¤– QuantumAI.cs â€” cTrader cBot Autonomous Robot</span>
                         <span className="text-[10px] text-slate-400">Padankan dengan tetingkap "New algorithm - cTrader" anda</span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -852,10 +852,10 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
                           }}
                           className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded text-[11px] flex items-center gap-1 shadow cursor-pointer"
                         >
-                          <span>📋 Salin Kod C# QuantumAI</span>
+                          <span>ðŸ“‹ Salin Kod C# QuantumAI</span>
                         </button>
                         <a href="/api/broker/download-ctrader" download="QuantumAI.cs" className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/40 font-bold rounded text-[11px]">
-                          📥 Muat Turun .cs
+                          ðŸ“¥ Muat Turun .cs
                         </a>
                       </div>
                     </div>
@@ -872,7 +872,7 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
                         <li>Tekan butang hijau <strong className="text-emerald-400">Create</strong> di cTrader.</li>
                         <li>Padam semua kod sedia ada dalam editor cTrader, dan <strong className="text-amber-300">Tampal (Ctrl+V)</strong> kod QuantumAI di atas!</li>
                         <li>Tekan <strong className="text-cyan-300">Build (Ctrl+B)</strong>. Dalam tetingkap "Add instance", pilih <strong className="text-amber-300">"Locally"</strong> (kerana sambungan Webhook memerlukan Full Access).</li>
-                        <li>Tekan <strong className="text-emerald-400">Add instance</strong> &amp; tekan ikon Play <strong className="text-emerald-400">▶</strong> untuk mulakan robot!</li>
+                        <li>Tekan <strong className="text-emerald-400">Add instance</strong> &amp; tekan ikon Play <strong className="text-emerald-400">â–¶</strong> untuk mulakan robot!</li>
                       </ol>
                     </div>
 
@@ -888,7 +888,7 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-amber-300">TradingView Pine Script Alert</span>
                       <a href="/api/broker/download-pine" download="Quantum_AI_TradingView_Alert.pine" className="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded text-[11px]">
-                        📥 Download .pine
+                        ðŸ“¥ Download .pine
                       </a>
                     </div>
                     <div className="p-2 bg-slate-950 border border-slate-800 rounded text-[10px] font-mono flex items-center justify-between">
@@ -903,7 +903,7 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-teal-300">Python MT5 Local Connector</span>
                       <a href="/api/broker/download-python-bridge" download="quantum_mt5_bridge.py" className="px-3 py-1 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded text-[11px]">
-                        📥 Download .py
+                        ðŸ“¥ Download .py
                       </a>
                     </div>
                   </div>
@@ -912,7 +912,7 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
                 {/* Direct Connectors / EA Download Section */}
                 <div className="p-3 bg-slate-900/90 border border-slate-800 rounded-xl space-y-2">
                   <div className="text-[11px] font-bold text-slate-200">
-                    {isMalay ? '⚡ Muat Turun Penghubung MT5 (Pilih Salah Satu):' : '⚡ Download MT5 Connector File (Choose One):'}
+                    {isMalay ? 'âš¡ Muat Turun Penghubung MT5 (Pilih Salah Satu):' : 'âš¡ Download MT5 Connector File (Choose One):'}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <a
@@ -920,7 +920,7 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
                       download="Quantum_AI_MT5_Bridge.mq5"
                       className="px-3 py-2 bg-blue-900/50 hover:bg-blue-800/80 border border-blue-500/50 text-blue-200 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5"
                     >
-                      <span>📥 EA Script (.mq5)</span>
+                      <span>ðŸ“¥ EA Script (.mq5)</span>
                     </a>
                     <button
                       type="button"
@@ -980,13 +980,13 @@ double ExtractJsonNumber(string json, string key) {
 
 int OnInit() {
    EventSetTimer(PollIntervalSeconds);
-   Print("🚀 Quantum AI MT5 EA Bridge Active! Account: ", AccountNumber, " | Webhook: ", WebhookURL);
+   Print("ðŸš€ Quantum AI MT5 EA Bridge Active! Account: ", AccountNumber, " | Webhook: ", WebhookURL);
    return(INIT_SUCCEEDED);
 }
 
 void OnDeinit(const int reason) {
    EventKillTimer();
-   Print("🛑 Quantum AI MT5 EA Bridge Unloaded.");
+   Print("ðŸ›‘ Quantum AI MT5 EA Bridge Unloaded.");
 }
 
 void ConfirmExecutionToServer(string cmdId, ulong ticketId) {
@@ -1026,7 +1026,7 @@ void PollServerCommands() {
          if(volume <= 0) volume = 0.10;
          
          if(action == "OPEN") {
-            Print("📡 Web App Command Received: OPEN ", direction, " ", symbol, " Volume: ", DoubleToString(volume, 2));
+            Print("ðŸ“¡ Web App Command Received: OPEN ", direction, " ", symbol, " Volume: ", DoubleToString(volume, 2));
             bool success = false;
             
             if(direction == "BUY") {
@@ -1041,15 +1041,15 @@ void PollServerCommands() {
             
             if(success) {
                ulong ticket = trade.ResultOrder();
-               Print("✅ [MT5 TRADE EXECUTED] ", direction, " ", symbol, " Lot: ", DoubleToString(volume, 2), " | Ticket #", IntegerToString(ticket));
+               Print("âœ… [MT5 TRADE EXECUTED] ", direction, " ", symbol, " Lot: ", DoubleToString(volume, 2), " | Ticket #", IntegerToString(ticket));
                ConfirmExecutionToServer(cmdId, ticket);
             } else {
-               Print("⚠️ [MT5 TRADE FAILED] Retcode: ", IntegerToString(trade.ResultRetcode()), " - ", trade.ResultRetcodeDescription());
+               Print("âš ï¸ [MT5 TRADE FAILED] Retcode: ", IntegerToString(trade.ResultRetcode()), " - ", trade.ResultRetcodeDescription());
                ConfirmExecutionToServer(cmdId, 0);
             }
          }
          else if(action == "CLOSE") {
-            Print("📡 Web App Command Received: CLOSE ", symbol);
+            Print("ðŸ“¡ Web App Command Received: CLOSE ", symbol);
             for(int i = PositionsTotal() - 1; i >= 0; i--) {
                ulong ticket = PositionGetTicket(i);
                if(ticket > 0) {
@@ -1057,7 +1057,7 @@ void PollServerCommands() {
                   StringReplace(posSymbol, "/", "");
                   if(posSymbol == symbol || symbol == _Symbol) {
                      if(trade.PositionClose(ticket)) {
-                        Print("🖐️ [MT5 CLOSED POSITION] Ticket #", IntegerToString(ticket));
+                        Print("ðŸ–ï¸ [MT5 CLOSED POSITION] Ticket #", IntegerToString(ticket));
                      }
                   }
                }
@@ -1066,7 +1066,7 @@ void PollServerCommands() {
          }
       }
    } else {
-      Print("⚠️ WebRequest Error (", IntegerToString(GetLastError()), "). Ensure Webhook URL is in MT5 Options -> Experts -> Allow WebRequest!");
+      Print("âš ï¸ WebRequest Error (", IntegerToString(GetLastError()), "). Ensure Webhook URL is in MT5 Options -> Experts -> Allow WebRequest!");
    }
 }
 
@@ -1079,14 +1079,14 @@ void OnTimer() {
                       }}
                       className="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5"
                     >
-                      <span>📋 {isMalay ? 'Salin Kod EA' : 'Copy EA Code'}</span>
+                      <span>ðŸ“‹ {isMalay ? 'Salin Kod EA' : 'Copy EA Code'}</span>
                     </button>
                     <a
                       href="/api/broker/download-python-bridge"
                       download="quantum_mt5_bridge.py"
                       className="px-3 py-2 bg-amber-900/50 hover:bg-amber-800/80 border border-amber-500/50 text-amber-200 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5 sm:col-span-2"
                     >
-                      <span>🐍 Python Bridge (.py)</span>
+                      <span>ðŸ Python Bridge (.py)</span>
                     </a>
                   </div>
                 </div>
@@ -1114,8 +1114,8 @@ void OnTimer() {
                         const d = await res.json();
                         if (d.success) {
                           alert(isMalay 
-                            ? `🚀 ISYARAT BUY BERJAYA DIHANTAR KE CTRADER!\n\n• Pasangan: EUR/USD\n• Hala: BUY (0.10 Lot)\n• Harga Entry: 1.0850\n• SL: 1.0820 | TP1: 1.0910\n• Tiket cTrader: #${d.mt5Ticket}\n\nArahan telah dimasukkan ke dalam giliran (Pending Queue) cTrader FIX API Bridge. cBot QuantumAI akan melaksanakan pesanan ini secara automatik!`
-                            : `🚀 BUY SIGNAL SUCCESSFULLY SENT TO CTRADER!\n\n• Pair: EUR/USD\n• Direction: BUY (0.10 Lot)\n• Entry Price: 1.0850\n• SL: 1.0820 | TP1: 1.0910\n• cTrader Ticket: #${d.mt5Ticket}\n\nCommand queued into cTrader FIX API Bridge. QuantumAI cBot will auto-execute this order!`
+                            ? `ðŸš€ ISYARAT BUY BERJAYA DIHANTAR KE CTRADER!\n\nâ€¢ Pasangan: EUR/USD\nâ€¢ Hala: BUY (0.10 Lot)\nâ€¢ Harga Entry: 1.0850\nâ€¢ SL: 1.0820 | TP1: 1.0910\nâ€¢ Tiket cTrader: #${d.mt5Ticket}\n\nArahan telah dimasukkan ke dalam giliran (Pending Queue) cTrader FIX API Bridge. cBot QuantumAI akan melaksanakan pesanan ini secara automatik!`
+                            : `ðŸš€ BUY SIGNAL SUCCESSFULLY SENT TO CTRADER!\n\nâ€¢ Pair: EUR/USD\nâ€¢ Direction: BUY (0.10 Lot)\nâ€¢ Entry Price: 1.0850\nâ€¢ SL: 1.0820 | TP1: 1.0910\nâ€¢ cTrader Ticket: #${d.mt5Ticket}\n\nCommand queued into cTrader FIX API Bridge. QuantumAI cBot will auto-execute this order!`
                           );
                         } else {
                           alert('Gagal menghantar isyarat: ' + (d.error || 'Ralat tidak diketahui'));
@@ -1127,14 +1127,14 @@ void OnTimer() {
                     className="flex-1 px-3 py-2 bg-gradient-to-r from-emerald-900 to-teal-900 hover:from-emerald-800 hover:to-teal-800 border border-emerald-400/60 text-emerald-200 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-md shadow-emerald-950/50"
                   >
                     <Send className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-                    <span>{isMalay ? '🚀 Uji Hantar Isyarat BUY ke cTrader' : '🚀 Test Send BUY Signal to cTrader'}</span>
+                    <span>{isMalay ? 'ðŸš€ Uji Hantar Isyarat BUY ke cTrader' : 'ðŸš€ Test Send BUY Signal to cTrader'}</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={async () => {
                       try {
-                        const testTicket = Math.floor(100000 + Math.random() * 900000);
+                        const testTicket = Date.now();
                         const res = await fetch('/api/broker/ctrader-webhook', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
@@ -1156,8 +1156,8 @@ void OnTimer() {
                         const d = await res.json();
                         if (d.success) {
                           alert(isMalay 
-                            ? `✅ SIMULASI SINKRONISASI CTRADER BERJAYA!\n\n• Tiket: #${testTicket}\n• Posisi: BUY EUR/USD (0.10 Lot)\n• Baki Diselaras: $${d.account?.balance || '10,000'}\n\nPosisi daripada terminal cTrader telah diselaraskan ke AutoTrader Dashboard.` 
-                            : `✅ CTRADER SYNC SIMULATION SUCCESSFUL!\n\n• Ticket: #${testTicket}\n• Position: BUY EUR/USD (0.10 Lot)\n• Synced Balance: $${d.account?.balance || '10,000'}\n\nPosition from cTrader terminal has been synced to AutoTrader Dashboard.`
+                            ? `âœ… SIMULASI SINKRONISASI CTRADER BERJAYA!\n\nâ€¢ Tiket: #${testTicket}\nâ€¢ Posisi: BUY EUR/USD (0.10 Lot)\nâ€¢ Baki Diselaras: $${d.account?.balance || '10,000'}\n\nPosisi daripada terminal cTrader telah diselaraskan ke AutoTrader Dashboard.` 
+                            : `âœ… CTRADER SYNC SIMULATION SUCCESSFUL!\n\nâ€¢ Ticket: #${testTicket}\nâ€¢ Position: BUY EUR/USD (0.10 Lot)\nâ€¢ Synced Balance: $${d.account?.balance || '10,000'}\n\nPosition from cTrader terminal has been synced to AutoTrader Dashboard.`
                           );
                         }
                       } catch (e: any) {
@@ -1167,7 +1167,7 @@ void OnTimer() {
                     className="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold text-xs rounded-xl transition flex items-center justify-center gap-2"
                   >
                     <CheckCircle className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>{isMalay ? '🧪 Uji Terima Dagangan cTrader' : '🧪 Test Sync Trade From cTrader'}</span>
+                    <span>{isMalay ? 'ðŸ§ª Uji Terima Dagangan cTrader' : 'ðŸ§ª Test Sync Trade From cTrader'}</span>
                   </button>
                 </div>
               </div>
@@ -1180,7 +1180,7 @@ void OnTimer() {
                   className="w-full sm:flex-1 py-3 px-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/30 transition flex items-center justify-center gap-2"
                 >
                   <CheckCircle className="w-4 h-4" />
-                  <span>{isMalay ? '✅ Selesai & Buka AutoTrader Dashboard' : '✅ Done & Open AutoTrader Dashboard'}</span>
+                  <span>{isMalay ? 'âœ… Selesai & Buka AutoTrader Dashboard' : 'âœ… Done & Open AutoTrader Dashboard'}</span>
                 </button>
 
                 <button
@@ -1189,7 +1189,7 @@ void OnTimer() {
                   className="w-full sm:w-auto py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl transition flex items-center justify-center gap-2 border border-slate-700"
                 >
                   <Sliders className="w-4 h-4" />
-                  <span>{isMalay ? '⚙️ Tukar / Re-Connect Akaun' : '⚙️ Re-Configure Connection'}</span>
+                  <span>{isMalay ? 'âš™ï¸ Tukar / Re-Connect Akaun' : 'âš™ï¸ Re-Configure Connection'}</span>
                 </button>
 
                 <button
@@ -1217,7 +1217,7 @@ void OnTimer() {
                     onClick={() => setShowFormWhenConnected(false)}
                     className="text-emerald-400 hover:underline text-xs font-bold"
                   >
-                    {isMalay ? '← Kembali ke Status Akaun Aktif' : '← Back to Active Connection Card'}
+                    {isMalay ? 'â† Kembali ke Status Akaun Aktif' : 'â† Back to Active Connection Card'}
                   </button>
                 </div>
               )}
@@ -1320,7 +1320,7 @@ void OnTimer() {
               }`}
             >
               <Zap className="w-4 h-4" />
-              <span>{isMalay ? '🌐 Log Masuk Portal Web Broker (OAuth SSO)' : '🌐 Broker Web Portal Login (OAuth SSO)'}</span>
+              <span>{isMalay ? 'ðŸŒ Log Masuk Portal Web Broker (OAuth SSO)' : 'ðŸŒ Broker Web Portal Login (OAuth SSO)'}</span>
             </button>
 
             <button
@@ -1333,7 +1333,7 @@ void OnTimer() {
               }`}
             >
               <Sliders className="w-4 h-4" />
-              <span>{isMalay ? '⚡ Tetapan Manual Server API (MT4 / MT5)' : '⚡ Manual Server API Setup (MT4 / MT5)'}</span>
+              <span>{isMalay ? 'âš¡ Tetapan Manual Server API (MT4 / MT5)' : 'âš¡ Manual Server API Setup (MT4 / MT5)'}</span>
             </button>
           </div>
 
@@ -1341,10 +1341,10 @@ void OnTimer() {
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                ⚡ {isMalay ? 'Pilih Broker Popular (Auto-Isi Templat)' : 'Select Popular Broker Presets (Auto-Fill)'}
+                âš¡ {isMalay ? 'Pilih Broker Popular (Auto-Isi Templat)' : 'Select Popular Broker Presets (Auto-Fill)'}
               </label>
               <span className="text-[10px] text-emerald-400 font-mono">
-                {isMalay ? '💡 Klik butang di bawah untuk auto-pilih broker' : '💡 Click below to auto-select broker'}
+                {isMalay ? 'ðŸ’¡ Klik butang di bawah untuk auto-pilih broker' : 'ðŸ’¡ Click below to auto-select broker'}
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -1412,8 +1412,8 @@ void OnTimer() {
                 <Building2 className="w-4 h-4" />
                 <span>
                   {isMalay 
-                    ? `🚀 Buka Halaman Login Web Rasmi ${brokerName} & Sambung` 
-                    : `🚀 Launch Official ${brokerName} Web Login Portal & Connect`
+                    ? `ðŸš€ Buka Halaman Login Web Rasmi ${brokerName} & Sambung` 
+                    : `ðŸš€ Launch Official ${brokerName} Web Login Portal & Connect`
                   }
                 </span>
               </button>
@@ -1485,7 +1485,7 @@ void OnTimer() {
                   <option value="BINANCE">Binance / Bybit Futures API</option>
                 </select>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  {isMalay ? '💡 Pilih mengikut perisian yang digunakan oleh broker anda.' : '💡 Select according to software used by your broker.'}
+                  {isMalay ? 'ðŸ’¡ Pilih mengikut perisian yang digunakan oleh broker anda.' : 'ðŸ’¡ Select according to software used by your broker.'}
                 </p>
               </div>
 
@@ -1502,7 +1502,7 @@ void OnTimer() {
                   required
                 />
                 <p className="text-[10px] text-slate-400 mt-1">
-                  {isMalay ? '💡 Rujuk e-mel pembukaan akaun dari broker anda.' : '💡 Check account opening email from your broker.'}
+                  {isMalay ? 'ðŸ’¡ Rujuk e-mel pembukaan akaun dari broker anda.' : 'ðŸ’¡ Check account opening email from your broker.'}
                 </p>
               </div>
             </div>
@@ -1527,7 +1527,7 @@ void OnTimer() {
                   required
                 />
                 <p className="text-[10px] text-slate-400 mt-1">
-                  {isMalay ? '💡 ID login MetaTrader atau cTrader ID anda.' : '💡 Your MetaTrader login ID or cTrader ID.'}
+                  {isMalay ? 'ðŸ’¡ ID login MetaTrader atau cTrader ID anda.' : 'ðŸ’¡ Your MetaTrader login ID or cTrader ID.'}
                 </p>
               </div>
 
@@ -1544,7 +1544,7 @@ void OnTimer() {
                   required
                 />
                 <p className="text-[10px] text-slate-400 mt-1">
-                  {isMalay ? '💡 IP / Domain server penutupan order broker.' : '💡 Order execution server domain or IP.'}
+                  {isMalay ? 'ðŸ’¡ IP / Domain server penutupan order broker.' : 'ðŸ’¡ Order execution server domain or IP.'}
                 </p>
               </div>
             </div>
@@ -1555,7 +1555,7 @@ void OnTimer() {
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-500/30 pb-2">
                   <span className="text-xs font-bold text-emerald-300 flex items-center gap-1.5 font-mono">
                     <Wifi className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-                    ⚡ cTrader FIX API Protocol Settings (SSL Port 5212 / Plain 5202)
+                    âš¡ cTrader FIX API Protocol Settings (SSL Port 5212 / Plain 5202)
                   </span>
                   <button
                     type="button"
@@ -1572,7 +1572,7 @@ void OnTimer() {
                     }}
                     className="text-[10px] bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 hover:text-white px-2.5 py-1 rounded border border-emerald-500/40 font-mono font-bold transition flex items-center gap-1 cursor-pointer"
                   >
-                    <span>✨ Auto-Fill cTrader FIX #5877246</span>
+                    <span>âœ¨ Auto-Fill cTrader FIX #5877246</span>
                   </button>
                 </div>
 
@@ -1642,11 +1642,11 @@ void OnTimer() {
                   type="password"
                   value={apiKeyOrPassword}
                   onChange={e => setApiKeyOrPassword(e.target.value)}
-                  placeholder="••••••••••••"
+                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
                 />
                 <p className="text-[10px] text-slate-400 mt-1">
-                  {isMalay ? '💡 Password atau Investor Key.' : '💡 Trading password or investor key.'}
+                  {isMalay ? 'ðŸ’¡ Password atau Investor Key.' : 'ðŸ’¡ Trading password or investor key.'}
                 </p>
               </div>
 
@@ -1659,11 +1659,11 @@ void OnTimer() {
                   onChange={e => setEnvironment(e.target.value as 'DEMO' | 'REAL_LIVE')}
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 font-bold"
                 >
-                  <option value="REAL_LIVE">🔥 REAL LIVE MONEY</option>
-                  <option value="DEMO">🧪 BROKER DEMO PRACTICE</option>
+                  <option value="REAL_LIVE">ðŸ”¥ REAL LIVE MONEY</option>
+                  <option value="DEMO">ðŸ§ª BROKER DEMO PRACTICE</option>
                 </select>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  {isMalay ? '💡 Pilih DEMO / REAL.' : '💡 Choose DEMO or REAL.'}
+                  {isMalay ? 'ðŸ’¡ Pilih DEMO / REAL.' : 'ðŸ’¡ Choose DEMO or REAL.'}
                 </p>
               </div>
 
@@ -1682,7 +1682,7 @@ void OnTimer() {
                   className="w-full bg-slate-950 border border-emerald-500/40 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-400 font-mono font-bold"
                 />
                 <p className="text-[10px] text-slate-400 mt-1">
-                  {isMalay ? '💡 Diselaraskan ke simulator.' : '💡 Synced to simulator.'}
+                  {isMalay ? 'ðŸ’¡ Diselaraskan ke simulator.' : 'ðŸ’¡ Synced to simulator.'}
                 </p>
               </div>
             </div>
@@ -1959,7 +1959,7 @@ void OnTimer() {
                   required
                   value={portalPass}
                   onChange={e => setPortalPass(e.target.value)}
-                  placeholder="••••••••••••"
+                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
                 />
               </div>
@@ -2032,3 +2032,6 @@ void OnTimer() {
     </div>
   );
 };
+
+
+

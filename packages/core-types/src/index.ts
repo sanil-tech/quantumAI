@@ -244,6 +244,10 @@ export interface RiskApprovalToken {
   stop_loss?: number;
   take_profit?: number;
   risk_percent?: number;
+  accountId?: string;
+  account_id?: string;
+  brokerId?: string;
+  broker_id?: string;
 }
 
 export interface GovernanceDecision {
@@ -267,6 +271,8 @@ export interface RiskClearedPayload {
   governance_decision: GovernanceDecision;
   approval_token?: RiskApprovalToken;
   timestamp: Date;
+  broker_id?: string;
+  brokerId?: string;
 }
 
 export interface TradeRejectedPayload {
@@ -304,6 +310,22 @@ export interface Order {
   risk_amount?: number;
   strategy_id?: string;
   strategy_version?: string;
+
+  // Compatibility aliases
+  orderId?: string;
+  proposalId?: string;
+  approvalId?: string;
+  accountId?: string;
+  brokerId?: string;
+  orderType?: OrderType;
+  stopLoss?: number;
+  takeProfit?: number;
+  riskPercent?: number;
+  riskAmount?: number;
+  strategyId?: string;
+  strategyVersion?: string;
+  createdAt?: Date;
+  filledAt?: Date;
 }
 
 export interface ExecutionReport {
@@ -317,6 +339,15 @@ export interface ExecutionReport {
   status: OrderStatus;
   reason?: string;
   timestamp: Date;
+  broker_id?: string;
+  brokerId?: string;
+  execution_id?: string;
+  broker_order_id?: string;
+  brokerOrderId?: string;
+  broker_position_id?: string;
+  brokerPositionId?: string;
+  broker_deal_id?: string;
+  brokerDealId?: string;
 }
 
 export interface Position {
@@ -334,6 +365,9 @@ export interface Position {
   updated_at: Date;
   stop_loss?: number;
   take_profit?: number;
+  broker_id?: string;
+  strategy_id?: string;
+  strategy_version?: string;
 }
 
 export interface OrderPlacedPayload {
@@ -348,6 +382,12 @@ export interface OrderPlacedPayload {
   stop_loss?: number;
   take_profit?: number;
   timestamp: Date;
+  broker_id?: string;
+  account_id?: string;
+  risk_amount?: number;
+  risk_percent?: number;
+  strategy_id?: string;
+  strategy_version?: string;
 }
 
 export interface OrderFilledPayload {
@@ -366,4 +406,116 @@ export interface OrderFilledPayload {
 export interface PositionUpdatedPayload {
   position: Position;
   timestamp: Date;
+}
+
+// ==========================================
+// PHASE 6: MANUAL TRADING SIGNAL & JOURNAL TYPES
+// ==========================================
+
+export type ManualSignalStatus =
+  | 'WAITING'
+  | 'SETUP_DETECTED'
+  | 'SIGNAL_READY'
+  | 'EXPIRED'
+  | 'INVALIDATED'
+  | 'MARKET_DATA_UNAVAILABLE'
+  | 'INSUFFICIENT_EVIDENCE';
+
+export interface ManualTradeSignal {
+  signalId: string;
+  timestamp: string;
+  symbol: string;
+  timeframe: string;
+  marketDataStatus: string;
+  direction: 'BUY' | 'SELL' | 'NEUTRAL';
+  setupGrade: string;
+  confidence: number;
+  entryZone: { min: number; max: number };
+  invalidationLevel: number;
+  stopLoss: number;
+  takeProfit1: number;
+  takeProfit2: number;
+  riskReward: string;
+  marketStructure: string;
+  technicalEvidence: string[];
+  adaptiveLearningEvidence: {
+    status: 'ACTIVE' | 'INACTIVE';
+    relevantLessonsCount: number;
+    appliedLessons: string[];
+  };
+  signalStatus: ManualSignalStatus;
+  reason?: string;
+  generatedAt: number;
+  expiresAt: number;
+  executionMode: 'MANUAL';
+  brokerExecution: false;
+}
+
+export interface ManualTradeJournalEntry {
+  tradeId: string;
+  signalId?: string;
+  symbol: string;
+  direction: 'BUY' | 'SELL';
+  entryPrice: number;
+  stopLoss: number;
+  takeProfit: number;
+  actualEntryTime: string;
+  actualExitPrice?: number;
+  actualExitTime?: string;
+  outcome?: 'WIN' | 'LOSS' | 'OPEN' | 'CANCELLED';
+  realizedPnl?: number;
+  notes?: string;
+  executionMode: 'MANUAL';
+  brokerExecution: false;
+  source: 'MANUAL_USER_REPORTED';
+  createdAt: string;
+}
+
+// ============================================================
+// PHASE 6B: DUAL-LAYER MANUAL TRADE DATA MODEL
+// Distinguishes AI PLANNED SETUP from USER ACTUAL EXECUTION
+// ============================================================
+
+export interface AiPlannedSetup {
+  signalId: string;
+  symbol: string;
+  direction: 'BUY' | 'SELL' | 'NEUTRAL';
+  timeframe: string;
+  plannedEntry: number;
+  entryZone: { min: number; max: number };
+  stopLoss: number;
+  takeProfit1: number;
+  takeProfit2: number;
+  invalidationLevel: number;
+  riskReward: string;
+  confidence: number;
+  setupGrade: string;
+  adaptiveLearningRule?: string;
+  createdAt: string;
+}
+
+export type ManualTradeStatus = 'ACTIVE' | 'CLOSED' | 'CANCELLED';
+export type ManualTradeExitReason = 'TAKE_PROFIT_1' | 'TAKE_PROFIT_2' | 'STOP_LOSS' | 'INVALIDATED' | 'MANUAL_EXIT';
+export type ManualTradeResult = 'WIN' | 'LOSS' | 'BREAKEVEN' | 'PENDING';
+
+export interface UserActualTrade {
+  manualTradeId: string;
+  signalId: string;
+  symbol: string;
+  direction: 'BUY' | 'SELL';
+  actualEntry: number;
+  positionSize: number;
+  enteredAt: string;
+  status: ManualTradeStatus;
+  exitPrice?: number;
+  exitReason?: ManualTradeExitReason;
+  exitedAt?: string;
+  realizedPnl?: number;
+  realizedPips?: number;
+  result?: ManualTradeResult;
+  aiPlannedSetup: AiPlannedSetup;
+  executionMode: 'MANUAL';
+  brokerExecution: false;
+  source: 'MANUAL_USER_REPORTED';
+  notes?: string;
 }

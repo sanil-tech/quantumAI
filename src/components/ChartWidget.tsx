@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import { createChart, IChartApi, ISeriesApi, ColorType, CandlestickData, LineStyle, CandlestickSeries } from 'lightweight-charts';
 import { CandleData, CurrencyPair, Timeframe, AiTradeOpportunity, SmcStructures, SupportResistanceZone } from '../types';
 import { calculate24hRollingChange } from '../lib/marketDataGenerator';
@@ -25,21 +25,21 @@ const TIMEFRAMES: Timeframe[] = ['M1', 'M5', 'M15', 'M30', 'H1', 'H4', 'D1', 'W1
 const getPairMeta = (pair: CurrencyPair) => {
   switch (pair) {
     case 'EUR/USD':
-      return { title: 'EUR to USD', quote: 'USD', baseFlag: '🇪🇺', quoteFlag: '🇺🇸' };
+      return { title: 'EUR to USD', quote: 'USD', baseFlag: 'ðŸ‡ªðŸ‡º', quoteFlag: 'ðŸ‡ºðŸ‡¸' };
     case 'GBP/USD':
-      return { title: 'GBP to USD', quote: 'USD', baseFlag: '🇬🇧', quoteFlag: '🇺🇸' };
+      return { title: 'GBP to USD', quote: 'USD', baseFlag: 'ðŸ‡¬ðŸ‡§', quoteFlag: 'ðŸ‡ºðŸ‡¸' };
     case 'USD/JPY':
-      return { title: 'USD to JPY', quote: 'JPY', baseFlag: '🇺🇸', quoteFlag: '🇯🇵' };
+      return { title: 'USD to JPY', quote: 'JPY', baseFlag: 'ðŸ‡ºðŸ‡¸', quoteFlag: 'ðŸ‡¯ðŸ‡µ' };
     case 'AUD/USD':
-      return { title: 'AUD to USD', quote: 'USD', baseFlag: '🇦🇺', quoteFlag: '🇺🇸' };
+      return { title: 'AUD to USD', quote: 'USD', baseFlag: 'ðŸ‡¦ðŸ‡º', quoteFlag: 'ðŸ‡ºðŸ‡¸' };
     case 'XAU/USD':
-      return { title: 'Gold to USD', quote: 'USD', baseFlag: '🥇', quoteFlag: '🇺🇸' };
+      return { title: 'Gold to USD', quote: 'USD', baseFlag: 'ðŸ¥‡', quoteFlag: 'ðŸ‡ºðŸ‡¸' };
     case 'NASDAQ':
-      return { title: 'NASDAQ 100', quote: 'USD', baseFlag: '📈', quoteFlag: '🇺🇸' };
+      return { title: 'NASDAQ 100', quote: 'USD', baseFlag: 'ðŸ“ˆ', quoteFlag: 'ðŸ‡ºðŸ‡¸' };
     case 'BTC/USD':
-      return { title: 'BTC to USD', quote: 'USD', baseFlag: '₿', quoteFlag: '🇺🇸' };
+      return { title: 'BTC to USD', quote: 'USD', baseFlag: 'â‚¿', quoteFlag: 'ðŸ‡ºðŸ‡¸' };
     default:
-      return { title: String(pair).replace('/', ' to '), quote: 'USD', baseFlag: '🌐', quoteFlag: '🇺🇸' };
+      return { title: String(pair).replace('/', ' to '), quote: 'USD', baseFlag: 'ðŸŒ', quoteFlag: 'ðŸ‡ºðŸ‡¸' };
   }
 };
 
@@ -344,7 +344,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
 
     const tradeLot = customLot > 0 ? customLot : 0.10;
 
-    const tradeId = `trade_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const tradeId = `trade_${Date.now()}_${Date.now().toString(36)}`;
     const newTrade = {
       id: tradeId,
       pair,
@@ -376,7 +376,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
         id: `exec_${Date.now()}`,
         type: 'EXECUTE',
         pair,
-        title: `⚡ CARTA EKSEKUSI: ${direction} ${pair}`,
+        title: `âš¡ CARTA EKSEKUSI: ${direction} ${pair}`,
         message: `@ ${targetEntry.toFixed(decimals)} | SL: ${sl.toFixed(decimals)} | TP: ${tp.toFixed(decimals)}`,
         timestamp: new Date().toLocaleTimeString('ms-MY', { hour12: false })
       }
@@ -388,7 +388,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'ORDER_OPEN',
-        ticket: Math.floor(100000 + Math.random() * 900000),
+        ticket: Date.now(),
         symbol: pair.replace('/', ''),
         type: direction,
         lots: newTrade.lotSize,
@@ -433,7 +433,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
     const tp2 = aiOpportunity.takeProfit2;
     const tradeLot = customLot > 0 ? customLot : 0.10;
 
-    const tradeId = `ai_setup_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const tradeId = `ai_setup_${Date.now()}_${Date.now().toString(36)}`;
     const newTrade = {
       id: tradeId,
       pair,
@@ -465,7 +465,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
         id: `exec_ai_${Date.now()}`,
         type: 'EXECUTE',
         pair,
-        title: `🤖 1-CLICK AI SETUP: ${direction} ${pair}`,
+        title: `ðŸ¤– 1-CLICK AI SETUP: ${direction} ${pair}`,
         message: `Entry AI: ${targetEntry} | SL: ${sl} | TP1: ${tp1} | TP2: ${tp2} | Keyakinan: ${aiOpportunity.confidence}%`,
         timestamp: new Date().toLocaleTimeString('ms-MY', { hour12: false })
       }
@@ -477,7 +477,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'ORDER_OPEN',
-        ticket: Math.floor(100000 + Math.random() * 900000),
+        ticket: Date.now(),
         symbol: pair.replace('/', ''),
         type: direction,
         lots: tradeLot,
@@ -496,7 +496,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
       entry: targetEntry,
       sl,
       tp: tp1,
-      customMsg: `🎯 SETUP AI DIEKSEKUSI: ${direction} ${pair} | Entry: ${targetEntry} | SL: ${sl} | TP1: ${tp1}`
+      customMsg: `ðŸŽ¯ SETUP AI DIEKSEKUSI: ${direction} ${pair} | Entry: ${targetEntry} | SL: ${sl} | TP1: ${tp1}`
     });
 
     setTimeout(() => {
@@ -559,7 +559,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
         id: `close_${Date.now()}`,
         type: 'MANUAL_CLOSE',
         pair,
-        title: `🔒 POSISI DITUTUP: ${pair} (${activePairTrades.length} Posisi)`,
+        title: `ðŸ”’ POSISI DITUTUP: ${pair} (${activePairTrades.length} Posisi)`,
         message: `Harga Tutup: ${price.toFixed(pair.includes('JPY') ? 3 : pair.includes('BTC') ? 2 : 5)} | Total PnL: ${closedPnl >= 0 ? '+' : ''}$${closedPnl.toFixed(2)}`,
         pnlDollars: closedPnl,
         timestamp: new Date().toLocaleTimeString('ms-MY', { hour12: false })
@@ -1125,7 +1125,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
               title="Analisis Entri Manual & Maklum Balas Corak AI"
             >
               <Brain className={`w-3.5 h-3.5 text-purple-400 ${isAnalyzingManual ? 'animate-spin' : 'animate-pulse'}`} />
-              <span className="hidden md:inline font-bold">{language === 'ms' ? '🧠 Semakan AI' : '🧠 AI Entry Guard'}</span>
+              <span className="hidden md:inline font-bold">{language === 'ms' ? 'ðŸ§  Semakan AI' : 'ðŸ§  AI Entry Guard'}</span>
               {showAiManualGuard ? <ChevronUp className="w-3 h-3 text-purple-300" /> : <ChevronDown className="w-3 h-3 text-purple-300" />}
             </button>
 
@@ -1142,7 +1142,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
               >
                 <Zap className="w-4 h-4 text-amber-300 animate-bounce shrink-0" />
                 <div className="flex flex-col text-left leading-none">
-                  <span className="text-[9px] text-amber-200 font-extrabold uppercase tracking-wider">⚡ 1-CLICK SETUP AI</span>
+                  <span className="text-[9px] text-amber-200 font-extrabold uppercase tracking-wider">âš¡ 1-CLICK SETUP AI</span>
                   <span className="text-xs font-black">
                     {aiOpportunity.action} @ {aiOpportunity.entryZone?.min || (aiOpportunity as any).entryPrice || 'AI Entry'}
                   </span>
@@ -1190,10 +1190,10 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-purple-400 animate-pulse shrink-0" />
                 <span className="font-extrabold text-white font-mono text-xs sm:text-sm">
-                  {language === 'ms' ? '⚡ Analisis Entri Manual & Semakan Keselamatan AI' : '⚡ AI Manual Entry Pre-Flight Guard & Pattern Evaluation'}
+                  {language === 'ms' ? 'âš¡ Analisis Entri Manual & Semakan Keselamatan AI' : 'âš¡ AI Manual Entry Pre-Flight Guard & Pattern Evaluation'}
                 </span>
                 <span className="px-2 py-0.5 bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[9px] font-mono rounded-full font-bold">
-                  {pair} • {timeframe}
+                  {pair} â€¢ {timeframe}
                 </span>
               </div>
 
@@ -1225,7 +1225,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
                 <span className={`font-black text-sm flex items-center gap-1 ${parseFloat(liveRrRatio) >= 1.5 ? 'text-emerald-400' : 'text-amber-400'}`}>
                   1:{liveRrRatio}
                   <span className="text-[10px] px-1 py-0.2 rounded bg-slate-800">
-                    {parseFloat(liveRrRatio) >= 1.5 ? '✓ PASS' : '⚠️ LOW'}
+                    {parseFloat(liveRrRatio) >= 1.5 ? 'âœ“ PASS' : 'âš ï¸ LOW'}
                   </span>
                 </span>
               </div>
@@ -1310,7 +1310,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
               className="px-2.5 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-blue-300 hover:text-white text-xs font-semibold rounded-xl transition flex items-center gap-1.5"
               title="Tanya Pakar Trader AI tentang Carta Ini"
             >
-              <span>🤖</span>
+              <span>ðŸ¤–</span>
               <span className="hidden sm:inline">Tanya Pakar</span>
             </button>
           )}
@@ -1338,7 +1338,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-white uppercase tracking-wide">
-                  ⚡ {executionToast.type === 'CLOSE' ? 'POSISI DITUTUP' : 'ORDER EXECUTED'}: <span className={executionToast.type === 'BUY' ? 'text-emerald-400' : executionToast.type === 'SELL' ? 'text-rose-400' : 'text-amber-400'}>{executionToast.type} {executionToast.pair}</span>
+                  âš¡ {executionToast.type === 'CLOSE' ? 'POSISI DITUTUP' : 'ORDER EXECUTED'}: <span className={executionToast.type === 'BUY' ? 'text-emerald-400' : executionToast.type === 'SELL' ? 'text-rose-400' : 'text-amber-400'}>{executionToast.type} {executionToast.pair}</span>
                 </span>
                 <span className="text-[10px] font-mono text-slate-400">Broker Execution</span>
               </div>
@@ -1376,7 +1376,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
             <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping shrink-0" />
             <span>SL: {customSlPriceVal} ({customSlPips}p)</span>
             <span className="text-[9px] bg-rose-900/90 px-1 py-0.5 rounded text-rose-200 uppercase font-black tracking-wider flex items-center gap-0.5">
-              <span>↕</span> SERET
+              <span>â†•</span> SERET
             </span>
           </div>
         )}
@@ -1394,7 +1394,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
             <span>TP: {customTpPriceVal} ({customTpPips}p)</span>
             <span className="text-[9px] bg-emerald-900/90 px-1 py-0.5 rounded text-emerald-200 uppercase font-black tracking-wider flex items-center gap-0.5">
-              <span>↕</span> SERET
+              <span>â†•</span> SERET
             </span>
           </div>
         )}
@@ -1402,7 +1402,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
         {/* Dragging Active Feedback Banner */}
         {draggingLevel && (
           <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-amber-500 text-slate-950 px-3.5 py-1.5 rounded-full text-xs font-mono font-black shadow-2xl z-40 animate-pulse flex items-center gap-2">
-            <span>↕ MENYERET {draggingLevel}: {draggingLevel === 'SL' ? `${customSlPriceVal} (${customSlPips} Pips)` : `${customTpPriceVal} (${customTpPips} Pips)`}</span>
+            <span>â†• MENYERET {draggingLevel}: {draggingLevel === 'SL' ? `${customSlPriceVal} (${customSlPips} Pips)` : `${customTpPriceVal} (${customTpPips} Pips)`}</span>
           </div>
         )}
 
@@ -1425,3 +1425,5 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
     </div>
   );
 };
+
+

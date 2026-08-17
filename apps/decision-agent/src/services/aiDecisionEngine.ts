@@ -1,4 +1,4 @@
-import { Type } from "@google/genai";
+﻿import { Type } from "@google/genai";
 import { TradeProposal, MarketDirection, MarketDataMode } from "@iati/core-types";
 import { PostMortemReview, CurrencyPair, Timeframe, TradingStyle } from "../../../../src/types";
 import { getGeminiClient, callGeminiSafe } from "./geminiClient";
@@ -111,7 +111,7 @@ Smart Money Concepts (SMC) Summary:
 Upcoming Macro News Context:
 ${newsContext || 'No immediate high impact news in the next 1 hour.'}
 
-🧠 ADAPTIVE AI MEMORY - PAST TRADE LOSS LESSONS:
+ðŸ§  ADAPTIVE AI MEMORY - PAST TRADE LOSS LESSONS:
 ${recentLessonsText}
 
 Risk Settings: Account $${riskSettings?.accountSize || 10000}, Risk %: ${riskSettings?.riskPercent || 1}%
@@ -213,36 +213,42 @@ Please perform a quantitative & price action evaluation using your past lessons 
     const pairHash = pair.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
     const confidence = Math.min(94, Math.max(68, Math.round(70 + (pairHash % 19) + (Math.abs(rsi - 50) * 0.5))));
 
+    // Adaptive Learning Memory integration:
+    const symbolLossReviews = postMortemReviews.filter(pm => ((pm as any).pair === pair || (pm as any).symbol === pair) && pm.outcome === 'LOSS');
+    const hasLossHistory = symbolLossReviews.length > 0;
+    const slMultiplier = hasLossHistory ? 1.8 : 1.4;
+
     let entryMin: number, entryMax: number, sl: number, tp1: number, tp2: number, invalidation: number;
 
     if (isBullish) {
       entryMin = Number((priceNum - atr * 0.2).toFixed(decimals));
       entryMax = Number((priceNum + atr * 0.1).toFixed(decimals));
-      sl = Number((priceNum - atr * 1.4).toFixed(decimals));
+      sl = Number((priceNum - atr * slMultiplier).toFixed(decimals));
       tp1 = Number((priceNum + atr * 2.1).toFixed(decimals));
       tp2 = Number((priceNum + atr * 3.8).toFixed(decimals));
-      invalidation = Number((priceNum - atr * 1.5).toFixed(decimals));
+      invalidation = Number((priceNum - atr * (slMultiplier + 0.1)).toFixed(decimals));
     } else {
       entryMin = Number((priceNum - atr * 0.1).toFixed(decimals));
       entryMax = Number((priceNum + atr * 0.2).toFixed(decimals));
-      sl = Number((priceNum + atr * 1.4).toFixed(decimals));
+      sl = Number((priceNum + atr * slMultiplier).toFixed(decimals));
       tp1 = Number((priceNum - atr * 2.1).toFixed(decimals));
       tp2 = Number((priceNum - atr * 3.8).toFixed(decimals));
-      invalidation = Number((priceNum + atr * 1.5).toFixed(decimals));
+      invalidation = Number((priceNum + atr * (slMultiplier + 0.1)).toFixed(decimals));
     }
 
     const tradeProposal: TradeProposal = {
-      id: `prop-ai-det-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      id: `prop-ai-det-${Date.now()}`,
       symbol: pair,
       direction: action as MarketDirection,
       confidence: Number((confidence / 100).toFixed(2)),
       evidence: [
         `${pair} live price (${priceNum.toFixed(decimals)}) is holding ${isBullish ? 'above' : 'below'} 50 EMA trend filter.`,
         `RSI (14) sitting at ${rsi.toFixed(1)} confirms ${isBullish ? 'bullish continuation' : 'bearish selling'} momentum.`,
-        `SuperTrend filter and ATR volatility (${atr.toFixed(decimals)}) indicate high-probability ${action} setup.`
+        `SuperTrend filter and ATR volatility (${atr.toFixed(decimals)}) indicate high-probability ${action} setup.`,
+        ...(hasLossHistory ? [`[ADAPTIVE LEARNING MEMORY] Applied rule from ${symbolLossReviews[0].id}: "${symbolLossReviews[0].adaptiveRuleEn || symbolLossReviews[0].adaptiveRuleMs || 'Expand SL Buffer'}". SL buffer expanded to ${slMultiplier}x ATR.`] : [])
       ],
       agent_votes: [],
-      why_direction: `Quantitative evaluation for ${pair}: ${bias} setup with ${confidence}% confidence score.`,
+      why_direction: `Quantitative evaluation for ${pair}: ${bias} setup with ${confidence}% confidence score.${hasLossHistory ? ' (Adaptive SL buffer applied from past learning memory)' : ''}`,
       invalidate_conditions: [`Price breaches invalidation level ${invalidation}`],
       timestamp: new Date()
     };
@@ -378,12 +384,12 @@ EXPERT TRADER GUIDELINES:
     let reply = "";
     if (q.includes("buy") || q.includes("sell") || q.includes("isyarat") || q.includes("signal") || q.includes("patut") || q.includes("setup")) {
       if (isMalay) {
-        reply = `📊 **Analisis Persediaan ${pair} (${timeframe}) - ${action} Setup**\n\nBerdasarkan data sistem live kita:\n- **Harga Semasa:** ${price.toFixed(decimals)}\n- **Bias Trend:** ${bias} (RSI: ${rsi.toFixed(1)}, SuperTrend: ${superTrend})\n- **SMC Confluence:** ${obCount} Zon Order Block aktif dikesan.\n\n🎯 **Pelan Dagangan Cadangan Pakar:**\n• **Cadangan Tindakan:** **${action} ${pair}**\n• **Zon Entry:** ${entryMin} - ${entryMax}\n• **Stop Loss (SL):** ${sl}\n• **Take Profit 1 (TP1):** ${tp1}\n• **Take Profit 2 (TP2):** ${tp2}\n\n💡 **Sebab Analisis:** Price action sedang bertindak balas dengan EMA 50 (${ema50.toFixed(decimals)}) dan disokong oleh corak momentum RSI (${rsi.toFixed(1)}).`;
+        reply = `ðŸ“Š **Analisis Persediaan ${pair} (${timeframe}) - ${action} Setup**\n\nBerdasarkan data sistem live kita:\n- **Harga Semasa:** ${price.toFixed(decimals)}\n- **Bias Trend:** ${bias} (RSI: ${rsi.toFixed(1)}, SuperTrend: ${superTrend})\n- **SMC Confluence:** ${obCount} Zon Order Block aktif dikesan.\n\nðŸŽ¯ **Pelan Dagangan Cadangan Pakar:**\nâ€¢ **Cadangan Tindakan:** **${action} ${pair}**\nâ€¢ **Zon Entry:** ${entryMin} - ${entryMax}\nâ€¢ **Stop Loss (SL):** ${sl}\nâ€¢ **Take Profit 1 (TP1):** ${tp1}\nâ€¢ **Take Profit 2 (TP2):** ${tp2}\n\nðŸ’¡ **Sebab Analisis:** Price action sedang bertindak balas dengan EMA 50 (${ema50.toFixed(decimals)}) dan disokong oleh corak momentum RSI (${rsi.toFixed(1)}).`;
       } else {
-        reply = `📊 **${pair} (${timeframe}) Trade Setup Breakdown - ${action} Signal**\n\nBased on live workstation data:\n- **Live Price:** ${price.toFixed(decimals)}\n- **Market Bias:** ${bias} (RSI: ${rsi.toFixed(1)}, SuperTrend: ${superTrend})\n- **SMC Confluence:** ${obCount} Order Block(s) active.\n\n🎯 **Execution Plan:**\n• **Action:** **${action} ${pair}**\n• **Entry Zone:** ${entryMin} - ${entryMax}\n• **Stop Loss (SL):** ${sl}\n• **Take Profit 1 (TP1):** ${tp1}\n• **Take Profit 2 (TP2):** ${tp2}\n\n💡 **Rationale:** Price is holding ${isBullish ? 'above' : 'below'} EMA 50 (${ema50.toFixed(decimals)}) with constructive momentum on RSI (${rsi.toFixed(1)}).`;
+        reply = `ðŸ“Š **${pair} (${timeframe}) Trade Setup Breakdown - ${action} Signal**\n\nBased on live workstation data:\n- **Live Price:** ${price.toFixed(decimals)}\n- **Market Bias:** ${bias} (RSI: ${rsi.toFixed(1)}, SuperTrend: ${superTrend})\n- **SMC Confluence:** ${obCount} Order Block(s) active.\n\nðŸŽ¯ **Execution Plan:**\nâ€¢ **Action:** **${action} ${pair}**\nâ€¢ **Entry Zone:** ${entryMin} - ${entryMax}\nâ€¢ **Stop Loss (SL):** ${sl}\nâ€¢ **Take Profit 1 (TP1):** ${tp1}\nâ€¢ **Take Profit 2 (TP2):** ${tp2}\n\nðŸ’¡ **Rationale:** Price is holding ${isBullish ? 'above' : 'below'} EMA 50 (${ema50.toFixed(decimals)}) with constructive momentum on RSI (${rsi.toFixed(1)}).`;
       }
     } else {
-      reply = `🤖 **Pakar Trader AI (${pair} - ${timeframe})**\nLive Price: ${price.toFixed(decimals)} | Bias: ${bias} | RSI: ${rsi.toFixed(1)}\n\nSaya telah menganalisis keadaan pasaran ${pair}. Sila tanya untuk persediaan entry BUY/SELL, zon SMC, atau ulasan risiko!`;
+      reply = `ðŸ¤– **Pakar Trader AI (${pair} - ${timeframe})**\nLive Price: ${price.toFixed(decimals)} | Bias: ${bias} | RSI: ${rsi.toFixed(1)}\n\nSaya telah menganalisis keadaan pasaran ${pair}. Sila tanya untuk persediaan entry BUY/SELL, zon SMC, atau ulasan risiko!`;
     }
 
     return { reply };
@@ -827,3 +833,4 @@ Return JSON strictly matching required schema.`;
 }
 
 export const aiDecisionEngine = new AiDecisionEngine();
+

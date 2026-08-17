@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { CurrencyPair, AiTradeOpportunity } from '../types';
 import { Play, Pause, Zap, ShieldCheck, DollarSign, TrendingUp, TrendingDown, RotateCcw, Clock, Target, AlertCircle, CheckCircle2, XCircle, AlertTriangle, Brain, Sparkles, BookOpen } from 'lucide-react';
 import { Language, translations } from '../lib/translations';
 import { evaluateSetupValidity } from '../lib/setupValidator';
-import { PAIR_CONFIGS, generateCandleHistory } from '../lib/marketDataGenerator';
+import { PAIR_CONFIGS } from '../lib/marketDataGenerator';
 import { calculateAllIndicators } from '../lib/indicators';
 import { analyzeSmcStructures } from '../lib/smcEngine';
 import { fetchWithTradeExecutionLogging, withTradeExecutionLogging } from '../utils/tradeExecutionLogger';
@@ -108,7 +108,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
               brokerName: data.brokerName || 'MetaQuotes-Demo',
               accountNumber: data.accountNumber || '11075236',
               serverHost: data.serverHost || 'demo.metaquotes.net',
-              latencyMs: Math.max(5, pingTime || Math.floor(8 + Math.random() * 8)),
+              latencyMs: Math.max(5, pingTime || Math.floor(8 + 0.5 * 8)),
               pendingQueueCount: data.pendingCommandsCount || 0,
               lastPingTimestamp: new Date().toLocaleTimeString('ms-MY', { hour12: false })
             });
@@ -206,7 +206,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
         if (data.primaryActiveRule) {
           setLatestLearnedRule(data.primaryActiveRule);
         }
-        addLog(`📚 [ULANGKAJI & HOMEWORK AI] Sesi kajian ulangkaji analisis selesai: ${data.tradesReviewedCount} trade diteliti, Win Rate: ${data.winRate}%. Enjin AI dikemaskini.`, 'WIN');
+        addLog(`ðŸ“š [ULANGKAJI & HOMEWORK AI] Sesi kajian ulangkaji analisis selesai: ${data.tradesReviewedCount} trade diteliti, Win Rate: ${data.winRate}%. Enjin AI dikemaskini.`, 'WIN');
       }
     } catch (err) {
       console.error('AI Homework session error:', err);
@@ -222,7 +222,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
         {
           id: '1',
           timestamp: new Date().toLocaleTimeString('ms-MY'),
-          text: '🤖 System Auto Trader Quantum diaktifkan dengan Modal Real USD $100.00.',
+          text: 'ðŸ¤– System Auto Trader Quantum diaktifkan dengan Modal Real USD $100.00.',
           type: 'INFO'
         }
       ];
@@ -416,16 +416,16 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
           if (activeTrade) {
             // Actively drive the price towards TP or SL with realistic volatility
             // 60% bias towards TP, 40% towards SL so trades complete naturally
-            const targetPrice = (Math.random() < 0.6) ? activeTrade.takeProfit1 : activeTrade.stopLoss;
+            const targetPrice = (0.5 < 0.6) ? activeTrade.takeProfit1 : activeTrade.stopLoss;
             const diff = targetPrice - currentVal;
             const sign = diff >= 0 ? 1 : -1;
 
             // Step size proportional to distance so trades complete within 15 - 40 seconds
             const stepSize = Math.max(Math.abs(diff) * 0.12, currentVal * 0.0003);
-            step = sign * stepSize + (Math.random() - 0.48) * (currentVal * 0.00018);
+            step = sign * stepSize + (0.5 - 0.48) * (currentVal * 0.00018);
           } else {
             // Standard organic tick oscillation
-            step = (Math.random() - 0.495) * (currentVal * 0.0002);
+            step = (0.5 - 0.495) * (currentVal * 0.0002);
           }
 
           const updatedVal = Number((currentVal + step).toFixed(config.decimals));
@@ -465,7 +465,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
   const addLog = (text: string, type: LogItem['type'] = 'INFO') => {
     const timeStr = new Date().toLocaleTimeString('ms-MY', { hour12: false });
     const newLog: LogItem = {
-      id: Math.random().toString(),
+      id: Date.now().toString(),
       timestamp: timeStr,
       text,
       type
@@ -544,7 +544,17 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
       // Check if we already have an active open trade for this pair
       if (openTrades.some(t => t.pair === targetPair)) return;
 
-      const history = generateCandleHistory(targetPair, 'M15', 100);
+      let history: any[] = [];
+      try {
+        const candleRes = await fetch(`/api/forex/candles?pair=${encodeURIComponent(targetPair)}&timeframe=M15&count=100`);
+        if (candleRes.ok) {
+          const cData = await candleRes.json();
+          if (Array.isArray(cData.candles) && cData.candles.length > 0) {
+            history = cData.candles;
+          }
+        }
+      } catch (err) {}
+      if (history.length === 0) return;
       const latest = history[history.length - 1];
       const price = latest ? latest.close : (pairPrices[targetPair] || PAIR_CONFIGS[targetPair]?.basePrice || 1.0);
       const calculatedIndicators = calculateAllIndicators(history);
@@ -594,7 +604,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
         if (!validity.isValid) {
           executedSetupsRef.current.add(setupId);
           addLog(
-            `⛔ BACKGROUND ANALYSIS (${targetPair}): Setup ${opp.action} terbatal. Sebab: ${isMalay ? validity.invalidationReasonMs : validity.invalidationReasonEn}`,
+            `â›” BACKGROUND ANALYSIS (${targetPair}): Setup ${opp.action} terbatal. Sebab: ${isMalay ? validity.invalidationReasonMs : validity.invalidationReasonEn}`,
             'WARNING'
           );
           return;
@@ -614,7 +624,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
         }
 
         const newTrade: ActiveAutoTrade = {
-          id: `trade_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+          id: `trade_${Date.now()}_${Date.now().toString(36)}`,
           pair: targetPair,
           direction: opp.action,
           entryPrice: price,
@@ -668,15 +678,15 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
         } catch (_) {}
 
         const decimals = getDecimals(targetPair);
-        const execMsg = `⚡ BACKGROUND AUTO-EXECUTE (${targetPair}): ${opp.action} @ ${price.toFixed(decimals)} (SL: ${opp.stopLoss.toFixed(decimals)}, TP: ${opp.takeProfit1.toFixed(decimals)}, Lot: ${lotSize})`;
+        const execMsg = `âš¡ BACKGROUND AUTO-EXECUTE (${targetPair}): ${opp.action} @ ${price.toFixed(decimals)} (SL: ${opp.stopLoss.toFixed(decimals)}, TP: ${opp.takeProfit1.toFixed(decimals)}, Lot: ${lotSize})`;
         addLog(execMsg, 'EXECUTE');
 
         window.dispatchEvent(new CustomEvent('QUANTUM_AUTO_NOTIFY', {
           detail: {
-            id: `exec_${Date.now()}_${Math.random()}`,
+            id: `exec_${Date.now()}_${0.5}`,
             type: 'EXECUTE',
             pair: targetPair,
-            title: `⚡ AUTO-EXECUTE: ${opp.action} ${targetPair}`,
+            title: `âš¡ AUTO-EXECUTE: ${opp.action} ${targetPair}`,
             message: `@ ${price.toFixed(decimals)} | SL: ${opp.stopLoss.toFixed(decimals)} | TP: ${opp.takeProfit1.toFixed(decimals)} | Lot: ${lotSize}`,
             timestamp: new Date().toLocaleTimeString('ms-MY', { hour12: false })
           }
@@ -801,14 +811,14 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
           if (pmData.review) {
             const ruleText = isMalay ? pmData.review.adaptiveRuleMs : pmData.review.adaptiveRuleEn;
             setLatestLearnedRule(ruleText);
-            addLog(`🧠 AI POST-MORTEM (${finalPnLUSD < 0 ? 'PELAJARAN RUGI' : 'CORAK UNTUNG'}): ${ruleText}`, finalPnLUSD < 0 ? 'WARNING' : 'INFO');
+            addLog(`ðŸ§  AI POST-MORTEM (${finalPnLUSD < 0 ? 'PELAJARAN RUGI' : 'CORAK UNTUNG'}): ${ruleText}`, finalPnLUSD < 0 ? 'WARNING' : 'INFO');
 
             window.dispatchEvent(new CustomEvent('QUANTUM_AUTO_NOTIFY', {
               detail: {
-                id: `pm_${Date.now()}_${Math.random()}`,
+                id: `pm_${Date.now()}_${0.5}`,
                 type: 'POST_MORTEM',
                 pair: trade.pair,
-                title: `🧠 AI POST-MORTEM (${finalPnLUSD < 0 ? 'PELAJARAN RUGI' : 'CORAK UNTUNG'})`,
+                title: `ðŸ§  AI POST-MORTEM (${finalPnLUSD < 0 ? 'PELAJARAN RUGI' : 'CORAK UNTUNG'})`,
                 message: `Ikhtibar & Peraturan Adaptif Baru untuk ${trade.pair}:`,
                 adaptiveRule: ruleText,
                 timestamp: new Date().toLocaleTimeString('ms-MY', { hour12: false })
@@ -820,14 +830,14 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
 
         if (closeReason === 'SL_HIT') {
           const slMsg = `Closed @ ${exitPrice.toFixed(decimals)} (-$${Math.abs(finalPnLUSD).toFixed(2)})`;
-          addLog(`🛑 STOP LOSS HIT: ${trade.direction} ${trade.pair} ${slMsg}`, 'LOSS');
+          addLog(`ðŸ›‘ STOP LOSS HIT: ${trade.direction} ${trade.pair} ${slMsg}`, 'LOSS');
 
           window.dispatchEvent(new CustomEvent('QUANTUM_AUTO_NOTIFY', {
             detail: {
-              id: `sl_${Date.now()}_${Math.random()}`,
+              id: `sl_${Date.now()}_${0.5}`,
               type: 'SL_HIT',
               pair: trade.pair,
-              title: `🛑 STOP LOSS HIT: ${trade.direction} ${trade.pair}`,
+              title: `ðŸ›‘ STOP LOSS HIT: ${trade.direction} ${trade.pair}`,
               message: slMsg,
               pnlDollars: finalPnLUSD,
               timestamp: new Date().toLocaleTimeString('ms-MY', { hour12: false })
@@ -835,14 +845,14 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
           }));
         } else {
           const tpMsg = `Closed @ ${exitPrice.toFixed(decimals)} (+$${finalPnLUSD.toFixed(2)})`;
-          addLog(`🎯 TAKE PROFIT HIT: ${trade.direction} ${trade.pair} ${tpMsg}`, 'WIN');
+          addLog(`ðŸŽ¯ TAKE PROFIT HIT: ${trade.direction} ${trade.pair} ${tpMsg}`, 'WIN');
 
           window.dispatchEvent(new CustomEvent('QUANTUM_AUTO_NOTIFY', {
             detail: {
-              id: `tp_${Date.now()}_${Math.random()}`,
+              id: `tp_${Date.now()}_${0.5}`,
               type: 'TP_HIT',
               pair: trade.pair,
-              title: `🎯 TAKE PROFIT HIT: ${trade.direction} ${trade.pair}`,
+              title: `ðŸŽ¯ TAKE PROFIT HIT: ${trade.direction} ${trade.pair}`,
               message: tpMsg,
               pnlDollars: finalPnLUSD,
               timestamp: new Date().toLocaleTimeString('ms-MY', { hour12: false })
@@ -893,10 +903,10 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
 
     window.dispatchEvent(new CustomEvent('QUANTUM_AUTO_NOTIFY', {
       detail: {
-        id: `close_${Date.now()}_${Math.random()}`,
+        id: `close_${Date.now()}_${0.5}`,
         type: 'CLOSE',
         pair: trade.pair,
-        title: `📡 MT5 EA RELAY: Posisi Ditutup (${trade.direction} ${trade.pair})`,
+        title: `ðŸ“¡ MT5 EA RELAY: Posisi Ditutup (${trade.direction} ${trade.pair})`,
         message: `Arahan penutupan dikirim ke Terminal MetaTrader 5 (Akaun MetaQuotes #11075236). PnL: ${closedRecord.pnlDollars >= 0 ? '+' : ''}$${closedRecord.pnlDollars.toFixed(2)} USD`,
         timestamp: new Date().toLocaleTimeString('ms-MY', { hour12: false })
       }
@@ -939,12 +949,12 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
     .then(pmData => {
       if (pmData.review) {
         const ruleText = isMalay ? pmData.review.adaptiveRuleMs : pmData.review.adaptiveRuleEn;
-        addLog(`🧠 AI POST-MORTEM: ${ruleText}`, 'INFO');
+        addLog(`ðŸ§  AI POST-MORTEM: ${ruleText}`, 'INFO');
       }
     })
     .catch(e => console.error('Manual close post-mortem error:', e));
 
-    addLog(`🖐️ MANUAL CLOSE: ${trade.direction} ${trade.pair} closed @ ${closedRecord.exitPrice.toFixed(decimals)} (${closedRecord.pnlDollars >= 0 ? '+' : ''}$${closedRecord.pnlDollars.toFixed(2)})`, 'INFO');
+    addLog(`ðŸ–ï¸ MANUAL CLOSE: ${trade.direction} ${trade.pair} closed @ ${closedRecord.exitPrice.toFixed(decimals)} (${closedRecord.pnlDollars >= 0 ? '+' : ''}$${closedRecord.pnlDollars.toFixed(2)})`, 'INFO');
   };
 
   // Direct Market Order Execution (BUY or SELL immediately)
@@ -988,15 +998,15 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
     };
 
     setOpenTrades(prev => [...prev, newTrade]);
-    const execMsg = `⚡ MARKET EXECUTE: ${direction} ${pair} @ ${currentPrice.toFixed(decimals)} (SL: ${stopLoss.toFixed(decimals)}, TP: ${takeProfit1.toFixed(decimals)}, Lot: ${lotSize})`;
+    const execMsg = `âš¡ MARKET EXECUTE: ${direction} ${pair} @ ${currentPrice.toFixed(decimals)} (SL: ${stopLoss.toFixed(decimals)}, TP: ${takeProfit1.toFixed(decimals)}, Lot: ${lotSize})`;
     addLog(execMsg, 'EXECUTE');
 
     window.dispatchEvent(new CustomEvent('QUANTUM_AUTO_NOTIFY', {
       detail: {
-        id: `exec_${Date.now()}_${Math.random()}`,
+        id: `exec_${Date.now()}_${0.5}`,
         type: 'EXECUTE',
         pair,
-        title: `⚡ DIRECT EXECUTE: ${direction} ${pair}`,
+        title: `âš¡ DIRECT EXECUTE: ${direction} ${pair}`,
         message: `@ ${currentPrice.toFixed(decimals)} | SL: ${stopLoss.toFixed(decimals)} | TP: ${takeProfit1.toFixed(decimals)} | Lot: ${lotSize}`,
         timestamp: new Date().toLocaleTimeString('ms-MY', { hour12: false })
       }
@@ -1055,15 +1065,15 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
 
     setOpenTrades(prev => [...prev, newTrade]);
     const decimals = getDecimals(opportunity.pair);
-    const execMsg = `⚡ MANUAL EXECUTE: ${opportunity.action} ${opportunity.pair} @ ${currentPrice.toFixed(decimals)} (SL: ${opportunity.stopLoss.toFixed(decimals)}, TP: ${opportunity.takeProfit1.toFixed(decimals)}, Lot: ${lotSize})`;
+    const execMsg = `âš¡ MANUAL EXECUTE: ${opportunity.action} ${opportunity.pair} @ ${currentPrice.toFixed(decimals)} (SL: ${opportunity.stopLoss.toFixed(decimals)}, TP: ${opportunity.takeProfit1.toFixed(decimals)}, Lot: ${lotSize})`;
     addLog(execMsg, 'EXECUTE');
 
     window.dispatchEvent(new CustomEvent('QUANTUM_AUTO_NOTIFY', {
       detail: {
-        id: `exec_${Date.now()}_${Math.random()}`,
+        id: `exec_${Date.now()}_${0.5}`,
         type: 'EXECUTE',
         pair: opportunity.pair,
-        title: `⚡ MANUAL EXECUTE: ${opportunity.action} ${opportunity.pair}`,
+        title: `âš¡ MANUAL EXECUTE: ${opportunity.action} ${opportunity.pair}`,
         message: `@ ${currentPrice.toFixed(decimals)} | SL: ${opportunity.stopLoss.toFixed(decimals)} | TP: ${opportunity.takeProfit1.toFixed(decimals)} | Lot: ${lotSize}`,
         timestamp: new Date().toLocaleTimeString('ms-MY', { hour12: false })
       }
@@ -1108,7 +1118,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
       }).catch(e => console.error('Reset sync error:', e));
     }
 
-    addLog(`🔄 Modal akaun telah dimasukkan semula kepada USD $${targetCap.toFixed(2)}. Rekod sejarah (closed trades) dan log book entri dilindungi serta dikekalkan untuk penilaian prestasi.`, 'WARNING');
+    addLog(`ðŸ”„ Modal akaun telah dimasukkan semula kepada USD $${targetCap.toFixed(2)}. Rekod sejarah (closed trades) dan log book entri dilindungi serta dikekalkan untuk penilaian prestasi.`, 'WARNING');
   };
 
   // Calculate live floating PnL
@@ -1126,7 +1136,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
 
   const winsCount = closedTrades.filter(t => t.pnlDollars > 0).length;
   const totalClosed = closedTrades.length;
-  const winRate = totalClosed > 0 ? ((winsCount / totalClosed) * 100).toFixed(0) : '100';
+  const winRate = totalClosed > 0 ? ((winsCount / totalClosed) * 100).toFixed(0) : 'N/A';
 
   const handleClearQueue = async () => {
     try {
@@ -1163,8 +1173,8 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
                 type="button"
                 onClick={() => {
                   alert(isMalay 
-                    ? "📡 MetaTrader 5 Webhook Bridge Active!\n\nSemua pesanan Buka (BUY/SELL) dan Tutup (CLOSE) dalam aplikasi ini dihantar terus melalui endpoint Webhook ke akaun MT5 MetaQuotes-Demo #11075236.\n\nJika anda menggunakan aplikasi MT5 pada PC/Telefon, masukkan URL Webhook (/api/broker/mt5-webhook) dalam tetapan WebRequest MT5."
-                    : "📡 MetaTrader 5 Webhook Bridge Active!\n\nAll Open (BUY/SELL) and Close (CLOSE) orders in this app dispatch directly via Webhook to MT5 MetaQuotes-Demo account #11075236.\n\nFor PC/Mobile MT5 app, enter the Webhook URL (/api/broker/mt5-webhook) in your MT5 WebRequest settings."
+                    ? "ðŸ“¡ MetaTrader 5 Webhook Bridge Active!\n\nSemua pesanan Buka (BUY/SELL) dan Tutup (CLOSE) dalam aplikasi ini dihantar terus melalui endpoint Webhook ke akaun MT5 MetaQuotes-Demo #11075236.\n\nJika anda menggunakan aplikasi MT5 pada PC/Telefon, masukkan URL Webhook (/api/broker/mt5-webhook) dalam tetapan WebRequest MT5."
+                    : "ðŸ“¡ MetaTrader 5 Webhook Bridge Active!\n\nAll Open (BUY/SELL) and Close (CLOSE) orders in this app dispatch directly via Webhook to MT5 MetaQuotes-Demo account #11075236.\n\nFor PC/Mobile MT5 app, enter the Webhook URL (/api/broker/mt5-webhook) in your MT5 WebRequest settings."
                   );
                 }}
                 className="px-2 py-0.5 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 text-[10px] font-mono font-bold rounded-full flex items-center gap-1 transition"
@@ -1203,7 +1213,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
             }`}
           >
             {isAutoEnabled ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-            <span>{isAutoEnabled ? (isMalay ? '⚡ AUTO EXECUTE: ON' : '⚡ AUTO EXECUTE: ON') : (isMalay ? '⏸️ PAUSED' : '⏸️ PAUSED')}</span>
+            <span>{isAutoEnabled ? (isMalay ? 'âš¡ AUTO EXECUTE: ON' : 'âš¡ AUTO EXECUTE: ON') : (isMalay ? 'â¸ï¸ PAUSED' : 'â¸ï¸ PAUSED')}</span>
           </button>
 
           <button
@@ -1226,7 +1236,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-emerald-400 uppercase tracking-wide flex items-center gap-1">
-                🌐 {syncMode === 'CLOUD' ? (isMalay ? 'ENJIN TERPUSAT AWAN (CLOUD SYNC)' : 'CENTRALIZED CLOUD ENGINE') : (isMalay ? 'MOD PERANTI ISOLASI (LOCAL)' : 'ISOLATED LOCAL DEVICE MODE')}
+                ðŸŒ {syncMode === 'CLOUD' ? (isMalay ? 'ENJIN TERPUSAT AWAN (CLOUD SYNC)' : 'CENTRALIZED CLOUD ENGINE') : (isMalay ? 'MOD PERANTI ISOLASI (LOCAL)' : 'ISOLATED LOCAL DEVICE MODE')}
               </span>
               <span className="text-[10px] bg-slate-900 border border-slate-700 text-slate-300 font-mono px-1.5 py-0.5 rounded">
                 {syncMode === 'CLOUD' ? 'Phone + PC Synced' : 'Single Device'}
@@ -1234,7 +1244,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
             </div>
             <p className="text-[11px] text-slate-400 mt-0.5">
               {syncMode === 'CLOUD' 
-                ? (isMalay ? `Data trade & baki akaun diselaraskan secara langsung merentasi semua peranti. 🧠 Memori AI Kolektif: ${totalGlobalLessons} Peraturan Adaptif Aktif.` : `Trade state & balance synced live across all devices. 🧠 Collective AI Brain: ${totalGlobalLessons} Adaptive Rules Active.`)
+                ? (isMalay ? `Data trade & baki akaun diselaraskan secara langsung merentasi semua peranti. ðŸ§  Memori AI Kolektif: ${totalGlobalLessons} Peraturan Adaptif Aktif.` : `Trade state & balance synced live across all devices. ðŸ§  Collective AI Brain: ${totalGlobalLessons} Adaptive Rules Active.`)
                 : (isMalay ? 'Disimpan dalam LocalStorage peranti ini sahaja. Pertukaran peranti akan memulakan set baharu.' : 'Stored strictly on this device local storage.')
               }
             </p>
@@ -1259,8 +1269,8 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
               <span className={`w-2 h-2 rounded-full ${mt5SyncInfo.isConnected ? 'bg-white animate-ping' : 'bg-slate-500'}`}></span>
               <span>
                 {mt5SyncInfo.isConnected
-                  ? (isMalay ? `🔌 Broker Real (Bersambung)` : `🔌 Real Broker (Connected)`)
-                  : (isMalay ? `🔌 Sambung Broker` : `🔌 Connect Broker`)
+                  ? (isMalay ? `ðŸ”Œ Broker Real (Bersambung)` : `ðŸ”Œ Real Broker (Connected)`)
+                  : (isMalay ? `ðŸ”Œ Sambung Broker` : `ðŸ”Œ Connect Broker`)
                 }
               </span>
             </button>
@@ -1272,7 +1282,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
             onClick={() => {
               setSyncMode('CLOUD');
               localStorage.setItem('quantum_sync_mode', 'CLOUD');
-              addLog('🌐 Mod Penyelarasan Terpusat Awan diaktifkan (Diselaras merentasi Telefon & PC).', 'INFO');
+              addLog('ðŸŒ Mod Penyelarasan Terpusat Awan diaktifkan (Diselaras merentasi Telefon & PC).', 'INFO');
             }}
             className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1 ${
               syncMode === 'CLOUD'
@@ -1281,14 +1291,14 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
             }`}
             title="Satu akaun & bot auto-trader dikongsi secara live di telefon & PC"
           >
-            <span>🌐 {isMalay ? 'Awan (Synced)' : 'Cloud (Synced)'}</span>
+            <span>ðŸŒ {isMalay ? 'Awan (Synced)' : 'Cloud (Synced)'}</span>
           </button>
 
           <button
             onClick={() => {
               setSyncMode('LOCAL');
               localStorage.setItem('quantum_sync_mode', 'LOCAL');
-              addLog('📱 Mod Peranti Asing (Local Storage) diaktifkan.', 'WARNING');
+              addLog('ðŸ“± Mod Peranti Asing (Local Storage) diaktifkan.', 'WARNING');
             }}
             className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1 ${
               syncMode === 'LOCAL'
@@ -1297,7 +1307,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
             }`}
             title="Set trade diasingkan pada peranti ini sahaja"
           >
-            <span>📱 {isMalay ? 'Lokal' : 'Local'}</span>
+            <span>ðŸ“± {isMalay ? 'Lokal' : 'Local'}</span>
           </button>
         </div>
 
@@ -1322,7 +1332,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
                     ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' 
                     : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
                 }`}>
-                  {mt5SyncInfo.isConnected ? '🟢 CONNECTED' : '🔴 DISCONNECTED'}
+                  {mt5SyncInfo.isConnected ? 'ðŸŸ¢ CONNECTED' : 'ðŸ”´ DISCONNECTED'}
                 </span>
               </div>
               <span className="text-[11px] text-slate-400 font-mono mt-0.5">
@@ -1364,7 +1374,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
                 className="ml-1 px-1.5 py-0.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 rounded text-[10px] font-sans font-bold transition"
                 title={isMalay ? 'Kosongkan giliran pesanan pending' : 'Clear pending commands queue'}
               >
-                🧹 {isMalay ? 'Bersihkan' : 'Clear'}
+                ðŸ§¹ {isMalay ? 'Bersihkan' : 'Clear'}
               </button>
             )}
           </div>
@@ -1375,7 +1385,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
               onClick={onOpenBrokerConnection}
               className="px-2.5 py-1 bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/50 text-blue-200 hover:text-white rounded-lg transition text-[11px] font-sans font-semibold flex items-center gap-1"
             >
-              <span>⚙️ {isMalay ? 'Urus Bridge' : 'Manage Bridge'}</span>
+              <span>âš™ï¸ {isMalay ? 'Urus Bridge' : 'Manage Bridge'}</span>
             </button>
           )}
         </div>
@@ -1396,7 +1406,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
                 onClick={() => setIsEditingBalance(false)}
                 className="text-slate-400 hover:text-white p-1 rounded-lg text-xs"
               >
-                ✕
+                âœ•
               </button>
             </div>
 
@@ -1477,7 +1487,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
                     }
 
                     addLog(
-                      `💰 Modal akaun dikemaskini secara manual kepada USD $${num.toFixed(2)}. AI kini mengira lot & had posisi automatik mengikut saiz akaun baharu ini.`,
+                      `ðŸ’° Modal akaun dikemaskini secara manual kepada USD $${num.toFixed(2)}. AI kini mengira lot & had posisi automatik mengikut saiz akaun baharu ini.`,
                       'INFO'
                     );
                   }
@@ -1537,7 +1547,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
 
         <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800/90 space-y-1">
           <span className="text-[10px] text-slate-400 font-semibold uppercase block">Kadar Menang (Win Rate)</span>
-          <span className="text-lg font-mono font-bold text-blue-400">{winRate}% ({winsCount}/{totalClosed})</span>
+          <span className="text-lg font-mono font-bold text-blue-400">{winRate === 'N/A' ? 'N/A' : winRate + '%'} ({winsCount}/{totalClosed})</span>
         </div>
       </div>
 
@@ -1549,7 +1559,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-bold text-purple-200 text-xs sm:text-sm">
-                  {isMalay ? '📚 Enjin Ulangkaji Analisis & Homework AI (Self-Study Engine)' : '📚 AI Analysis Review & Homework Engine'}
+                  {isMalay ? 'ðŸ“š Enjin Ulangkaji Analisis & Homework AI (Self-Study Engine)' : 'ðŸ“š AI Analysis Review & Homework Engine'}
                 </span>
                 <span className="px-2 py-0.5 bg-purple-500/20 border border-purple-500/30 text-purple-300 text-[10px] font-mono rounded-full font-semibold">
                   {closedTrades.length} Trade Diteliti
@@ -1568,7 +1578,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
               className="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 disabled:opacity-50 text-white font-bold rounded-lg text-xs transition flex items-center gap-1.5 shadow-md border border-purple-400/30"
             >
               <Sparkles className={`w-3.5 h-3.5 text-amber-300 ${runningHomework ? 'animate-spin' : ''}`} />
-              <span>{runningHomework ? (isMalay ? 'Mengkaji & Backtest...' : 'Reviewing & Backtesting...') : (isMalay ? '⚡ Jalankan Sesi Ulangkaji & Homework AI' : '⚡ Run AI Homework Session')}</span>
+              <span>{runningHomework ? (isMalay ? 'Mengkaji & Backtest...' : 'Reviewing & Backtesting...') : (isMalay ? 'âš¡ Jalankan Sesi Ulangkaji & Homework AI' : 'âš¡ Run AI Homework Session')}</span>
             </button>
           </div>
         </div>
@@ -1675,7 +1685,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
             {isMalay ? 'Perlindungan Risiko Institusi Aktif:' : 'Institutional Risk Guard Active:'}
           </span>
           <span className="text-slate-400 font-mono">
-            {isMalay ? 'Maks 2 Posisi Total • Kawalan Korelasi Mata Wang (Max 1 USD Pair) • Penapis Skor Konfidensi ≥78%' : 'Max 2 Positions • USD Correlation Shield • Confidence Filter ≥78%'}
+            {isMalay ? 'Maks 2 Posisi Total â€¢ Kawalan Korelasi Mata Wang (Max 1 USD Pair) â€¢ Penapis Skor Konfidensi â‰¥78%' : 'Max 2 Positions â€¢ USD Correlation Shield â€¢ Confidence Filter â‰¥78%'}
           </span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -1728,8 +1738,8 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
                   {currentPairTrade
                     ? (isMalay ? 'Posisi Sedang Berjalan' : 'Trade Active')
                     : !validity.isValid
-                    ? (isMalay ? '⚡ Paksa Entri Setup AI (Manual Override)' : '⚡ Override & Execute AI Setup')
-                    : (isMalay ? '⚡ Dagangkan Setup AI Ini Sekarang' : '⚡ Execute AI Setup Now')}
+                    ? (isMalay ? 'âš¡ Paksa Entri Setup AI (Manual Override)' : 'âš¡ Override & Execute AI Setup')
+                    : (isMalay ? 'âš¡ Dagangkan Setup AI Ini Sekarang' : 'âš¡ Execute AI Setup Now')}
                 </span>
               </button>
             </div>
@@ -1759,7 +1769,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
             onClick={() => handleDirectMarketExecute('BUY')}
             className="flex-1 sm:flex-initial px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-1.5 font-mono"
           >
-            <span>⚡ BUY</span>
+            <span>âš¡ BUY</span>
             <span>{activePair}</span>
           </button>
 
@@ -1768,7 +1778,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
             onClick={() => handleDirectMarketExecute('SELL')}
             className="flex-1 sm:flex-initial px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-1.5 font-mono"
           >
-            <span>⚡ SELL</span>
+            <span>âš¡ SELL</span>
             <span>{activePair}</span>
           </button>
         </div>
@@ -1789,7 +1799,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
                 className="px-2.5 py-1 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition"
               >
                 <Brain className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
-                <span>{isMalay ? '🧠 Hub Pembelajaran AI' : '🧠 AI Learning Hub'}</span>
+                <span>{isMalay ? 'ðŸ§  Hub Pembelajaran AI' : 'ðŸ§  AI Learning Hub'}</span>
               </button>
             )}
             {onOpenJournal && (
@@ -1797,7 +1807,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
                 onClick={onOpenJournal}
                 className="text-[11px] text-blue-400 hover:underline"
               >
-                {isMalay ? 'Buka Jurnal Prestasi Full →' : 'View Full Journal →'}
+                {isMalay ? 'Buka Jurnal Prestasi Full â†’' : 'View Full Journal â†’'}
               </button>
             )}
           </div>
@@ -1872,3 +1882,5 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
     </div>
   );
 };
+
+

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { 
   Zap, ShieldCheck, AlertTriangle, Activity, Bot, Cpu, Key, UserCheck, 
   BarChart3, RefreshCw, Layers, CheckCircle, XCircle, Terminal, Play, Pause,
@@ -32,12 +32,9 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
   const [isFetchingAiData, setIsFetchingAiData] = useState(false);
   const [activeHistoryTab, setActiveHistoryTab] = useState<'open' | 'closed' | 'postmortem'>('open');
 
-  // Terminal Live Log Simulation
+  // Terminal Live Logs (Real runtime events)
   const [terminalLogs, setTerminalLogs] = useState<string[]>([
-    `[${new Date().toLocaleTimeString()}] HTTP REST Server initialized on port 3000. Listening for Webhooks...`,
-    `[${new Date().toLocaleTimeString()}] cTrader FIX API Bridge listener online: demo-uk-eqx-01.p.c-trader.com`,
-    `[${new Date().toLocaleTimeString()}] MQL5 EA WebRequest Ping received from Account #11075236 (Latency: 14ms)`,
-    `[${new Date().toLocaleTimeString()}] TradingView Webhook alert received: BUY EUR/USD @ 1.08250`
+    `[${new Date().toLocaleTimeString()}] System Gate Initialized: READ_ONLY_MODE_ENFORCED = true. Zero broker orders permitted.`
   ]);
 
   const fetchBridgeHealth = async () => {
@@ -86,7 +83,7 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
       const res = await fetch('/api/broker/test-bridge', { method: 'POST' });
       const data = await res.json();
       setTerminalLogs(prev => [
-        `[${new Date().toLocaleTimeString()}] 🧪 Diagnostic Handshake Test Complete: Status PASSED (${data.latencyMs}ms)`,
+        `[${new Date().toLocaleTimeString()}] ðŸ§ª Diagnostic Handshake Test Complete: Status PASSED (${data.latencyMs}ms)`,
         ...prev
       ]);
       fetchBridgeHealth();
@@ -102,7 +99,7 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
     try {
       await fetch('/api/broker/clear-queue', { method: 'POST' });
       setTerminalLogs(prev => [
-        `[${new Date().toLocaleTimeString()}] 🧹 Pending command queue cleared by Admin.`,
+        `[${new Date().toLocaleTimeString()}] ðŸ§¹ Pending command queue cleared by Admin.`,
         ...prev
       ]);
       fetchBridgeHealth();
@@ -136,7 +133,7 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
         <div>
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 bg-purple-500/20 border border-purple-500/40 text-purple-300 font-mono text-[10px] font-bold rounded-full uppercase">
-              👑 ADMIN &amp; DEVELOPER MASTER PORTAL
+              ðŸ‘‘ ADMIN &amp; DEVELOPER MASTER PORTAL
             </span>
             <span className="text-xs text-emerald-400 font-mono font-bold flex items-center gap-1">
               <Cloud className="w-3.5 h-3.5 animate-pulse" />
@@ -167,7 +164,7 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
             className="px-3.5 py-2 bg-cyan-950 border border-cyan-500/40 hover:bg-cyan-900 text-cyan-300 font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow"
           >
             <Zap className={`w-4 h-4 ${isTestingHandshake ? 'animate-spin text-amber-400' : 'text-cyan-400'}`} />
-            <span>{isTestingHandshake ? 'Testing...' : '🧪 Run Handshake Diagnostic'}</span>
+            <span>{isTestingHandshake ? 'Testing...' : 'ðŸ§ª Run Handshake Diagnostic'}</span>
           </button>
 
           <button
@@ -470,10 +467,10 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
           </div>
           <div className="text-slate-300 text-[11px] leading-relaxed space-y-1">
             <p>
-              • <strong className="text-amber-300">Sebab Sejarah Closed Trades = {closedTrades.length}:</strong> Semua order yang diminta oleh AI buat masa ini masih dalam status <strong className="text-cyan-300">Posisi Aktif (Open Positions)</strong> atau <strong className="text-purple-300">Menunggu Eksekusi cTrader (Market Closed)</strong>. Selepas cTrader atau AI menutup posisi (Take Profit / Stop Loss hit), rekod akan disinkronkan ke dalam tab <em>Closed Trades</em> secara automatik.
+              â€¢ <strong className="text-amber-300">Sebab Sejarah Closed Trades = {closedTrades.length}:</strong> Semua order yang diminta oleh AI buat masa ini masih dalam status <strong className="text-cyan-300">Posisi Aktif (Open Positions)</strong> atau <strong className="text-purple-300">Menunggu Eksekusi cTrader (Market Closed)</strong>. Selepas cTrader atau AI menutup posisi (Take Profit / Stop Loss hit), rekod akan disinkronkan ke dalam tab <em>Closed Trades</em> secara automatik.
             </p>
             <p>
-              • <strong className="text-emerald-300">Sumber Statistik Baseline:</strong> Statistik Win/Loss keseluruhan menggunakan gabungan model *Backtest 1-Tahun AI (365 hari)* &amp; live execution. Apabila trade cTrader ditutup, statistik dikemaskini secara masa nyata daripada awan server.
+              â€¢ <strong className="text-emerald-300">Sumber Statistik Baseline:</strong> Statistik Win/Loss keseluruhan menggunakan gabungan model *Backtest 1-Tahun AI (365 hari)* &amp; live execution. Apabila trade cTrader ditutup, statistik dikemaskini secara masa nyata daripada awan server.
             </p>
           </div>
         </div>
@@ -561,7 +558,7 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
                     <th className="p-3">Harga Entri</th>
                     <th className="p-3">Harga Penutup</th>
                     <th className="p-3">Sebab Penutupan</th>
-                    <th className="p-3 text-right">Net PnL (€/$)</th>
+                    <th className="p-3 text-right">Net PnL (â‚¬/$)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
@@ -629,7 +626,7 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
                   </p>
 
                   <div className="p-2.5 bg-slate-900 border border-slate-800/80 rounded-lg text-cyan-300 font-bold text-[11px]">
-                    🧠 {pm.adaptiveRuleMs || pm.adaptiveRuleEn}
+                    ðŸ§  {pm.adaptiveRuleMs || pm.adaptiveRuleEn}
                   </div>
                 </div>
               ))}
@@ -721,7 +718,7 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
                 const next = !isKillSwitchActive;
                 setIsKillSwitchActive(next);
                 setTerminalLogs(prev => [
-                  `[${new Date().toLocaleTimeString()}] ⚠️ EMERGENCY KILL SWITCH ${next ? 'ACTIVATED! All EA execution suspended.' : 'DEACTIVATED.'}`,
+                  `[${new Date().toLocaleTimeString()}] âš ï¸ EMERGENCY KILL SWITCH ${next ? 'ACTIVATED! All EA execution suspended.' : 'DEACTIVATED.'}`,
                   ...prev
                 ]);
               }}
@@ -732,7 +729,7 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
               }`}
             >
               <AlertTriangle className="w-4 h-4" />
-              <span>{isKillSwitchActive ? '⚠️ KILL SWITCH ACTIVE' : 'Hentikan Semua EA (Kill Switch)'}</span>
+              <span>{isKillSwitchActive ? 'âš ï¸ KILL SWITCH ACTIVE' : 'Hentikan Semua EA (Kill Switch)'}</span>
             </button>
             <p className="text-[10px] text-slate-500">Membatalkan semua pesanan automatik jika pasaran tidak stabil.</p>
           </div>
@@ -765,3 +762,4 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
     </div>
   );
 };
+

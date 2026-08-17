@@ -5,6 +5,50 @@ import { learningService } from '../services/learningService';
 
 export const decisionRouter = Router();
 
+import { manualSignalService } from '../services/manualSignalService';
+
+// Handle Manual Trade Signal Generation
+async function handleManualSignal(req: Request, res: Response) {
+  try {
+    const signal = await manualSignalService.generateManualSignal(req.body);
+    res.json(signal);
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Manual signal error', executionMode: 'MANUAL', brokerExecution: false });
+  }
+}
+
+// Handle Signal History GET
+function handleSignalHistoryGet(req: Request, res: Response) {
+  res.json({ signals: manualSignalService.getSignalHistory() });
+}
+
+// Handle Manual Trades Journal GET
+function handleManualTradesGet(req: Request, res: Response) {
+  res.json({ trades: manualSignalService.getManualTrades() });
+}
+
+// Handle Manual Trade Record POST
+function handleManualTradeRecord(req: Request, res: Response) {
+  try {
+    const entry = manualSignalService.recordManualTrade(req.body);
+    res.json({ success: true, trade: entry });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to record manual trade' });
+  }
+}
+
+// Handle Manual Trade Close POST
+async function handleManualTradeClose(req: Request, res: Response) {
+  try {
+    const { tradeId } = req.params;
+    const closed = await manualSignalService.closeManualTrade(tradeId, req.body);
+    res.json({ success: true, trade: closed });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to close manual trade' });
+  }
+}
+
+
 // Handle AI Market Opinion
 async function handleAiOpinion(req: Request, res: Response) {
   try {
@@ -141,3 +185,55 @@ decisionRouter.post('/forex/ai-homework-session', handleAiHomeworkSession);
 
 decisionRouter.post('/ai-entry-pattern-analysis', handleAiEntryPatternAnalysis);
 decisionRouter.post('/forex/ai-entry-pattern-analysis', handleAiEntryPatternAnalysis);
+
+decisionRouter.post('/manual-signal', handleManualSignal);
+decisionRouter.post('/forex/manual-signal', handleManualSignal);
+
+decisionRouter.get('/signal-history', handleSignalHistoryGet);
+decisionRouter.get('/forex/signal-history', handleSignalHistoryGet);
+
+decisionRouter.get('/manual-trades', handleManualTradesGet);
+decisionRouter.get('/forex/manual-trades', handleManualTradesGet);
+decisionRouter.post('/manual-trades', handleManualTradeRecord);
+decisionRouter.post('/forex/manual-trades', handleManualTradeRecord);
+decisionRouter.post('/manual-trades/:tradeId/close', handleManualTradeClose);
+decisionRouter.post('/forex/manual-trades/:tradeId/close', handleManualTradeClose);
+
+// Handle User Actual Trade Creation POST (Phase 6B)
+function handleUserActualTradeCreate(req: Request, res: Response) {
+  try {
+    const trade = manualSignalService.createUserActualTrade(req.body);
+    res.json({ success: true, trade });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to create user actual trade' });
+  }
+}
+
+// Handle User Actual Trades GET (Phase 6B)
+function handleUserActualTradesGet(req: Request, res: Response) {
+  try {
+    const status = req.query.status as any;
+    const trades = manualSignalService.getUserActualTrades(status);
+    res.json({ trades });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to get user actual trades' });
+  }
+}
+
+// Handle User Actual Trade Close POST (Phase 6B)
+async function handleUserActualTradeClose(req: Request, res: Response) {
+  try {
+    const { manualTradeId } = req.params;
+    const trade = await manualSignalService.closeUserActualTrade(manualTradeId, req.body);
+    res.json({ success: true, trade });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to close user actual trade' });
+  }
+}
+
+decisionRouter.post('/user-trades', handleUserActualTradeCreate);
+decisionRouter.post('/forex/user-trades', handleUserActualTradeCreate);
+decisionRouter.get('/user-trades', handleUserActualTradesGet);
+decisionRouter.get('/forex/user-trades', handleUserActualTradesGet);
+decisionRouter.post('/user-trades/:manualTradeId/close', handleUserActualTradeClose);
+decisionRouter.post('/forex/user-trades/:manualTradeId/close', handleUserActualTradeClose);

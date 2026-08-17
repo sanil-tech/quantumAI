@@ -13,7 +13,8 @@
     "ctrader:demo:connectivity": "tsx scripts/ctrader-demo-connectivity.ts",
     "test:ctrader:demo": "tsx scripts/ctrader-demo-connectivity.ts",
     "ctrader:demo:trade": "tsx scripts/ctrader-demo-trade.ts",
-    "ctrader:diagnose": "tsx scripts/ctrader-demo-account-state.ts"
+    "ctrader:diagnose": "tsx scripts/ctrader-demo-account-state.ts",
+    "ctrader:fix:diagnose": "tsx scripts/ctrader-fix-logon-diagnostic.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Cpu, ShieldCheck, Zap, Activity, ArrowRight, CheckCircle2, XCircle, AlertTriangle, Play, RefreshCw, BarChart2 } from 'lucide-react';
 import { Language } from '../lib/translations';
 
@@ -107,7 +107,7 @@ export const ExecutionRouterPanel: React.FC<ExecutionRouterPanelProps> = ({
       const mockProposal = {
         id: `prop-sim-${Date.now().toString().slice(-4)}`,
         symbol: simSymbol,
-        direction: Math.random() > 0.5 ? 'BUY' : 'SELL',
+        direction: 'BUY',
         confidence: 0.89,
         evidence: ['SMC Liquidity Sweep', 'EMA200 Confluence', 'RSI Bullish Momentum'],
         agent_votes: [
@@ -128,14 +128,14 @@ export const ExecutionRouterPanel: React.FC<ExecutionRouterPanelProps> = ({
       const data = await res.json();
       if (res.ok && data.decision?.status === 'APPROVED') {
         setLastExecutionLog(
-          `✅ TradeProposal [${mockProposal.id}] -> Risk Approval [${data.decision.approval_id}] -> Executed Order [${data.execution?.order?.order_id}] (Filled @ ${data.execution?.report?.filled_price}, Latency: ${data.execution?.report?.latency_ms}ms)`
+          `âœ… TradeProposal [${mockProposal.id}] -> Risk Approval [${data.decision.approval_id}] -> Executed Order [${data.execution?.order?.order_id}] (Filled @ ${data.execution?.report?.filled_price}, Latency: ${data.execution?.report?.latency_ms}ms)`
         );
         fetchExecutionData();
       } else {
-        setLastExecutionLog(`❌ Trade Rejected by Governance Engine: ${data.decision?.rejection_reasons?.join(', ') || 'Risk limits exceeded'}`);
+        setLastExecutionLog(`âŒ Trade Rejected by Governance Engine: ${data.decision?.rejection_reasons?.join(', ') || 'Risk limits exceeded'}`);
       }
     } catch (err: any) {
-      setLastExecutionLog(`⚠️ Execution Error: ${err.message}`);
+      setLastExecutionLog(`âš ï¸ Execution Error: ${err.message}`);
     } finally {
       setExecutingSim(false);
     }
@@ -315,3 +315,4 @@ export const ExecutionRouterPanel: React.FC<ExecutionRouterPanelProps> = ({
     </div>
   );
 };
+

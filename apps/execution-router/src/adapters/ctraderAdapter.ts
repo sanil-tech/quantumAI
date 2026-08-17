@@ -1,7 +1,8 @@
-import { CTraderConfig } from '@iati/core-types';
+﻿import { CTraderConfig } from '@iati/core-types';
 import { BrokerAdapter } from './brokerAdapter';
 import { Order, ExecutionReport, Position, AccountStatus } from '@iati/core-types';
 import { CTraderTransport } from '../../../../src/integrations/ctrader/ctraderTransport';
+import { CTraderSymbolRegistry, CTraderVolumeNormalizer, CTraderSymbolSpec, VolumeNormalizationResult } from '../../../../src/integrations/ctrader/ctraderSymbolService';
 
 export interface ProtoBufSourceMetadata {
   message: string;
@@ -58,36 +59,32 @@ export class CTraderAdapter implements BrokerAdapter {
         throw new Error('CTRADER_MISSING_CREDENTIALS: Missing required cTrader credentials for environment.');
       }
 
-      const host = this.config.host || (env === 'DEMO' ? 'demo.ctraderapi.com' : 'live.ctraderapi.com');
-      if (process.env.NODE_ENV !== 'test') {
-        await this.transport.connect(host, this.config.port || 5035, this.config.timeoutMs || 5000);
-        const appAuthRes = await this.transport.sendRequest(2100, {
-          clientId: this.config.clientId,
-          clientSecret: this.config.clientSecret
-        });
-        if (appAuthRes.payloadType === 2101) {
-          const accAuthRes = await this.transport.sendRequest(2102, {
-            cTraderAccountId: Number(this.config.accountId),
-            accessToken: this.config.accessToken
-          });
-        }
-      }
+      await this.transport.connect(this.config.host!, this.config.port!, this.config.timeoutMs);
+      await this.transport.sendRequest(2100, {
+        clientId: this.config.clientId,
+        clientSecret: this.config.clientSecret
+      });
+      await this.transport.sendRequest(2102, {
+        ctidTraderAccountId: Number(this.config.accountId),
+        accessToken: this.config.accessToken
+      });
     }
 
     this.connected = true;
     return true;
   }
 
-  async disconnect(): Promise<boolean> {
-    if (process.env.NODE_ENV !== 'test') {
-      await this.transport.disconnect();
-    }
+  async disconnect(): Promise<void> {
+    await this.transport.disconnect();
     this.connected = false;
-    return true;
   }
 
   isConnected(): boolean {
     return this.connected;
+  }
+
+  getTransport(): CTraderTransport {
+    return this.transport;
   }
 
   async fetchTraderDetails(): Promise<{ trader: any; source: ProtoBufSourceMetadata } | null> {
@@ -127,13 +124,57 @@ export class CTraderAdapter implements BrokerAdapter {
       const res = await this.transport.sendRequest(2114, { cTraderAccountId: Number(this.config.accountId) });
       if (res.payloadType === 2115) {
         this.lastSymbolsRes = res;
+        const symbols = res.decodedPayload.symbol || [];
         return {
-          symbols: res.decodedPayload.symbol || [],
+          symbols,
           source: { message: 'ProtoOASymbolsListRes', payloadType: 2115, clientMsgId: res.clientMsgId, verified: true }
         };
       }
     } catch (e) {}
     return null;
+  }
+
+  async fetchSymbolDetails(symbolIds: number[]): Promise<{ symbols: CTraderSymbolSpec[]; source: ProtoBufSourceMetadata } | null> {
+    if (!this.connected || symbolIds.length === 0) return null;
+    try {
+      const res = await this.transport.sendRequest(2116, {
+        ctidTraderAccountId: Number(this.config.accountId),
+        symbolId: symbolIds
+      });
+      if (res.payloadType === 2117) {
+        const rawSymbols = res.decodedPayload.symbol || [];
+        const specs: CTraderSymbolSpec[] = rawSymbols.map((s: any) => ({
+          symbolId: Number(s.symbolId),
+          symbolName: s.symbolName || `SYM_${s.symbolId}`,
+          digits: Number(s.digits || 5),
+          pipPosition: Number(s.pipPosition || 4),
+          minVolume: Number(s.minVolume || 100000),
+          maxVolume: Number(s.maxVolume || 10000000000),
+          stepVolume: Number(s.stepVolume || 100000),
+          lotSize: Number(s.lotSize || 10000000),
+          enableShortSelling: s.enableShortSelling,
+          measurementUnits: s.measurementUnits
+        }));
+        CTraderSymbolRegistry.registerBatch(specs);
+        return {
+          symbols: specs,
+          source: { message: 'ProtoOASymbolByIdRes', payloadType: 2117, clientMsgId: res.clientMsgId, verified: true }
+        };
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  public normalizeVolume(
+    symbolIdOrName: string | number,
+    requestedQuantity: number,
+    inputType: 'LOTS' | 'UNITS' | 'CENTS' = 'LOTS'
+  ): VolumeNormalizationResult {
+    const spec = typeof symbolIdOrName === 'number'
+      ? CTraderSymbolRegistry.getSymbolById(symbolIdOrName)
+      : CTraderSymbolRegistry.getSymbolByName(symbolIdOrName);
+
+    return CTraderVolumeNormalizer.normalizeVolume(spec, requestedQuantity, inputType);
   }
 
   async getAccountStatus(): Promise<AccountStatus & { source?: ProtoBufSourceMetadata }> {
@@ -164,20 +205,27 @@ export class CTraderAdapter implements BrokerAdapter {
   async getPositions(): Promise<Position[]> {
     const recon = await this.reconcileState();
     if (!recon) return [];
-    return recon.positions.map((p: any) => ({
-      position_id: p.positionId.toString(),
-      account_id: this.config.accountId || 'CTRADER_ACC',
-      symbol: p.symbolId.toString(),
-      direction: p.tradeSide === 1 ? 'BUY' : 'SELL',
-      quantity: p.volume / 100000,
-      entry_price: p.entryPrice,
-      current_price: p.entryPrice,
-      unrealized_profit: 0,
-      realized_profit: 0,
-      status: 'OPEN',
-      opened_at: new Date(),
-      updated_at: new Date()
-    }));
+    return recon.positions.map((p: any) => {
+      const spec = CTraderSymbolRegistry.getSymbolById(Number(p.symbolId));
+      const quantity = spec
+        ? CTraderVolumeNormalizer.centsToLots(spec, Number(p.volume))
+        : Number(p.volume) / 10000000;
+
+      return {
+        position_id: p.positionId.toString(),
+        account_id: this.config.accountId || 'CTRADER_ACC',
+        symbol: p.symbolId.toString(),
+        direction: p.tradeSide === 1 ? 'BUY' : 'SELL',
+        quantity,
+        entry_price: p.entryPrice,
+        current_price: p.entryPrice,
+        unrealized_profit: 0,
+        realized_profit: 0,
+        status: 'OPEN',
+        opened_at: new Date(),
+        updated_at: new Date()
+      };
+    });
   }
 
   async placeOrder(order: Order): Promise<ExecutionReport> {

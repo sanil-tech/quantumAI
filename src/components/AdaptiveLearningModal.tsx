@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { PostMortemReview, CurrencyPair, Timeframe } from '../types';
 import { Brain, X, Sparkles, CheckCircle2, XCircle, AlertTriangle, ShieldCheck, RefreshCw, Award, Target, Activity, Zap, Compass, BarChart3, Fingerprint } from 'lucide-react';
 import { Language } from '../lib/translations';
@@ -123,13 +123,13 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
   const handleSimulateNewPostMortem = async () => {
     setAnalyzingTrade(true);
     try {
-      const isLoss = Math.random() > 0.4;
+      const isLoss = false;
       const res = await fetch('/api/forex/post-mortem', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           pair: activePair,
-          direction: Math.random() > 0.5 ? 'BUY' : 'SELL',
+          direction: false ? 'BUY' : 'SELL',
           entryPrice: activePair === 'XAU/USD' ? 2385.5 : 1.0835,
           exitPrice: isLoss ? (activePair === 'XAU/USD' ? 2392.0 : 1.0805) : (activePair === 'XAU/USD' ? 2372.0 : 1.0880),
           stopLoss: activePair === 'XAU/USD' ? 2392.0 : 1.0805,
@@ -227,7 +227,7 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
               className="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition flex items-center gap-1.5 shadow-lg border border-purple-400/30"
             >
               <Sparkles className={`w-3.5 h-3.5 text-amber-300 ${runningHomework ? 'animate-spin' : ''}`} />
-              <span>{runningHomework ? (isMalay ? 'Ulangkaji AI...' : 'Analyzing...') : (isMalay ? '📚 Ulangkaji AI' : '📚 AI Homework')}</span>
+              <span>{runningHomework ? (isMalay ? 'Ulangkaji AI...' : 'Analyzing...') : (isMalay ? 'ðŸ“š Ulangkaji AI' : 'ðŸ“š AI Homework')}</span>
             </button>
 
             <button
@@ -252,7 +252,7 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
             }`}
           >
             <Fingerprint className="w-4 h-4 text-purple-300" />
-            <span>{isMalay ? '🧬 Analisis Corak Entri & Profil AI' : '🧬 User Entry Pattern & DNA'}</span>
+            <span>{isMalay ? 'ðŸ§¬ Analisis Corak Entri & Profil AI' : 'ðŸ§¬ User Entry Pattern & DNA'}</span>
           </button>
 
           <button
@@ -264,7 +264,7 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
             }`}
           >
             <Brain className="w-4 h-4 text-purple-300" />
-            <span>{isMalay ? '📚 Hub Memori Post-Mortem AI' : '📚 AI Post-Mortem Memory Hub'}</span>
+            <span>{isMalay ? 'ðŸ“š Hub Memori Post-Mortem AI' : 'ðŸ“š AI Post-Mortem Memory Hub'}</span>
             <span className="px-1.5 py-0.5 rounded-full bg-slate-800 text-[10px] text-purple-300 font-mono font-bold">
               {reviews.length}
             </span>
@@ -421,11 +421,11 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
                 <div className="flex items-center gap-2">
                   <Zap className="w-4 h-4 text-amber-400 animate-bounce" />
                   <h4 className="font-bold text-white text-xs sm:text-sm">
-                    {isMalay ? '⚡ Pre-Check Entri Sebelum Eksekusi (AI Entry Validator)' : '⚡ Interactive Pre-Trade AI Setup Evaluator'}
+                    {isMalay ? 'âš¡ Pre-Check Entri Sebelum Eksekusi (AI Entry Validator)' : 'âš¡ Interactive Pre-Trade AI Setup Evaluator'}
                   </h4>
                 </div>
                 <span className="text-[10px] text-slate-400 font-mono">
-                  {activePair} • {activeTimeframe}
+                  {activePair} â€¢ {activeTimeframe}
                 </span>
               </div>
 
@@ -546,11 +546,11 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
                   <div className="flex items-center gap-2">
                     <Brain className="w-5 h-5 text-purple-400 animate-pulse" />
                     <h4 className="font-bold text-white text-sm">
-                      {isMalay ? '🎓 Laporan Sesi Ulangkaji Analisis & Homework AI' : '🎓 AI Analysis Review & Homework Report'}
+                      {isMalay ? 'ðŸŽ“ Laporan Sesi Ulangkaji Analisis & Homework AI' : 'ðŸŽ“ AI Analysis Review & Homework Report'}
                     </h4>
                   </div>
                   <span className="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono text-[10px] rounded-full font-bold">
-                    ✓ AutoTrader Updated
+                    âœ“ AutoTrader Updated
                   </span>
                 </div>
 
@@ -722,7 +722,7 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
                             isLoss ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                           }`}>
                             {isLoss ? <XCircle className="w-3.5 h-3.5 text-rose-400" /> : <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
-                            {item.outcome} • {item.direction} {item.pair}
+                            {item.outcome} â€¢ {item.direction} {item.pair}
                           </span>
                           <span className="text-[11px] font-mono text-slate-400">
                             Entry: {item.entryPrice} | Exit: {item.exitPrice}
@@ -784,3 +784,5 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
     </div>
   );
 };
+
+

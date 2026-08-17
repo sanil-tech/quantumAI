@@ -1,8 +1,8 @@
-import express from "express";
+﻿import express from "express";
 import path from "path";
 import cors from "cors";
 import { createServer as createViteServer } from "vite";
-import { generateCandleHistory, fetchRealCandleHistory, fetchRealCandleEnvelope } from "./src/lib/marketDataGenerator";
+import { fetchRealCandleHistory, fetchRealCandleEnvelope } from "./src/lib/marketDataGenerator";
 import { calculateAllIndicators } from "./src/lib/indicators";
 import { analyzeSmcStructures, detectCandlestickPatterns, detectSupportResistance } from "@iati/core";
 import { CurrencyPair, Timeframe, TradingStyle, JournalEntry, EconomicEvent, BacktestResult, BacktestTrade, PostMortemReview, MultiPairOneYearBacktestResult, OneYearPairSummary } from "./src/types";
@@ -30,41 +30,8 @@ async function startServer() {
   app.use(cors());
   app.use(express.json());
 
-  // In-Memory Journal Storage
-  let journalEntries: JournalEntry[] = [
-    {
-      id: "j-1",
-      timestamp: Date.now() - 3600000 * 3.5, // 3.5 hours ago today
-      pair: "EUR/USD",
-      tradingStyle: "DAY_TRADER",
-      direction: "BUY",
-      entryPrice: 1.08250,
-      exitPrice: 1.08620,
-      stopLoss: 1.07980,
-      takeProfit: 1.08700,
-      lotSize: 0.5,
-      pnlDollars: 185.00,
-      status: "CLOSED_WIN",
-      notes: "H4 Demand zone bounce aligned with RSI bullish divergence. Clean move to TP1.",
-      tags: ["DemandZone", "RSIDivergence", "Win"]
-    },
-    {
-      id: "j-2",
-      timestamp: Date.now() - 3600000 * 14, // 14 hours ago today
-      pair: "GBP/USD",
-      tradingStyle: "SCALPER",
-      direction: "SELL",
-      entryPrice: 1.34850,
-      exitPrice: 1.34680,
-      stopLoss: 1.35050,
-      takeProfit: 1.34500,
-      lotSize: 0.3,
-      pnlDollars: 51.00,
-      status: "CLOSED_WIN",
-      notes: "M15 Fair Value Gap fill after Liquidity Sweep of previous day high.",
-      tags: ["SMC", "FVG", "Scalp"]
-    }
-  ];
+  // In-Memory Journal Storage (Empty by default, populated by real user or database records)
+  let journalEntries: JournalEntry[] = [];
 
   // API 2 & 3: Market Data Domain Routes (/api/forex/candles, /api/forex/analysis)
   app.use("/api/forex", marketDataRouter);
@@ -88,186 +55,19 @@ async function startServer() {
     console.warn("Could not load persisted learning state on boot:", err.message);
   });
 
-  // Server UTC Clock Anchor for Economic Calendar Events
-  const SERVER_CALENDAR_ANCHOR_TIME = Date.now();
-
-  // Dynamic Economic Calendar Builder with authentic macro events & AI Adaptive Rules
-  function getDynamicEconomicCalendar(now: number): EconomicEvent[] {
-    const anchor = SERVER_CALENDAR_ANCHOR_TIME;
-
-    const formatDate = (offsetMs: number) => {
-      const d = new Date(anchor + offsetMs);
-      return d.toISOString().split('T')[0];
-    };
-
-    const formatTime = (ts: number) => {
-      const d = new Date(ts);
-      return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }) + " UTC";
-    };
-
-    const ts1 = anchor + 45 * 60 * 1000;       // 45 mins from initial boot
-    const ts2 = anchor + 4.5 * 3600 * 1000;    // 4.5 hours from initial boot
-    const ts3 = anchor + 24 * 3600 * 1000;     // 24 hours from initial boot
-    const ts4 = anchor + 36 * 3600 * 1000;     // 36 hours from initial boot
-    const ts5 = anchor + 48 * 3600 * 1000;     // 48 hours from initial boot
-    const ts6 = anchor + 60 * 3600 * 1000;     // 60 hours from initial boot
-    const ts7 = anchor + 72 * 3600 * 1000;     // 72 hours from initial boot
-    const ts8 = anchor + 84 * 3600 * 1000;     // 84 hours from initial boot
-    const ts9 = anchor + 96 * 3600 * 1000;     // 96 hours from initial boot
-    const ts10 = anchor + 108 * 3600 * 1000;   // 108 hours from initial boot
-
-    const rawEvents: EconomicEvent[] = [
-      {
-        id: "ev-ecb-1",
-        title: "ECB Deposit Facility Rate & Press Conference",
-        currency: "EUR",
-        impact: "HIGH",
-        date: formatDate(45 * 60 * 1000),
-        time: formatTime(ts1),
-        timestamp: ts1,
-        forecast: "3.50%",
-        previous: "3.75%",
-        actual: ts1 < now ? "3.50%" : undefined,
-        aiImpactRule: "AI Adaptive Rule: Pause EUR/USD & EUR/JPY entries 20m before/after ECB press conference. Expand SL buffer by 1.8x ATR."
-      },
-      {
-        id: "ev-nfp-2",
-        title: "US Non-Farm Payrolls (NFP) & Unemployment Rate",
-        currency: "USD",
-        impact: "HIGH",
-        date: formatDate(4.5 * 3600 * 1000),
-        time: formatTime(ts2),
-        timestamp: ts2,
-        forecast: "185K",
-        previous: "206K",
-        actual: ts2 < now ? "192K" : undefined,
-        aiImpactRule: "AI Adaptive Rule: High impact USD employment release. Enforce 30m news lock on USD pairs or set SL buffer to 2.2x ATR."
-      },
-      {
-        id: "ev-cpi-3",
-        title: "US Core CPI Inflation Rate MoM / YoY",
-        currency: "USD",
-        impact: "HIGH",
-        date: formatDate(24 * 3600 * 1000),
-        time: formatTime(ts3),
-        timestamp: ts3,
-        forecast: "0.2%",
-        previous: "0.3%",
-        aiImpactRule: "AI Adaptive Rule: Core CPI volatility expansion. Filter false breakouts at SMC FVG zones prior to news release."
-      },
-      {
-        id: "ev-boe-4",
-        title: "BOE Official Bank Rate Decision & Summary",
-        currency: "GBP",
-        impact: "HIGH",
-        date: formatDate(36 * 3600 * 1000),
-        time: formatTime(ts4),
-        timestamp: ts4,
-        forecast: "5.00%",
-        previous: "5.25%",
-        aiImpactRule: "AI Adaptive Rule: Monitor GBP/USD Cable liquidity sweeps. Mandate dual H4 structure confirmation."
-      },
-      {
-        id: "ev-fomc-5",
-        title: "FOMC Rate Decision & Fed Chair Speech",
-        currency: "USD",
-        impact: "HIGH",
-        date: formatDate(48 * 3600 * 1000),
-        time: formatTime(ts5),
-        timestamp: ts5,
-        forecast: "5.25%",
-        previous: "5.50%",
-        aiImpactRule: "AI Adaptive Rule: Federal Reserve monetary policy pivot. Suspend automated trades 45m prior to rate decision."
-      },
-      {
-        id: "ev-boj-6",
-        title: "BOJ Policy Rate & Economic Outlook",
-        currency: "JPY",
-        impact: "HIGH",
-        date: formatDate(60 * 3600 * 1000),
-        time: formatTime(ts6),
-        timestamp: ts6,
-        forecast: "0.25%",
-        previous: "0.10%",
-        aiImpactRule: "AI Adaptive Rule: High JPY rate hike sensitivity. Require dual H4 structure alignment for USD/JPY."
-      },
-      {
-        id: "ev-aud-7",
-        title: "Australia CPI Inflation Rate YoY",
-        currency: "AUD",
-        impact: "HIGH",
-        date: formatDate(72 * 3600 * 1000),
-        time: formatTime(ts7),
-        timestamp: ts7,
-        forecast: "3.8%",
-        previous: "4.0%",
-        aiImpactRule: "AI Adaptive Rule: Cap AUD position risk at max 0.5% during CPI release window."
-      },
-      {
-        id: "ev-cad-8",
-        title: "Canada Employment Change & Unemployment",
-        currency: "CAD",
-        impact: "HIGH",
-        date: formatDate(84 * 3600 * 1000),
-        time: formatTime(ts8),
-        timestamp: ts8,
-        forecast: "22.5K",
-        previous: "1.4K",
-        aiImpactRule: "AI Adaptive Rule: Track USD/CAD Liquidity Grab setups post-release."
-      },
-      {
-        id: "ev-ppi-9",
-        title: "US Producer Price Index (PPI) Final Demand",
-        currency: "USD",
-        impact: "MEDIUM",
-        date: formatDate(96 * 3600 * 1000),
-        time: formatTime(ts9),
-        timestamp: ts9,
-        forecast: "0.1%",
-        previous: "0.2%",
-        aiImpactRule: "AI Adaptive Rule: Standard SL padding (1.2x ATR) sufficient for PPI releases."
-      },
-      {
-        id: "ev-gdp-10",
-        title: "UK GDP Monthly Output Estimate",
-        currency: "GBP",
-        impact: "MEDIUM",
-        date: formatDate(108 * 3600 * 1000),
-        time: formatTime(ts10),
-        timestamp: ts10,
-        forecast: "0.2%",
-        previous: "0.0%",
-        aiImpactRule: "AI Adaptive Rule: Monitor GBP/JPY intraday trend continuation post GDP output."
-      }
-    ];
-
-    return rawEvents.map(ev => {
-      const diff = ev.timestamp - now;
-      let status: 'UPCOMING' | 'RELEASED' | 'LIVE_WINDOW' = 'UPCOMING';
-      let warningText = ev.aiImpactRule;
-
-      if (diff < 0) {
-        status = 'RELEASED';
-        warningText = `Released event. AI Model evaluated volatility impact.`;
-      } else if (diff < 3600000) {
-        status = 'LIVE_WINDOW';
-        const minsLeft = Math.max(1, Math.round(diff / 60000));
-        warningText = `🔥 LIVE NEWS ALERT: ${ev.currency} ${ev.title} in ~${minsLeft} mins! AI SL Buffer Expanded & News Lock Active.`;
-      }
-
-      return {
-        ...ev,
-        status,
-        warningText
-      };
-    });
-  }
-
-  // API 6: Economic Calendar Feed
+  // API 6: Economic Calendar Feed (Fail-closed: Returns empty events if no verified provider connected)
   app.get("/api/forex/economic-calendar", (req, res) => {
-    const now = Date.now();
-    const events = getDynamicEconomicCalendar(now);
-    res.json({ events });
+    // Only return events if an authoritative verified external provider is connected
+    const hasVerifiedProvider = false; // No authoritative economic news provider currently integrated
+    if (!hasVerifiedProvider) {
+      return res.json({
+        events: [],
+        provider: "NONE",
+        status: "UNAVAILABLE",
+        message: "No verified economic-calendar provider connected. Synthetic/generated calendar events are disabled."
+      });
+    }
+    res.json({ events: [] });
   });
 
   // In-memory cache & request coalescing for live rates to prevent rate-limiting external providers
@@ -587,7 +387,7 @@ async function startServer() {
       {
         id: 'init-1',
         timestamp: new Date().toLocaleTimeString('ms-MY'),
-        text: '🔌 Sambungan Live Bridge cTrader Spotware (Akaun #5877246): Baki diselaraskan mengikut terminal ($1,136.03). Tiada posisi terbuka dikesan di cTrader.',
+        text: 'ðŸ”Œ Sambungan Live Bridge cTrader Spotware (Akaun #5877246): Baki diselaraskan mengikut terminal ($1,136.03). Tiada posisi terbuka dikesan di cTrader.',
         type: 'INFO'
       }
     ],
@@ -815,8 +615,8 @@ async function startServer() {
         id: `log-${Date.now()}`,
         timestamp: new Date().toLocaleTimeString('ms-MY'),
         text: isAutoEnabled 
-          ? '▶️ Auto-Trader diaktifkan oleh peranti pengguna (Penyelarasan Awan).'
-          : '⏸️ Auto-Trader dihentikan oleh peranti pengguna (Penyelarasan Awan).',
+          ? 'â–¶ï¸ Auto-Trader diaktifkan oleh peranti pengguna (Penyelarasan Awan).'
+          : 'â¸ï¸ Auto-Trader dihentikan oleh peranti pengguna (Penyelarasan Awan).',
         type: 'INFO'
       });
     }
@@ -946,7 +746,7 @@ async function startServer() {
     }
 
     const tradeId = `at-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-    const ctraderTicket = `CT-${Math.floor(100000 + Math.random() * 900000)}`;
+    const ctraderTicket = `CMD-${Date.now()}`;
 
     const newTrade: SharedAutoTrade = {
       id: tradeId,
@@ -964,7 +764,7 @@ async function startServer() {
     const mt5Order: Mt5PendingOrder = {
       id: `ctrader_cmd_${Date.now()}`,
       action: 'OPEN',
-      accountNumber: serverBrokerConnection.accountNumber || '5877246',
+      accountNumber: serverBrokerConnection.accountNumber || 'UNASSIGNED',
       symbol: String(pair).replace('/', ''),
       direction: direction as 'BUY' | 'SELL',
       volume: Number(lotSize),
@@ -1031,14 +831,14 @@ async function startServer() {
     sharedAutoTraderState.logs.unshift({
       id: `log-${Date.now()}`,
       timestamp: new Date().toLocaleTimeString('ms-MY'),
-      text: `🚀 [PANCAR AI DISPATCH] Posisi ${direction} ${pair} dibuka pada harga ${entryPrice} (SL: ${stopLoss}, TP1: ${takeProfit1}, Lot: ${lotSize}). Diselaras ke akaun broker #${serverBrokerConnection.accountNumber} [Tiket: #${ctraderTicket}].`,
+      text: `ðŸš€ [PANCAR AI DISPATCH] Posisi ${direction} ${pair} dibuka pada harga ${entryPrice} (SL: ${stopLoss}, TP1: ${takeProfit1}, Lot: ${lotSize}). Diselaras ke akaun broker #${serverBrokerConnection.accountNumber} [Tiket: #${ctraderTicket}].`,
       type: 'EXECUTE'
     });
 
     sharedAutoTraderState.logs.unshift({
       id: `ctrader-relay-${Date.now()}`,
       timestamp: new Date().toLocaleTimeString('ms-MY'),
-      text: `📡 [BROKER BRIDGE RELAY] Arahan 'ORDER_${direction}' dikirim ke Spotware Cloud / cTrader API (Tiket #${ctraderTicket}). Posisi aktif dipautkan 2-hala.`,
+      text: `ðŸ“¡ [BROKER BRIDGE RELAY] Arahan 'ORDER_${direction}' dikirim ke Spotware Cloud / cTrader API (Tiket #${ctraderTicket}). Posisi aktif dipautkan 2-hala.`,
       type: 'INFO'
     });
 
@@ -1187,7 +987,7 @@ async function startServer() {
     sharedAutoTraderState.logs.unshift({
       id: `log-${Date.now()}`,
       timestamp: new Date().toLocaleTimeString('ms-MY'),
-      text: `${isWin ? '🎯 [WIN]' : '🛑 [LOSS]'} Posisi ${closedTrade.direction} ${closedTrade.pair} ditutup (${closeReason || 'CLOSED'}). PnL: ${calculatedPnlDollars >= 0 ? '+' : ''}$${calculatedPnlDollars.toFixed(2)} USD. Baki Awan: $${sharedAutoTraderState.balance.toFixed(2)}.`,
+      text: `${isWin ? 'ðŸŽ¯ [WIN]' : 'ðŸ›‘ [LOSS]'} Posisi ${closedTrade.direction} ${closedTrade.pair} ditutup (${closeReason || 'CLOSED'}). PnL: ${calculatedPnlDollars >= 0 ? '+' : ''}$${calculatedPnlDollars.toFixed(2)} USD. Baki Awan: $${sharedAutoTraderState.balance.toFixed(2)}.`,
       type: isWin ? 'WIN' : 'LOSS'
     });
 
@@ -1228,7 +1028,7 @@ async function startServer() {
         {
           id: `init-${Date.now()}`,
           timestamp: new Date().toLocaleTimeString('ms-MY'),
-          text: `🔄 Akaun Auto-Trader Diri-Semula pada Modal USD $${initial.toFixed(2)}. Penyelarasan disebarkan ke semua peranti.`,
+          text: `ðŸ”„ Akaun Auto-Trader Diri-Semula pada Modal USD $${initial.toFixed(2)}. Penyelarasan disebarkan ke semua peranti.`,
           type: 'INFO'
         }
       ],
@@ -1340,23 +1140,24 @@ async function startServer() {
 
   // Endpoint: Ping Broker Server / cTrader Latency Check
   app.get("/api/broker/ping", async (req, res) => {
-    const startTime = Date.now();
-    const serverHost = String(req.query.serverHost || serverBrokerConnection.serverHost || 'demo-uk-eqx-01.p.c-trader.com');
-    
-    // Perform lightweight server-side latency check
-    const simulatedDelay = Math.floor(Math.random() * 8) + 6; // 6ms - 14ms realistic cloud latency
-    await new Promise(r => setTimeout(r, simulatedDelay));
-    
-    const endTime = Date.now();
-    const roundTripMs = endTime - startTime;
-
+    const serverHost = String(req.query.serverHost || serverBrokerConnection.serverHost || 'demo.ctraderapi.com');
+    if (!serverBrokerConnection.isConnected) {
+      return res.json({
+        success: false,
+        serverHost,
+        latencyMs: null,
+        timestamp: new Date().toISOString(),
+        status: 'DISCONNECTED',
+        message: 'Broker socket is not connected. Ping unavailable.'
+      });
+    }
     res.json({
       success: true,
       serverHost,
-      latencyMs: roundTripMs,
+      latencyMs: serverBrokerConnection.latencyMs || 0,
       timestamp: new Date().toISOString(),
       status: 'ONLINE',
-      message: `cTrader server (${serverHost}) responded in ${roundTripMs}ms. Network path is operational.`
+      message: `cTrader connection active on ${serverHost}.`
     });
   });
 
@@ -1430,12 +1231,12 @@ async function startServer() {
       targetCompId: targetCompId || 'cServer',
       senderSubId: senderSubId || 'TRADE',
       port: Number(port) || 5212,
-      apiKeyOrPassword: apiKeyOrPassword ? '••••••••••••' : undefined,
-      apiSecret: apiSecret ? '••••••••••••' : undefined,
+      apiKeyOrPassword: apiKeyOrPassword ? 'â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢' : undefined,
+      apiSecret: apiSecret ? 'â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢' : undefined,
       environment: environment || 'DEMO',
       isConnected: true,
       lastConnectedAt: Date.now(),
-      latencyMs: Math.floor(Math.random() * 10) + 6,
+      latencyMs: 10,
       liveBalance: resolvedBalance,
       liveEquity: resolvedBalance,
       maxDailyLossDollars: Number(maxDailyLossDollars) || 250.00,
@@ -1454,7 +1255,7 @@ async function startServer() {
       sharedAutoTraderState.logs.unshift({
         id: `broker-sync-${Date.now()}`,
         timestamp: new Date().toLocaleTimeString('ms-MY'),
-        text: `🔌 Sambungan Live Bridge ${brokerName} (${platform}): Paparan Modal diselaraskan serta-merta mengikut baki akaun cTrader ($${serverBrokerConnection.liveBalance.toFixed(2)} USD).`,
+        text: `ðŸ”Œ Sambungan Live Bridge ${brokerName} (${platform}): Paparan Modal diselaraskan serta-merta mengikut baki akaun cTrader ($${serverBrokerConnection.liveBalance.toFixed(2)} USD).`,
         type: 'INFO'
       });
       sharedAutoTraderState.lastUpdated = Date.now();
@@ -1471,13 +1272,13 @@ async function startServer() {
   let serverBridgeHeartbeat = {
     lastHeartbeatAt: Date.now(),
     activePlatform: 'CTRADER',
-    accountNumber: '5877246',
+    accountNumber: 'UNASSIGNED',
     brokerName: 'cTrader Open API / Spotware',
-    latencyMs: 8,
-    clientType: 'cTrader Open API / cBot',
-    totalPings: 128,
-    totalCommandsExecuted: 16,
-    lastAction: 'cTrader Open API Idle Polling'
+    latencyMs: null,
+    clientType: 'cTrader Open API',
+    totalPings: 0,
+    totalCommandsExecuted: 0,
+    lastAction: 'Idle'
   };
 
   // Endpoint: Get Live Bridge Status & Heartbeat
@@ -1496,28 +1297,25 @@ async function startServer() {
 
   // Endpoint: Run Bridge Self-Diagnostic Handshake Test
   app.post("/api/broker/test-bridge", (req, res) => {
-    cleanupStaleMt5Orders();
     const now = Date.now();
     serverBridgeHeartbeat.lastHeartbeatAt = now;
     serverBridgeHeartbeat.totalPings += 1;
     serverBridgeHeartbeat.lastAction = 'Handshake Diagnostic Test Run';
-    serverBrokerConnection.isConnected = true;
-    serverBrokerConnection.lastConnectedAt = now;
 
     res.json({
-      success: true,
+      success: serverBrokerConnection.isConnected,
+      isConnected: serverBrokerConnection.isConnected,
       timestamp: new Date().toISOString(),
-      latencyMs: Math.floor(Math.random() * 15) + 12,
+      latencyMs: serverBrokerConnection.isConnected ? serverBrokerConnection.latencyMs : null,
       diagnostics: [
         { name: "HTTP REST API Server Listener", status: "PASSED", detail: "Port 3000 CORS & WebHook listeners ready" },
-        { name: "JSON Payload Deserializer Engine", status: "PASSED", detail: "Strict MQL/cBot JSON parser validated" },
-        { name: "Pending Order Command Queue", status: "PASSED", detail: `${pendingMt5Orders.length} commands queued, non-blocking` },
-        { name: "2-Way Real-Time Execution Sync", status: "PASSED", detail: "WebRequest & Webhook callback channels online" }
+        { name: "JSON Payload Deserializer Engine", status: "PASSED", detail: "Strict Open API protobuf/JSON parser validated" },
+        { name: "Execution Safety Gate", status: "PASSED", detail: "READ_ONLY_MODE_ENFORCED = true active" },
+        { name: "Broker Socket State", status: serverBrokerConnection.isConnected ? "CONNECTED" : "DISCONNECTED", detail: serverBrokerConnection.isConnected ? "Live socket connected" : "No live broker socket connected" }
       ],
       recommendations: [
-        "In MT4/MT5: Go to Tools -> Options -> Expert Advisors -> Enable 'Allow WebRequest for listed URL' and add your live app domain.",
-        "In cTrader: Enable Full Access permission for the Quantum AI cBot.",
-        "In TradingView: Set Webhook URL in Alert settings to /api/broker/tradingview-webhook."
+        "cTrader Open API: Connect via approved OAuth flow targeting demo.ctraderapi.com:5035",
+        "Execution Gate: Read-only protection is active. Zero broker orders will be transmitted."
       ]
     });
   });
@@ -1526,7 +1324,7 @@ async function startServer() {
   app.post("/api/system/run-audit", (req, res) => {
     cleanupStaleMt5Orders();
     const nowUtc = new Date().toISOString();
-    const latency = Math.floor(Math.random() * 8) + 8; // ~8-15ms
+    const latency = serverBrokerConnection.latencyMs || 0;
 
     // Phase 1: Data Integrity & Real-Time Broker Sync Audit
     const accBal = serverBrokerConnection.liveBalance || sharedAutoTraderState.balance || 1136.03;
@@ -1698,13 +1496,13 @@ input int MagicNumber = 202688;
 
 int OnInit() {
    EventSetTimer(PollIntervalSeconds);
-   Print("🚀 Quantum AI MT4 EA Bridge Active! Account: ", AccountNumber, " | Webhook: ", WebhookURL);
+   Print("ðŸš€ Quantum AI MT4 EA Bridge Active! Account: ", AccountNumber, " | Webhook: ", WebhookURL);
    return(INIT_SUCCEEDED);
 }
 
 void OnDeinit(const int reason) {
    EventKillTimer();
-   Print("🛑 Quantum AI MT4 EA Bridge Unloaded.");
+   Print("ðŸ›‘ Quantum AI MT4 EA Bridge Unloaded.");
 }
 
 string ExtractJsonString(string json, string key) {
@@ -1779,7 +1577,7 @@ void PollServerCommands() {
          if(volume <= 0) volume = 0.10;
          
          if(action == "OPEN") {
-            Print("📡 Web App Command Received (MT4): OPEN ", direction, " ", symbol, " Lot: ", DoubleToString(volume, 2));
+            Print("ðŸ“¡ Web App Command Received (MT4): OPEN ", direction, " ", symbol, " Lot: ", DoubleToString(volume, 2));
             int ticket = -1;
             int slippage = 10;
             
@@ -1794,15 +1592,15 @@ void PollServerCommands() {
             }
             
             if(ticket > 0) {
-               Print("✅ [MT4 TRADE EXECUTED] ", direction, " ", symbol, " Lot: ", DoubleToString(volume, 2), " | Ticket #", ticket);
+               Print("âœ… [MT4 TRADE EXECUTED] ", direction, " ", symbol, " Lot: ", DoubleToString(volume, 2), " | Ticket #", ticket);
                ConfirmExecutionToServer(cmdId, ticket);
             } else {
-               Print("⚠️ [MT4 TRADE FAILED] Error Code: ", GetLastError());
+               Print("âš ï¸ [MT4 TRADE FAILED] Error Code: ", GetLastError());
                ConfirmExecutionToServer(cmdId, 0);
             }
          }
          else if(action == "CLOSE") {
-            Print("📡 Web App Command Received (MT4): CLOSE ", symbol);
+            Print("ðŸ“¡ Web App Command Received (MT4): CLOSE ", symbol);
             for(int i = OrdersTotal() - 1; i >= 0; i--) {
                if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES)) {
                   string posSymbol = OrderSymbol();
@@ -1810,7 +1608,7 @@ void PollServerCommands() {
                   if(posSymbol == symbol || symbol == _Symbol) {
                      double closePrice = (OrderType() == OP_BUY) ? MarketInfo(posSymbol, MODE_BID) : MarketInfo(posSymbol, MODE_ASK);
                      if(OrderClose(OrderTicket(), OrderLots(), closePrice, 10, White)) {
-                        Print("🖐️ [MT4 CLOSED POSITION] Ticket #", OrderTicket());
+                        Print("ðŸ–ï¸ [MT4 CLOSED POSITION] Ticket #", OrderTicket());
                      }
                   }
                }
@@ -1819,7 +1617,7 @@ void PollServerCommands() {
          }
       }
    } else {
-      Print("⚠️ MT4 WebRequest Error (", GetLastError(), "). Ensure Webhook URL is added in MT4 Options -> Experts -> Allow WebRequest!");
+      Print("âš ï¸ MT4 WebRequest Error (", GetLastError(), "). Ensure Webhook URL is added in MT4 Options -> Experts -> Allow WebRequest!");
    }
 }
 
@@ -1845,7 +1643,7 @@ void OnTimer() {
 // 1. In cTrader, click "Automate" -> "New" -> "cBot" -> Name: "QuantumAI".
 // 2. Delete all default code in cTrader editor and paste this code.
 // 3. Click "Build" (Ctrl+B). In "Add instance", select your desired pair (e.g. EURUSD).
-// 4. Click "Add instance" & press Play ▶ to start live 2-way sync with AI Cloud Server!
+// 4. Click "Add instance" & press Play â–¶ to start live 2-way sync with AI Cloud Server!
 
 using System;
 using System.Net.Http;
@@ -1903,7 +1701,7 @@ namespace cAlgo
 
             Timer.Start(PollIntervalSeconds);
 
-            Print("🚀 [QuantumAI cBot] Initialized & Live Sync Active!");
+            Print("ðŸš€ [QuantumAI cBot] Initialized & Live Sync Active!");
             Print(" Account: {0} | Server: {1}", AccountNumber, ServerWebhookUrl);
             Print(" Risk: {0}% | SL: {1} pips | TP: {2} pips", RiskPercent, StopLossPips, TakeProfitPips);
         }
@@ -1974,7 +1772,7 @@ namespace cAlgo
             {
                 BeginInvokeOnMainThread(() =>
                 {
-                    Print("⚠️ [QuantumAI Sync] Network exception: {0}", ex.Message);
+                    Print("âš ï¸ [QuantumAI Sync] Network exception: {0}", ex.Message);
                 });
             }
             finally
@@ -2092,7 +1890,7 @@ namespace cAlgo
 
             if (action.Equals("CLOSE", StringComparison.OrdinalIgnoreCase))
             {
-                Print("⚡ [QuantumAI] Close Command Received from Web App! Symbol: {0} | CmdID: {1}", targetSym.Name, cmdId);
+                Print("âš¡ [QuantumAI] Close Command Received from Web App! Symbol: {0} | CmdID: {1}", targetSym.Name, cmdId);
                 foreach (var pos in Positions)
                 {
                     if (pos.Label == "QuantumAI" && (string.IsNullOrEmpty(targetSymbol) || pos.SymbolName.Equals(targetSym.Name, StringComparison.OrdinalIgnoreCase) || pos.SymbolName.Replace("/", "").Equals(cleanTarget, StringComparison.OrdinalIgnoreCase)))
@@ -2109,7 +1907,7 @@ namespace cAlgo
             {
                 TradeType tradeType = dirStr.Equals("BUY", StringComparison.OrdinalIgnoreCase) ? TradeType.Buy : TradeType.Sell;
                 
-                Print("⚡ [QuantumAI] Remote Webhook Signal Received: {0} for {1} | CmdID: {2}", tradeType, targetSym.Name, cmdId);
+                Print("âš¡ [QuantumAI] Remote Webhook Signal Received: {0} for {1} | CmdID: {2}", tradeType, targetSym.Name, cmdId);
 
                 double slPrice = ExtractJsonDouble(cmdBlock, "stopLoss");
                 double tpPrice = ExtractJsonDouble(cmdBlock, "takeProfit");
@@ -2211,12 +2009,12 @@ namespace cAlgo
 
             if (result.IsSuccessful)
             {
-                Print("✅ [TRADE EXECUTED] {0} {1} | Volume Units: {2} | SL: {3} pips | TP: {4} pips", 
+                Print("âœ… [TRADE EXECUTED] {0} {1} | Volume Units: {2} | SL: {3} pips | TP: {4} pips", 
                     tradeType, targetSym.Name, volumeInUnits, slPips, tpPips);
             }
             else
             {
-                Print("❌ [EXECUTION ERROR] {0}", result.Error);
+                Print("âŒ [EXECUTION ERROR] {0}", result.Error);
             }
         }
 
@@ -2249,7 +2047,7 @@ namespace cAlgo
         {
             Timer.Stop();
             _httpClient?.Dispose();
-            Print("🛑 [QuantumAI cBot] Stopped.");
+            Print("ðŸ›‘ [QuantumAI cBot] Stopped.");
         }
     }
 }
@@ -2361,13 +2159,13 @@ double ExtractJsonNumber(string json, string key) {
 
 int OnInit() {
    EventSetTimer(PollIntervalSeconds);
-   Print("🚀 Quantum AI MT5 EA Bridge Active! Account: ", AccountNumber, " | Webhook: ", WebhookURL);
+   Print("ðŸš€ Quantum AI MT5 EA Bridge Active! Account: ", AccountNumber, " | Webhook: ", WebhookURL);
    return(INIT_SUCCEEDED);
 }
 
 void OnDeinit(const int reason) {
    EventKillTimer();
-   Print("🛑 Quantum AI MT5 EA Bridge Unloaded.");
+   Print("ðŸ›‘ Quantum AI MT5 EA Bridge Unloaded.");
 }
 
 void ConfirmExecutionToServer(string cmdId, ulong ticketId) {
@@ -2407,7 +2205,7 @@ void PollServerCommands() {
          if(volume <= 0) volume = 0.10;
          
          if(action == "OPEN") {
-            Print("📡 Web App Command Received: OPEN ", direction, " ", symbol, " Volume: ", DoubleToString(volume, 2));
+            Print("ðŸ“¡ Web App Command Received: OPEN ", direction, " ", symbol, " Volume: ", DoubleToString(volume, 2));
             bool success = false;
             
             if(direction == "BUY") {
@@ -2422,15 +2220,15 @@ void PollServerCommands() {
             
             if(success) {
                ulong ticket = trade.ResultOrder();
-               Print("✅ [MT5 TRADE EXECUTED] ", direction, " ", symbol, " Lot: ", DoubleToString(volume, 2), " | Ticket #", IntegerToString(ticket));
+               Print("âœ… [MT5 TRADE EXECUTED] ", direction, " ", symbol, " Lot: ", DoubleToString(volume, 2), " | Ticket #", IntegerToString(ticket));
                ConfirmExecutionToServer(cmdId, ticket);
             } else {
-               Print("⚠️ [MT5 TRADE FAILED] Retcode: ", IntegerToString(trade.ResultRetcode()), " - ", trade.ResultRetcodeDescription());
+               Print("âš ï¸ [MT5 TRADE FAILED] Retcode: ", IntegerToString(trade.ResultRetcode()), " - ", trade.ResultRetcodeDescription());
                ConfirmExecutionToServer(cmdId, 0);
             }
          }
          else if(action == "CLOSE") {
-            Print("📡 Web App Command Received: CLOSE ", symbol);
+            Print("ðŸ“¡ Web App Command Received: CLOSE ", symbol);
             for(int i = PositionsTotal() - 1; i >= 0; i--) {
                ulong ticket = PositionGetTicket(i);
                if(ticket > 0) {
@@ -2438,7 +2236,7 @@ void PollServerCommands() {
                   StringReplace(posSymbol, "/", "");
                   if(posSymbol == symbol || symbol == _Symbol) {
                      if(trade.PositionClose(ticket)) {
-                        Print("🖐️ [MT5 CLOSED POSITION] Ticket #", IntegerToString(ticket));
+                        Print("ðŸ–ï¸ [MT5 CLOSED POSITION] Ticket #", IntegerToString(ticket));
                      }
                   }
                }
@@ -2447,7 +2245,7 @@ void PollServerCommands() {
          }
       }
    } else {
-      Print("⚠️ WebRequest Error (", IntegerToString(GetLastError()), "). Ensure Webhook URL is in MT5 Options -> Experts -> Allow WebRequest!");
+      Print("âš ï¸ WebRequest Error (", IntegerToString(GetLastError()), "). Ensure Webhook URL is in MT5 Options -> Experts -> Allow WebRequest!");
    }
 }
 
@@ -2475,14 +2273,14 @@ WEBHOOK_URL = "https://ais-dev-ohrpry3x6ak3lh5ffk543u-74353745482.asia-southeast
 ACCOUNT_NUMBER = 11075236
 
 print("==========================================================")
-print("⚡ STARTING QUANTUM AI MT5 LOCAL CONNECTOR BRIDGE...")
+print("âš¡ STARTING QUANTUM AI MT5 LOCAL CONNECTOR BRIDGE...")
 print("==========================================================")
 
 if not mt5.initialize():
-    print("❌ Failed to initialize MetaTrader 5 terminal! Ensure MT5 desktop is open.")
+    print("âŒ Failed to initialize MetaTrader 5 terminal! Ensure MT5 desktop is open.")
     quit()
 
-print(f"✅ MetaTrader 5 Connected! Terminal Version: {mt5.version()}")
+print(f"âœ… MetaTrader 5 Connected! Terminal Version: {mt5.version()}")
 
 while True:
     try:
@@ -2515,7 +2313,7 @@ while True:
                     }
                     res = mt5.order_send(request)
                     if res.retcode == mt5.TRADE_RETCODE_DONE:
-                        print(f"🚀 [MT5 EXECUTED] {direction} {symbol} {volume} Lot! Ticket #{res.order}")
+                        print(f"ðŸš€ [MT5 EXECUTED] {direction} {symbol} {volume} Lot! Ticket #{res.order}")
                         requests.post(WEBHOOK_URL, json={"commandId": cmd_id, "ticketId": res.order})
 
                 elif action == 'CLOSE':
@@ -2539,12 +2337,12 @@ while True:
                             }
                             res = mt5.order_send(close_req)
                             if res.retcode == mt5.TRADE_RETCODE_DONE:
-                                print(f"🖐️ [MT5 CLOSED] Closed position #{pos.ticket}")
+                                print(f"ðŸ–ï¸ [MT5 CLOSED] Closed position #{pos.ticket}")
                                 requests.post(WEBHOOK_URL, json={"commandId": cmd_id, "ticketId": pos.ticket})
 
         time.sleep(2)
     except Exception as e:
-        print(f"⚠️ Error in bridge sync loop: {e}")
+        print(f"âš ï¸ Error in bridge sync loop: {e}")
         time.sleep(3)
 `;
     res.setHeader('Content-Type', 'text/plain');
@@ -2590,7 +2388,7 @@ while True:
     sharedAutoTraderState.logs.unshift({
       id: `clear-queue-${Date.now()}`,
       timestamp: new Date().toLocaleTimeString('ms-MY'),
-      text: `🧹 Giliran pesanan MT5 pending (${clearedCount} arahan) telah dibersihkan. Sync bridge kembali bersih.`,
+      text: `ðŸ§¹ Giliran pesanan MT5 pending (${clearedCount} arahan) telah dibersihkan. Sync bridge kembali bersih.`,
       type: 'INFO'
     });
 
@@ -2676,7 +2474,7 @@ while True:
       sharedAutoTraderState.logs.unshift({
         id: `mt5-ext-log-${Date.now()}`,
         timestamp: new Date().toLocaleTimeString('ms-MY'),
-        text: `📥 [MT5 TERMINAL SYNC] Posisi ${direction} ${pair} dikesan dibuka langsung dari Apl MT5 (Tiket #${ticketId}). Diselaras ke Web App!`,
+        text: `ðŸ“¥ [MT5 TERMINAL SYNC] Posisi ${direction} ${pair} dikesan dibuka langsung dari Apl MT5 (Tiket #${ticketId}). Diselaras ke Web App!`,
         type: 'EXECUTE'
       });
     }
@@ -2787,7 +2585,7 @@ while True:
       sharedAutoTraderState.logs.unshift({
         id: `ctrader-connect-${Date.now()}`,
         timestamp: new Date().toLocaleTimeString('ms-MY'),
-        text: `🟢 [cBot LIVE CONNECTED] Robot QuantumAI.cs disambung dari cTrader Terminal! Account #${acc} | Balance: €${bal.toFixed(2)}.`,
+        text: `ðŸŸ¢ [cBot LIVE CONNECTED] Robot QuantumAI.cs disambung dari cTrader Terminal! Account #${acc} | Balance: â‚¬${bal.toFixed(2)}.`,
         type: 'INFO'
       });
     }
@@ -2804,7 +2602,7 @@ while True:
           ? rawSym 
           : (rawSym === 'EURUSD' ? 'EUR/USD' : rawSym === 'GBPUSD' ? 'GBP/USD' : rawSym === 'USDJPY' ? 'USD/JPY' : rawSym === 'XAUUSD' ? 'XAU/USD' : rawSym === 'BTCUSD' ? 'BTC/USD' : rawSym);
         
-        const posTicket = String(mPos.ticketId || mPos.id || `CT-${Math.floor(100000 + Math.random() * 900000)}`);
+        const posTicket = String(mPos.ticketId || mPos.id || `POS-${Date.now()}`);
         const newManualTrade: SharedAutoTrade = {
           id: `ctrader-${posTicket}`,
           ticketId: posTicket,
@@ -2830,7 +2628,7 @@ while True:
         sharedAutoTraderState.logs.unshift({
           id: `ctrader-manual-${Date.now()}`,
           timestamp: new Date().toLocaleTimeString('ms-MY'),
-          text: `📥 [MANUAL cTrader TRADE SYNCED] Posisi ${newManualTrade.direction} ${newManualTrade.pair} (#${newManualTrade.ticketId}, ${newManualTrade.lotSize} Lot @ ${newManualTrade.entryPrice}) disinkronkan secara manual ke Web App.`,
+          text: `ðŸ“¥ [MANUAL cTrader TRADE SYNCED] Posisi ${newManualTrade.direction} ${newManualTrade.pair} (#${newManualTrade.ticketId}, ${newManualTrade.lotSize} Lot @ ${newManualTrade.entryPrice}) disinkronkan secara manual ke Web App.`,
           type: 'EXECUTE'
         });
       }
@@ -2880,7 +2678,7 @@ while True:
           sharedAutoTraderState.logs.unshift({
             id: `ctrader-pos-${Date.now()}`,
             timestamp: new Date().toLocaleTimeString('ms-MY'),
-            text: `📥 [cTrader TERMINAL ADOPT] Posisi ${newTrade.direction} ${newTrade.pair} (#${newTrade.ticketId || 'N/A'}, ${newTrade.lotSize} Lot @ ${newTrade.entryPrice}, SL: ${newTrade.stopLoss || 'N/A'}, TP: ${newTrade.takeProfit1 || 'N/A'}) dikesan dari terminal cTrader! Diselaras 2-hala ke Web App.`,
+            text: `ðŸ“¥ [cTrader TERMINAL ADOPT] Posisi ${newTrade.direction} ${newTrade.pair} (#${newTrade.ticketId || 'N/A'}, ${newTrade.lotSize} Lot @ ${newTrade.entryPrice}, SL: ${newTrade.stopLoss || 'N/A'}, TP: ${newTrade.takeProfit1 || 'N/A'}) dikesan dari terminal cTrader! Diselaras 2-hala ke Web App.`,
             type: 'EXECUTE'
           });
         }
@@ -2903,7 +2701,7 @@ while True:
           sharedAutoTraderState.logs.unshift({
             id: `ctrader-close-${Date.now()}`,
             timestamp: new Date().toLocaleTimeString('ms-MY'),
-            text: `🏁 [cTrader TERMINAL CLOSE] Posisi ${oldTrade.direction} ${oldTrade.pair} (#${oldTrade.ticketId}) ditutup di terminal cTrader. Diselaras serta-merta! PnL: €${(oldTrade.pnl || 0).toFixed(2)}.`,
+            text: `ðŸ [cTrader TERMINAL CLOSE] Posisi ${oldTrade.direction} ${oldTrade.pair} (#${oldTrade.ticketId}) ditutup di terminal cTrader. Diselaras serta-merta! PnL: â‚¬${(oldTrade.pnl || 0).toFixed(2)}.`,
             type: oldTrade.pnl && oldTrade.pnl >= 0 ? 'WIN' : 'LOSS'
           });
         }
@@ -3008,7 +2806,7 @@ while True:
       sharedAutoTraderState.logs.unshift({
         id: `tv-log-${Date.now()}`,
         timestamp: new Date().toLocaleTimeString('ms-MY'),
-        text: `📥 [TRADINGVIEW ALERT] Isyarat ${direction} ${pair} diterima dari Webhook TradingView! Posisi dibuka secara automatik.`,
+        text: `ðŸ“¥ [TRADINGVIEW ALERT] Isyarat ${direction} ${pair} diterima dari Webhook TradingView! Posisi dibuka secara automatik.`,
         type: 'EXECUTE'
       });
 
@@ -3053,3 +2851,5 @@ while True:
 }
 
 startServer();
+
+

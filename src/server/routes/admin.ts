@@ -283,3 +283,293 @@ adminRouter.get('/ai-monitoring', async (req: Request, res: Response) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
+// ==========================================
+// PHASE 3B — CTRADER DEMO CONTROL & CONNECTIVITY
+// ==========================================
+import { CTraderConfigValidator } from '../services/ctraderConfigValidator';
+import { CTraderAdapter } from '../../../apps/execution-router/src/adapters/ctraderAdapter';
+import { canonicalExecutionRouter } from './execution';
+import { createRiskApprovalToken, verifyGovernanceSignature } from '../../../apps/risk-governance/src/modules/riskTokenService';
+import { globalEventBus, EventTypes, TradeClosedPayload } from '@iati/event-bus';
+import { learningService } from '../services/learningService';
+import { TradeProposal, RiskClearedPayload } from '@iati/core-types';
+
+/**
+ * GET /api/admin/ctrader/status
+ * Task 2 & Task 3: Returns sanitized cTrader DEMO account status.
+ * NEVER exposes clientSecret, accessToken, or raw secrets.
+ */
+adminRouter.get('/ctrader/status', async (req: Request, res: Response) => {
+  try {
+    let demoConfig;
+    try {
+      demoConfig = CTraderConfigValidator.validateDemoConfig();
+    } catch (cfgErr: any) {
+      const sanitized = CTraderConfigValidator.sanitizeAccountStatus('NOT_CONFIGURED', undefined, cfgErr.message);
+      return res.json({ success: true, ...sanitized });
+    }
+
+    const adapter = new CTraderAdapter(demoConfig);
+    try {
+      await adapter.connect();
+      const accountStatus = await adapter.getAccountStatus();
+      const sanitized = CTraderConfigValidator.sanitizeAccountStatus('CONNECTED', accountStatus);
+      return res.json({ success: true, ...sanitized });
+    } catch (connErr: any) {
+      const isAuthErr = connErr.message.includes('CTRADER_AUTH_FAILURE');
+      const isMissingErr = connErr.message.includes('CTRADER_MISSING_CREDENTIALS');
+      const statusType = isAuthErr || isMissingErr ? 'AUTHENTICATION_FAILED' : 'BROKER_UNAVAILABLE';
+      const sanitized = CTraderConfigValidator.sanitizeAccountStatus(statusType, undefined, connErr.message);
+      return res.json({ success: true, ...sanitized });
+    }
+  } catch (err: any) {
+    logger.error(`Failed to get cTrader status: ${err.message}`);
+    const sanitized = CTraderConfigValidator.sanitizeAccountStatus('BROKER_UNAVAILABLE', undefined, err.message);
+    res.status(500).json({ success: false, ...sanitized });
+  }
+});
+
+/**
+ * POST /api/admin/ctrader/execute-demo-trade
+ * Task 4, 5, 6, 7: Controlled DEMO trade execution routed ONLY through canonical ExecutionRouter
+ */
+adminRouter.post('/ctrader/execute-demo-trade', async (req: Request, res: Response) => {
+  try {
+    const env = (process.env.EXECUTION_ENVIRONMENT || 'DEMO').toUpperCase();
+    if (env !== 'DEMO') {
+      return res.status(403).json({
+        success: false,
+        error: `DEMO_EXECUTION_REJECTED: Phase 3B permits DEMO execution only. Current environment is '${env}'.`
+      });
+    }
+
+    // Task 6: Validate cTrader credentials presence
+    let demoConfig;
+    try {
+      demoConfig = CTraderConfigValidator.validateDemoConfig(req.body.credentials);
+    } catch (cfgErr: any) {
+      return res.status(422).json({
+        success: false,
+        error: cfgErr.message
+      });
+    }
+
+    const { symbol, direction, lotSize, stopLoss, takeProfit } = req.body;
+
+    if (!symbol || !direction) {
+      return res.status(400).json({ success: false, error: 'Symbol and direction are required for DEMO execution.' });
+    }
+
+    // Smallest safe DEMO lot size (default 0.01)
+    const approvedLotSize = Math.min(Number(lotSize || 0.01), 0.10);
+    const proposalId = `prop-demo-ctl-${Date.now()}`;
+    const approvalId = `gov-demo-ctl-${Date.now()}`;
+
+    const proposal: TradeProposal = {
+      id: proposalId,
+      symbol,
+      direction,
+      confidence: 90,
+      evidence: ['Controlled DEMO Trade Execution'],
+      agent_votes: [],
+      why_direction: `Controlled DEMO Execution: ${direction} ${symbol}`,
+      invalidate_conditions: [],
+      timestamp: new Date(),
+      stopLoss: stopLoss || (direction === 'BUY' ? 1.0800 : 1.0900),
+      takeProfit: takeProfit || (direction === 'BUY' ? 1.0950 : 1.0750)
+    };
+
+    // Task 5: Generate valid RiskApprovalToken with HMAC signature
+    const token = createRiskApprovalToken({
+      approvalId,
+      signalId: proposalId,
+      symbol,
+      direction,
+      approvedLotSize,
+      maxAllowedDrawdown: 5.0,
+      calculatedRiskAmount: approvedLotSize * 100,
+      status: 'APPROVED'
+    });
+
+    const payload: RiskClearedPayload & { environment?: any; credentials?: any } = {
+      proposal_id: proposalId,
+      symbol,
+      account_id: demoConfig.accountId,
+      approval_id: approvalId,
+      risk_score: 5,
+      trade_proposal: proposal,
+      governance_decision: {
+        approval_id: approvalId,
+        status: 'APPROVED',
+        risk_score: 5,
+        checks: [],
+        timestamp: new Date(),
+        decision_authority: 'RiskGov',
+        token
+      },
+      approval_token: token,
+      timestamp: new Date(),
+      broker_id: 'ctrader-broker-01',
+      environment: 'DEMO',
+      credentials: demoConfig
+    };
+
+    // Route through canonical ExecutionRouter
+    const result = await canonicalExecutionRouter.handleRiskCleared(payload);
+
+    // Save Position & Audit Events in PostgreSQL
+    const posId = `pos_ctrader_demo_${Date.now()}`;
+    await repo.savePosition({
+      positionId: posId,
+      ticketId: result.report.broker_position_id || posId.replace('pos_', ''),
+      setupId: proposalId,
+      accountId: demoConfig.accountId,
+      symbol,
+      direction,
+      quantity: approvedLotSize,
+      entryPrice: result.report.filled_price,
+      currentPrice: result.report.filled_price,
+      stopLoss: proposal.stopLoss,
+      takeProfit: proposal.takeProfit,
+      unrealizedProfit: 0,
+      realizedProfit: 0,
+      status: 'OPEN',
+      broker: 'ctrader-broker-01',
+      environment: 'DEMO',
+      proposalId,
+      approvalId,
+      brokerOrderId: result.report.broker_order_id,
+      brokerPositionId: result.report.broker_position_id,
+      brokerDealId: result.report.broker_deal_id,
+      reconciliationStatus: 'MATCHED',
+      openedAt: new Date()
+    });
+
+    await repo.saveTradeEvent({
+      id: `evt_demo_open_${Date.now()}`,
+      tradeId: posId,
+      setupId: proposalId,
+      eventType: 'POSITION_OPENED',
+      actor: 'AdminTradingCenter',
+      details: { brokerId: 'ctrader-broker-01', environment: 'DEMO', brokerOrderId: result.report.broker_order_id }
+    });
+
+    await repo.saveTradeEvent({
+      id: `evt_demo_conf_${Date.now()}`,
+      tradeId: posId,
+      setupId: proposalId,
+      eventType: 'BROKER_CONFIRMED',
+      actor: 'cTraderBrokerAdapter',
+      details: { brokerPositionId: result.report.broker_position_id, brokerDealId: result.report.broker_deal_id }
+    });
+
+    res.json({
+      success: true,
+      message: 'Controlled cTrader DEMO trade executed successfully via canonical ExecutionRouter.',
+      execution: result,
+      positionId: posId
+    });
+  } catch (err: any) {
+    logger.error(`Controlled cTrader DEMO execution failed: ${err.message}`);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/admin/ctrader/close-demo-trade
+ * Task 9, 10, 11: Controlled cTrader DEMO position closure & adaptive learning trigger
+ */
+adminRouter.post('/ctrader/close-demo-trade', async (req: Request, res: Response) => {
+  try {
+    const { positionId, closePrice } = req.body;
+    if (!positionId) {
+      return res.status(400).json({ success: false, error: 'positionId is required to close DEMO trade.' });
+    }
+
+    const pos = await repo.getPositionById(positionId);
+    if (!pos) {
+      return res.status(404).json({ success: false, error: `POSITION_NOT_FOUND: Position '${positionId}' not found in database.` });
+    }
+
+    const exitPrice = Number(closePrice || pos.currentPrice || pos.entryPrice);
+    const priceDiff = pos.direction === 'BUY' ? (exitPrice - pos.entryPrice) : (pos.entryPrice - exitPrice);
+    const pipScale = pos.symbol.includes('JPY') ? 100 : 10000;
+    const pnlPips = Math.round(priceDiff * pipScale);
+    const realizedProfit = Number((pnlPips * pos.quantity * 10).toFixed(2));
+
+    const closeResult = await repo.closePositionTransaction({
+      positionId: pos.positionId,
+      closePrice: exitPrice,
+      realizedProfit,
+      pnlPips,
+      closeReason: realizedProfit >= 0 ? 'DEMO_TP_CLOSE' : 'DEMO_SL_CLOSE',
+      accountId: pos.accountId
+    });
+
+    // Task 13: Save Trade Audit Event
+    await repo.saveTradeEvent({
+      id: `evt_demo_close_${Date.now()}`,
+      tradeId: pos.positionId,
+      setupId: pos.setupId,
+      eventType: 'POSITION_CLOSED',
+      actor: 'AdminTradingCenter',
+      details: { exitPrice, realizedProfit, pnlPips }
+    });
+
+    // Task 10: Publish TradeClosed event
+    const tradeClosedPayload: TradeClosedPayload = {
+      tradeId: closeResult.position.positionId,
+      positionId: closeResult.position.positionId,
+      accountId: closeResult.position.accountId,
+      symbol: closeResult.position.symbol,
+      direction: closeResult.position.direction,
+      entryPrice: closeResult.position.entryPrice,
+      exitPrice: closeResult.position.closePrice || exitPrice,
+      stopLoss: closeResult.position.stopLoss || 0,
+      takeProfit: closeResult.position.takeProfit || 0,
+      pnlDollars: closeResult.position.realizedProfit,
+      pnlPips: closeResult.position.pnlPips || pnlPips,
+      proposalId: closeResult.position.proposalId,
+      approvalId: closeResult.position.approvalId,
+      strategyId: closeResult.position.strategyId,
+      strategyVersion: closeResult.position.strategyVersion,
+      environment: 'DEMO',
+      closedAt: closeResult.position.closedAt || new Date()
+    };
+
+    await globalEventBus.publish({
+      id: `evt_bus_close_demo_${Date.now()}`,
+      type: EventTypes.TradeClosed,
+      timestamp: new Date(),
+      payload: tradeClosedPayload
+    });
+
+    // Task 11: Auto-trigger idempotent LearningService
+    let review;
+    try {
+      review = await learningService.processClosedTrade(tradeClosedPayload);
+      await repo.saveTradeEvent({
+        id: `evt_demo_learn_${Date.now()}`,
+        tradeId: pos.positionId,
+        setupId: pos.setupId,
+        eventType: 'TRADE_LEARNING_CREATED',
+        actor: 'LearningService',
+        details: { reviewId: review.id, outcome: review.outcome }
+      });
+    } catch (learnErr: any) {
+      logger.warn(`Learning auto-process warning: ${learnErr.message}`);
+    }
+
+    res.json({
+      success: true,
+      message: 'cTrader DEMO position closed cleanly and learning persisted.',
+      position: closeResult.position,
+      review
+    });
+  } catch (err: any) {
+    logger.error(`Controlled cTrader DEMO position close failed: ${err.message}`);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+

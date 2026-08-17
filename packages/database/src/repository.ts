@@ -1,4 +1,4 @@
-import { Pool, PoolClient } from 'pg';
+﻿import { Pool, PoolClient } from 'pg';
 import { getDbPool, checkDbConnection } from './index';
 import { logger } from '@iati/core';
 
@@ -243,8 +243,6 @@ export interface RehydratedTradingState {
 
 export class TradingRepository {
   private pool: Pool;
-  private static fallbackPositions: PositionRecord[] = [];
-
   constructor(customPool?: Pool) {
     this.pool = customPool || getDbPool();
   }
@@ -445,13 +443,10 @@ export class TradingRepository {
 
     try {
       const res = await this.query(text, values, client);
-      const saved = this.mapPositionRow(res.rows[0]);
-      TradingRepository.fallbackPositions.push(saved);
-      return saved;
+      return this.mapPositionRow(res.rows[0]);
     } catch (err: any) {
       logger.error(`[DB-REPOSITORY] Failed to save position ${pos.positionId}: ${err.message}`);
-      TradingRepository.fallbackPositions.push(pos);
-      return pos;
+      throw new Error(`PERSISTENCE_ERROR: Failed to save position: ${err.message}`);
     }
   }
 
@@ -459,9 +454,11 @@ export class TradingRepository {
     try {
       const res = await this.query(`SELECT * FROM positions WHERE position_id = $1`, [positionId], client);
       if (res && res.rows && res.rows.length) return this.mapPositionRow(res.rows[0]);
-    } catch (_) {}
-    const match = TradingRepository.fallbackPositions.find(p => p.positionId === positionId);
-    return match || null;
+      return null;
+    } catch (err: any) {
+      logger.error(`[DB-REPOSITORY] Failed to get position by id ${positionId}: ${err.message}`);
+      throw new Error(`DATABASE_ERROR: Failed to get position: ${err.message}`);
+    }
   }
 
   async getPositionByIdempotencyKeyOrSetupId(idempotencyKey?: string, setupId?: string): Promise<PositionRecord | null> {
@@ -474,10 +471,11 @@ export class TradingRepository {
         const resSetup = await this.query(`SELECT * FROM positions WHERE setup_id = $1 LIMIT 1`, [setupId]);
         if (resSetup && resSetup.rows && resSetup.rows.length) return this.mapPositionRow(resSetup.rows[0]);
       }
-    } catch (_) {}
-
-    const match = TradingRepository.fallbackPositions.find(p => (idempotencyKey && p.idempotencyKey === idempotencyKey) || (setupId && p.setupId === setupId));
-    return match || null;
+      return null;
+    } catch (err: any) {
+      logger.error(`[DB-REPOSITORY] Failed to get position by keys: ${err.message}`);
+      throw new Error(`DATABASE_ERROR: Failed to get position by keys: ${err.message}`);
+    }
   }
 
   async getOpenPositions(accountId: string = 'DEFAULT'): Promise<PositionRecord[]> {
@@ -529,7 +527,7 @@ export class TradingRepository {
         SELECT * FROM positions
         ${whereClause}
         ORDER BY CASE WHEN status = 'OPEN' THEN opened_at ELSE closed_at END DESC
-        LIMIT ${paramIdx++} OFFSET ${paramIdx++}
+        LIMIT $${paramIdx++} OFFSET $${paramIdx++}
       `;
       values.push(limit, offset);
 
@@ -538,12 +536,9 @@ export class TradingRepository {
         positions: res.rows.map(r => this.mapPositionRow(r)),
         totalCount
       };
-    } catch (err) {
-      const filtered = TradingRepository.fallbackPositions.filter(p => p.accountId === accountId);
-      return {
-        positions: filtered.slice(offset, offset + limit),
-        totalCount: filtered.length
-      };
+    } catch (err: any) {
+      logger.error(`[DB-REPOSITORY] Failed to get positions: ${err.message}`);
+      throw new Error(`DATABASE_ERROR: Failed to get positions: ${err.message}`);
     }
   }
 
@@ -615,7 +610,7 @@ export class TradingRepository {
       };
     } catch (err: any) {
       logger.error(`[DB-REPOSITORY] Failed to save trade event: ${err.message}`);
-      return evt;
+      throw new Error(`PERSISTENCE_ERROR: Failed to save trade event: ${err.message}`);
     }
   }
 
@@ -654,18 +649,8 @@ export class TradingRepository {
     try {
       client = await this.pool.connect();
     } catch (connErr: any) {
-      logger.warn(`[DB-REPOSITORY] DB connection unavailable for closePositionTransaction, using fallback: ${connErr.message}`);
-      const match = TradingRepository.fallbackPositions.find(p => p.positionId === params.positionId);
-      if (!match) {
-        throw new Error(`POSITION_NOT_FOUND: ${params.positionId}`);
-      }
-      match.status = 'CLOSED';
-      match.closePrice = params.closePrice;
-      match.realizedProfit = params.realizedProfit;
-      match.pnlPips = params.pnlPips || 0;
-      match.closeReason = params.closeReason;
-      match.closedAt = new Date();
-      return { position: match, newBalance: 10000 + params.realizedProfit };
+      logger.error(`[DB-REPOSITORY] DB connection unavailable for closePositionTransaction: ${connErr.message}`);
+      throw new Error(`DATABASE_UNAVAILABLE: DB connection unavailable: ${connErr.message}`);
     }
 
     try {
@@ -891,9 +876,17 @@ export class TradingRepository {
       ON CONFLICT (trade_id, learning_version) DO UPDATE SET review = EXCLUDED.review
       RETURNING *;
     `;
-    const res = await this.query(text, [id, tradeId, learningVersion, JSON.stringify(reviewObj)]);
+    let res: any;
+    try {
+      res = await this.query(text, [id, tradeId, learningVersion, JSON.stringify(reviewObj)]);
+    } catch (err: any) {
+      logger.error(`[DB-REPOSITORY] Failed to save post-mortem review for trade ${tradeId}: ${err.message}`);
+      throw new Error(`PERSISTENCE_ERROR: Failed to save post-mortem review: ${err.message}`);
+    }
     const row = res.rows[0];
-    if (!row) return reviewObj;
+    if (!row) {
+      throw new Error(`PERSISTENCE_ERROR: PostgreSQL did not return a row for post_mortem_reviews insert (trade_id=${tradeId})`);
+    }
     return typeof row.review === 'string' ? JSON.parse(row.review) : row.review;
   }
 
@@ -1261,22 +1254,31 @@ export class TradingRepository {
       ON CONFLICT (id) DO NOTHING
       RETURNING *;
     `;
-    const res = await this.query(text, [
-      rec.id,
-      rec.accountId || 'DEFAULT',
-      rec.broker,
-      rec.action,
-      rec.targetId,
-      rec.details ? JSON.stringify(rec.details) : null
-    ], client);
-    const r = res.rows[0] || rec;
+    let res: any;
+    try {
+      res = await this.query(text, [
+        rec.id,
+        rec.accountId || 'DEFAULT',
+        rec.broker,
+        rec.action,
+        rec.targetId,
+        rec.details ? JSON.stringify(rec.details) : null
+      ], client);
+    } catch (err: any) {
+      logger.error(`[DB-REPOSITORY] Failed to save reconciliation record ${rec.id}: ${err.message}`);
+      throw new Error(`PERSISTENCE_ERROR: Failed to save reconciliation record: ${err.message}`);
+    }
+    const r = res.rows[0];
+    if (!r) {
+      throw new Error(`PERSISTENCE_ERROR: PostgreSQL did not return a row for reconciliation_records insert (id=${rec.id})`);
+    }
     return {
-      id: r.id || rec.id,
-      accountId: r.account_id || rec.accountId,
-      broker: r.broker || rec.broker,
-      action: r.action || rec.action,
-      targetId: r.target_id || rec.targetId,
-      details: r.details ? (typeof r.details === 'string' ? JSON.parse(r.details) : r.details) : rec.details,
+      id: r.id,
+      accountId: r.account_id,
+      broker: r.broker,
+      action: r.action,
+      targetId: r.target_id,
+      details: r.details ? (typeof r.details === 'string' ? JSON.parse(r.details) : r.details) : null,
       timestamp: r.timestamp ? new Date(r.timestamp) : new Date()
     };
   }
@@ -1450,7 +1452,7 @@ export class TradingRepository {
 
       const dataParams = [...params, limit, offset];
       const dataRes = await this.query(
-        `SELECT * FROM positions WHERE ${whereSql} ORDER BY opened_at DESC LIMIT ${idx++} OFFSET ${idx++}`,
+        `SELECT * FROM positions WHERE ${whereSql} ORDER BY opened_at DESC LIMIT $${idx++} OFFSET $${idx++}`,
         dataParams
       );
 
@@ -1458,11 +1460,9 @@ export class TradingRepository {
       const totalPages = Math.ceil(total / limit) || 1;
 
       return { trades, total, page, totalPages };
-    } catch (err) {
-      const trades = TradingRepository.fallbackPositions;
-      const total = trades.length;
-      const totalPages = Math.ceil(total / limit) || 1;
-      return { trades: trades.slice(offset, offset + limit), total, page, totalPages };
+    } catch (err: any) {
+      logger.error(`[DB-REPOSITORY] Failed to get detailed trades: ${err.message}`);
+      throw new Error(`DATABASE_ERROR: Failed to get detailed trades: ${err.message}`);
     }
   }
 
@@ -1660,10 +1660,12 @@ export class TradingRepository {
       if (res.rows.length > 0) {
         return { updated: true, position: this.mapPositionRow(res.rows[0]) };
       }
+      // No matching row found — position does not exist
+      return { updated: false };
     } catch (err: any) {
       logger.error(`[DB-REPOSITORY] Failed to update broker position IDs for ${targetId}: ${err.message}`);
+      throw new Error(`PERSISTENCE_ERROR: Failed to update broker position IDs: ${err.message}`);
     }
-    return { updated: false };
   }
 
   async getAdminDataHealth(): Promise<any> {
@@ -1932,3 +1934,6 @@ export class TradingRepository {
     return [headers.join(','), ...rows].join('\n');
   }
 }
+
+
+

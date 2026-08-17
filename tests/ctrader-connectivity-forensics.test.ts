@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+﻿import { describe, it, expect } from 'vitest';
 import 'dotenv/config';
 import dns from 'dns/promises';
 import net from 'net';
@@ -34,6 +34,7 @@ describe('TASK 8A-I — cTrader DEMO Connectivity & Application Auth Forensics',
     const root = await CTraderProtoManager.loadSchemas();
     const ErrorResType = root.lookupType('openapi.ProtoOAErrorRes');
     const encodedError = ErrorResType.encode({
+      errorCode: 'CH_CLIENT_AUTH_FAILURE',
       description: 'CH_CLIENT_AUTH_FAILURE'
     }).finish();
 

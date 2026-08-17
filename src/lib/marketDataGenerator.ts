@@ -1,4 +1,4 @@
-import { CandleData, CurrencyPair, Timeframe } from '../types';
+﻿import { CandleData, CurrencyPair, Timeframe } from '../types';
 import { MarketDataEnvelope, MarketDataMode } from '@iati/core-types';
 import { buildMarketDataEnvelope } from '@iati/core/marketDataValidator';
 
@@ -480,3 +480,4 @@ export function calculate24hRollingChange(candles: CandleData[], currentPrice: n
   if (refPrice <= 0) return 0;
   return ((currentPrice - refPrice) / refPrice) * 100;
 }
+

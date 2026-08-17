@@ -58,6 +58,7 @@ export interface TradeClosedPayload {
   closedAt: Date | string;
   userNotes?: string;
   learningVersion?: string;
+  isOfflineMock?: boolean;
 }
 
 export const EventTypes = {

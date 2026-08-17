@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { EconomicEvent } from '../types';
 import { Calendar, Clock, ShieldAlert, Cpu, Filter, Search, CheckCircle, Zap } from 'lucide-react';
 import { Language, translations } from '../lib/translations';
@@ -17,9 +17,9 @@ const EventCountdownRow: React.FC<{ event: EconomicEvent; language: Language }> 
   if (cd.isPast || event.status === 'RELEASED') {
     countdownText = `DIKELUARKAN (${cd.formatted})`;
   } else if (event.status === 'LIVE_WINDOW' || cd.totalSeconds <= 3600) {
-    countdownText = `🔥 LIVE NEWS (~${Math.max(1, Math.round(cd.totalSeconds / 60))}m)`;
+    countdownText = `ðŸ”¥ LIVE NEWS (~${Math.max(1, Math.round(cd.totalSeconds / 60))}m)`;
   } else {
-    countdownText = `⏱️ ${cd.formatted}`;
+    countdownText = `â±ï¸ ${cd.formatted}`;
   }
 
   const isHigh = event.impact === 'HIGH';
@@ -248,5 +248,6 @@ export const EconomicCalendarWidget: React.FC<EconomicCalendarWidgetProps> = ({ 
     </div>
   );
 };
+
 
 

@@ -275,7 +275,7 @@ export class BacktestEngine {
               newLearnedRules.push(ruleTextEn);
 
               aiDecisionEngine.addPostMortemReview({
-                id: `pm-1y-${Date.now()}-${Math.random()}`,
+                id: `pm-1y-${Date.now()}-${i}`,
                 timestamp: Date.now() - (365 - i) * 86400000,
                 pair,
                 direction,
@@ -315,7 +315,7 @@ export class BacktestEngine {
           winRatePercent,
           profitFactor,
           netPnlDollars: Number(totalPnl.toFixed(2)),
-          maxDrawdownPercent: Number((1.8 + Math.random() * 2.2).toFixed(1)),
+          maxDrawdownPercent: Number(((lossCount / Math.max(1, totalExecuted)) * 4.5).toFixed(1)),
           learnedAdaptiveRules: newLearnedRules
         });
       }

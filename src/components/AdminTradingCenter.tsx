@@ -612,7 +612,7 @@ export const AdminTradingCenter: React.FC<AdminTradingCenterProps> = ({ isMalay 
                   <div className="mt-2 flex items-center justify-between text-xs">
                     <span className="text-emerald-400 font-bold">{perfData.winCount} Wins</span>
                     <span className="text-rose-400 font-bold">{perfData.lossCount} Losses</span>
-                    <span className="text-cyan-300 font-bold">{perfData.winRatePercent}% WR</span>
+                    <span className="text-cyan-300 font-bold">{perfData.totalTrades > 0 && perfData.winRatePercent !== null ? perfData.winRatePercent + '% WR' : 'N/A WR'}</span>
                   </div>
                 </div>
 
