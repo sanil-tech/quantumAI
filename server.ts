@@ -39,6 +39,7 @@ async function startServer() {
   // Decision & AI Signal Domain Routes (/api/decision and /api/forex)
   app.use("/api/decision", decisionRouter);
   app.use("/api/forex", decisionRouter);
+  app.use("/api", decisionRouter);
 
   // Risk Governance, Broker Integration, Execution, Observability, and Admin Data Governance Routers
   app.use("/api", riskRouter);

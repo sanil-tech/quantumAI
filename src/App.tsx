@@ -1,11 +1,12 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { LayoutGrid, Bot, Brain, Activity, Calendar, Eye, Sparkles, SlidersHorizontal, Layers, User, Building2, ShieldCheck } from 'lucide-react';
 import { CurrencyPair, Timeframe, TradingStyle, CandleData, IndicatorValues, SmcStructures, SupportResistanceZone, MultiTimeframeAnalysis, AiTradeOpportunity, EconomicEvent, PriceAlarm } from './types';
-import { PAIR_CONFIGS, calculate24hRollingChange } from './lib/marketDataGenerator';
+import { PAIR_CONFIGS, calculate24hRollingChange, generateNextTick } from './lib/marketDataGenerator';
 import { calculateAllIndicators } from './lib/indicators';
 import { analyzeSmcStructures, detectSupportResistance } from './lib/smcEngine';
 import { Language } from './lib/translations';
 
+import { ShadowPerformanceCockpit } from './components/ShadowPerformanceCockpit';
 import { Header } from './components/Header';
 import { ChartWidget } from './components/ChartWidget';
 import { AiAnalysisCard } from './components/AiAnalysisCard';
@@ -16,12 +17,10 @@ import { RiskCalculatorModal } from './components/RiskCalculatorModal';
 import { EconomicCalendarWidget } from './components/EconomicCalendarWidget';
 import { AiChatAssistant } from './components/AiChatAssistant';
 import { PakarTraderPanel } from './components/PakarTraderPanel';
-import { AutoTraderPanel } from './components/AutoTraderPanel';
 import { BacktestModule } from './components/BacktestModule';
 import { JournalModule } from './components/JournalModule';
 import { PriceAlarmModal } from './components/PriceAlarmModal';
 import { PriceAlarmToastContainer } from './components/PriceAlarmToastContainer';
-import { AutoTraderToastContainer } from './components/AutoTraderToastContainer';
 import { AiOpportunitiesScanner } from './components/AiOpportunitiesScanner';
 import { TraderAccountModal } from './components/TraderAccountModal';
 import { BrokerConnectionModal } from './components/BrokerConnectionModal';
@@ -29,9 +28,11 @@ import { AdaptiveLearningModal } from './components/AdaptiveLearningModal';
 import { SystemAuditModal } from './components/SystemAuditModal';
 import { UserDashboard } from './components/UserDashboard';
 import { AdminDeveloperDashboard } from './components/AdminDeveloperDashboard';
+import { EarlyLearnerDashboard } from './components/EarlyLearnerDashboard';
 
 export default function App() {
-  const [portalMode, setPortalMode] = useState<'USER_DASHBOARD' | 'ADMIN_DEVELOPER' | 'FULL_DESK'>('USER_DASHBOARD');
+  const [portalMode, setPortalMode] = useState<'USER_DASHBOARD' | 'ADMIN_DEVELOPER' | 'FULL_DESK' | 'SHADOW_COCKPIT' | 'EARLY_LEARNER'>('USER_DASHBOARD');
+  const aiOpinionAbortControllerRef = useRef<AbortController | null>(null);
   const [activePair, setActivePair] = useState<CurrencyPair>('EUR/USD');
   const [timeframe, setTimeframe] = useState<Timeframe>('M15');
   const [tradingStyle, setTradingStyle] = useState<TradingStyle>('DAY_TRADER');
@@ -70,6 +71,61 @@ export default function App() {
       console.error('Failed to save dashboard view preference:', e);
     }
   }, [dashboardView]);
+
+  // Keyboard Shortcut Navigation for Workspace Views (1-6)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+
+      switch (e.key) {
+        case '1':
+          setPortalMode('USER_DASHBOARD');
+          setDashboardView('FOCUS');
+          break;
+        case '2':
+          setPortalMode('ADMIN_DEVELOPER');
+          break;
+        case '3':
+          setPortalMode('FULL_DESK');
+          break;
+        case '4':
+          setPortalMode('USER_DASHBOARD');
+          setDashboardView('AUTO_TRADER');
+          break;
+        case '5':
+          setPortalMode('USER_DASHBOARD');
+          setDashboardView('PAKAR');
+          break;
+        case '6':
+          setPortalMode('USER_DASHBOARD');
+          setDashboardView('TECHNICAL');
+          break;
+        case '7':
+          setPortalMode('SHADOW_COCKPIT');
+          break;
+        case '8':
+          setPortalMode('EARLY_LEARNER');
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
 
   // Market Data States
   const [candles, setCandles] = useState<CandleData[]>([]);
@@ -323,7 +379,7 @@ export default function App() {
     fetchAiOpinion(activePair, timeframe, tradingStyle, latest.close, calculatedIndicators, smc);
   }, [activePair, timeframe, tradingStyle]);
 
-  // Fetch AI Opinion from Server API
+  // Fetch AI Opinion from Server API with Race Condition and Stale Symbol Protection
   const fetchAiOpinion = async (
     pair: CurrencyPair,
     tf: Timeframe,
@@ -332,11 +388,19 @@ export default function App() {
     ind: IndicatorValues,
     smc: SmcStructures
   ) => {
+    // Abort previous in-flight AI opinion request
+    if (aiOpinionAbortControllerRef.current) {
+      aiOpinionAbortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    aiOpinionAbortControllerRef.current = controller;
+
     setAiLoading(true);
     try {
       const res = await fetch('/api/forex/ai-opinion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           pair,
           timeframe: tf,
@@ -348,11 +412,18 @@ export default function App() {
         })
       });
       const data = await res.json();
-      setAiOpportunity(data);
-    } catch (err) {
-      console.error('AI Opinion Error:', err);
+      // Guard against stale symbol arrival: ensure returned opportunity matches active requested pair
+      if (data && (data.pair === pair)) {
+        setAiOpportunity(data);
+      }
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        console.error('AI Opinion Error:', err);
+      }
     } finally {
-      setAiLoading(false);
+      if (aiOpinionAbortControllerRef.current === controller) {
+        setAiLoading(false);
+      }
     }
   };
 
@@ -549,18 +620,41 @@ export default function App() {
           </div>
         </div>
 
+        {/* PORTAL VIEW 4: EARLY LEARNER COCKPIT */}
+        {portalMode === 'EARLY_LEARNER' && (
+          <EarlyLearnerDashboard
+            isMalay={language === 'ms'}
+          />
+        )}
+
+        {/* PORTAL VIEW 0: SHADOW OPERATOR COCKPIT */}
+        {portalMode === 'SHADOW_COCKPIT' && (
+          <ShadowPerformanceCockpit
+            activePair={activePair}
+            timeframe={timeframe}
+            isMalay={language === 'ms'}
+          />
+        )}
+
         {/* PORTAL VIEW 1: USER DASHBOARD */}
         {portalMode === 'USER_DASHBOARD' && (
           <UserDashboard
             currentPrice={currentPrice}
             activePair={activePair}
             setActivePair={setActivePair}
+            timeframe={timeframe}
             candles={candles}
             indicators={indicators}
             smcData={smcData}
             srZones={srZones}
+            aiOpportunity={aiOpportunity}
+            aiLoading={aiLoading}
             isMalay={language === 'ms'}
             onOpenBrokerModal={() => setIsBrokerConnectionOpen(true)}
+            onOpenAdaptiveLearning={() => setIsAdaptiveLearningOpen(true)}
+            onAskAi={handleAskPakar}
+            onSyncToRiskCalc={() => setIsRiskCalcOpen(true)}
+            onLogToJournal={() => setIsJournalOpen(true)}
           />
         )}
 
@@ -596,6 +690,7 @@ export default function App() {
               {/* AI Analysis Reasoning Card (5 Cols on large screen) */}
               <div className="lg:col-span-5 flex flex-col h-full">
                 <AiAnalysisCard
+                  activePair={activePair}
                   opportunity={aiOpportunity}
                   loading={aiLoading}
                   tradingStyle={tradingStyle}
@@ -725,24 +820,13 @@ export default function App() {
         )}
 
         {(dashboardView === 'AUTO_TRADER' || dashboardView === 'ALL') && (
-          <>
-            <AutoTraderPanel
-              currentPrice={currentPrice}
-              activePair={activePair}
-              opportunity={aiOpportunity}
-              language={language}
-              onOpenJournal={() => setIsJournalOpen(true)}
-              onOpenBrokerConnection={() => setIsBrokerConnectionOpen(true)}
-            />
-
-            <AiOpportunitiesScanner
-              activePair={activePair}
-              setActivePair={setActivePair}
-              tradingStyle={tradingStyle}
-              language={language}
-              opportunity={aiOpportunity}
-            />
-          </>
+          <AiOpportunitiesScanner
+            activePair={activePair}
+            setActivePair={setActivePair}
+            tradingStyle={tradingStyle}
+            language={language}
+            opportunity={aiOpportunity}
+          />
         )}
 
         {(dashboardView === 'TECHNICAL' || dashboardView === 'ALL') && (
@@ -846,8 +930,6 @@ export default function App() {
         triggeredToasts={triggeredToasts}
         onDismissToast={handleDismissToast}
       />
-
-      <AutoTraderToastContainer />
 
       <TraderAccountModal
         isOpen={isTraderAccountOpen}
