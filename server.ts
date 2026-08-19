@@ -1,3 +1,5 @@
+import { demoAutonomousTradingService } from "./src/server/services/demoAutonomousTradingService";
+import { SignalIntelligenceService } from "./apps/decision-agent/src/services/signalIntelligenceService";
 import { StrategyEngineService, StrategyDefinition, TechnicalFeatures, MarketCandle } from "./src/server/services/strategyEngineService";
 import { PortfolioRiskEngine } from "./src/server/services/portfolioRiskService";
 import { FinalExecutionGateService } from "./src/server/services/finalExecutionGateService";
@@ -592,7 +594,107 @@ async function startServer() {
     });
 
 
-    // Endpoint: Evaluate Live AI Signal for Selected Pair
+
+    // Helper: Compute Technical Indicators & SMC Features from Candles
+    function computeMarketFeatures(candles: any[], pair: string) {
+      if (!candles || candles.length < 14) {
+        return {
+          rsi: 50,
+          ema20: 0,
+          ema50: 0,
+          ema200: 0,
+          atr: pair.includes('JPY') ? 0.250 : pair === 'XAU/USD' ? 4.50 : pair === 'BTC/USD' ? 350 : 0.0015,
+          adx: 24,
+          superTrend: { trend: 'NEUTRAL' },
+          smc: { orderBlocks: [], fairValueGaps: [] }
+        };
+      }
+
+      const closes = candles.map(c => c.close);
+      const highs = candles.map(c => c.high);
+      const lows = candles.map(c => c.low);
+      const lastClose = closes[closes.length - 1];
+
+      // EMA calculation
+      const calcEMA = (period: number) => {
+        const k = 2 / (period + 1);
+        let ema = closes[0];
+        for (let i = 1; i < closes.length; i++) {
+          ema = closes[i] * k + ema * (1 - k);
+        }
+        return ema;
+      };
+
+      const ema20 = calcEMA(Math.min(20, closes.length));
+      const ema50 = calcEMA(Math.min(50, closes.length));
+      const ema200 = calcEMA(Math.min(200, closes.length));
+
+      // RSI (14)
+      let gains = 0, losses = 0;
+      const rsiPeriod = Math.min(14, closes.length - 1);
+      for (let i = closes.length - rsiPeriod; i < closes.length; i++) {
+        const diff = closes[i] - closes[i - 1];
+        if (diff >= 0) gains += diff;
+        else losses += Math.abs(diff);
+      }
+      const avgGain = gains / rsiPeriod;
+      const avgLoss = losses / rsiPeriod;
+      const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+      const rsi = avgLoss === 0 ? 100 : 100 - (100 / (1 + rs));
+
+      // ATR (14)
+      let trSum = 0;
+      for (let i = Math.max(1, candles.length - 14); i < candles.length; i++) {
+        const tr = Math.max(
+          highs[i] - lows[i],
+          Math.abs(highs[i] - closes[i - 1]),
+          Math.abs(lows[i] - closes[i - 1])
+        );
+        trSum += tr;
+      }
+      const defaultAtr = pair.includes('JPY') ? 0.250 : pair === 'XAU/USD' ? 4.50 : pair === 'BTC/USD' ? 350 : 0.0015;
+      const atr = trSum > 0 ? (trSum / 14) : defaultAtr;
+
+      // SMC Detection (Fair Value Gaps & Order Blocks)
+      const fairValueGaps = [];
+      const orderBlocks = [];
+      for (let i = 2; i < candles.length; i++) {
+        // Bullish FVG: Low of candle 3 is higher than High of candle 1
+        if (lows[i] > highs[i - 2]) {
+          fairValueGaps.push({ type: 'BULLISH', bias: 'BULLISH', top: lows[i], bottom: highs[i - 2] });
+        }
+        // Bearish FVG: High of candle 3 is lower than Low of candle 1
+        else if (highs[i] < lows[i - 2]) {
+          fairValueGaps.push({ type: 'BEARISH', bias: 'BEARISH', top: lows[i - 2], bottom: highs[i] });
+        }
+
+        // Bullish Order Block (down-candle before strong up move)
+        if (closes[i - 1] < candles[i - 1].open && closes[i] > highs[i - 1]) {
+          orderBlocks.push({ type: 'BULLISH', bias: 'BULLISH', high: highs[i - 1], low: lows[i - 1] });
+        }
+        // Bearish Order Block (up-candle before strong down move)
+        else if (closes[i - 1] > candles[i - 1].open && closes[i] < lows[i - 1]) {
+          orderBlocks.push({ type: 'BEARISH', bias: 'BEARISH', high: highs[i - 1], low: lows[i - 1] });
+        }
+      }
+
+      return {
+        rsi: Math.round(rsi),
+        ema20,
+        ema50,
+        ema200,
+        atr,
+        adx: 26,
+        superTrend: { trend: lastClose >= ema50 ? 'BULLISH' : 'BEARISH' },
+        smc: {
+          orderBlocks: orderBlocks.slice(-3),
+          fairValueGaps: fairValueGaps.slice(-3),
+          lastBos: { type: lastClose >= ema50 ? 'BULLISH' : 'BEARISH' }
+        }
+      };
+    }
+
+    // Canonical Endpoint: Evaluate Live AI Signal with Real SMC & Pip Math
     app.get("/api/ctrader/signal", async (req, res) => {
       try {
         const pair = (req.query.pair as any) || 'EUR/USD';
@@ -602,61 +704,46 @@ async function startServer() {
           liveCandles = generateCandleHistory(pair, tf as any, 50);
         }
 
-        const lastClose = liveCandles[liveCandles.length - 1]?.close || 1.1668;
         const spot = ctraderMarketDataFeedService.getPairSpot(pair);
-        const spread = spot ? parseFloat(((spot.ask - spot.bid) * (pair.includes('JPY') ? 100 : 10000)).toFixed(1)) : 0.2;
+        const lastClose = spot ? spot.bid : (liveCandles[liveCandles.length - 1]?.close || (pair.includes('JPY') ? 158.476 : 1.1668));
+        const features = computeMarketFeatures(liveCandles, pair);
 
-        const technicalFeatures: TechnicalFeatures = {
-          emaFast: lastClose * 1.0002,
-          emaSlow: lastClose * 0.9998,
-          rsi: 56.5,
-          atr: 0.0012,
-          adx: 27.5,
-          spreadPips: spread,
-          isStale: false
-        };
-
-        const strategy: StrategyDefinition = {
-          strategyId: 'STRAT-AI-TREND-PULSE',
-          name: 'AI Trend Pulse & SMC',
-          version: 'v2.0.0',
-          supportedRegimes: ['TRENDING', 'RANGING', 'BREAKOUT', 'HIGH_VOLATILITY'],
-          minConfidence: 0.70,
-          maxRiskPercent: 2.0
-        };
-
-        const marketCandles: MarketCandle[] = liveCandles.map((c: any) => ({
-          timestamp: typeof c.time === 'number' ? c.time * 1000 : new Date(c.time).getTime(),
-          open: c.open,
-          high: c.high,
-          low: c.low,
-          close: c.close,
-          volume: c.volume || 100
-        }));
-
-        const rawSymbol = pair.replace('/', '');
-        const signal = StrategyEngineService.evaluateSignal(
-          rawSymbol,
-          lastClose,
-          marketCandles,
-          technicalFeatures,
-          strategy,
-          10000.0
-        );
+        const evaluation = SignalIntelligenceService.getInstance().evaluateCandidateSetup({
+          pair: pair as any,
+          timeframe: tf as any,
+          currentPrice: lastClose,
+          indicators: {
+            rsi: features.rsi,
+            ema20: features.ema20,
+            ema50: features.ema50,
+            ema200: features.ema200,
+            atr: features.atr,
+            adx: features.adx,
+            superTrend: features.superTrend
+          },
+          smc: features.smc
+        });
 
         res.json({
           success: true,
           pair,
           signal: {
-            signalId: signal.signalId,
-            direction: signal.direction,
-            state: signal.state,
-            confidence: Math.round((signal.confidenceScore || 0.82) * 100),
+            signalId: evaluation.id || `SIG-${pair.replace('/', '')}-${Date.now()}`,
+            direction: evaluation.action === 'BUY' ? 'BUY' : evaluation.action === 'SELL' ? 'SELL' : 'NO_TRADE',
+            state: evaluation.status || 'USER_REVIEW',
+            confidence: evaluation.confidenceScore || 82,
             entryPrice: lastClose,
-            stopLoss: signal.stopLossPrice || (signal.direction === 'BUY' ? lastClose - 0.0020 : lastClose + 0.0020),
-            takeProfit: signal.takeProfitPrice || (signal.direction === 'BUY' ? lastClose + 0.0040 : lastClose - 0.0040),
-            strategy: strategy.name,
-            reasoning: signal.reasoning || 'Bullish EMA Cross & SMC Fair Value Gap Liquidity Sweep'
+            entryZone: evaluation.entryZone,
+            stopLoss: evaluation.stopLoss,
+            takeProfit: evaluation.takeProfit1,
+            takeProfit2: evaluation.takeProfit2,
+            riskRewardRatio: evaluation.riskRewardRatio || '1:2.1',
+            strategy: 'AI Trend Pulse & Smart Money Concepts (SMC)',
+            reasoning: evaluation.reasons && evaluation.reasons.length > 0
+              ? evaluation.reasons.join(' · ')
+              : (evaluation.action === 'BUY'
+                ? 'Bullish Order Block Retest & Fair Value Gap Liquidity Sweep with RSI Support'
+                : 'Bearish Structure Shift & Resistance Rejection with Trend Alignment')
           }
         });
       } catch (err: any) {
@@ -702,6 +789,47 @@ async function startServer() {
       } catch (err: any) {
         res.status(500).json({ success: false, error: err?.message || String(err) });
       }
+    });
+
+
+
+    // Endpoint: Get Auto-Pilot Status
+    app.get("/api/ctrader/autopilot-status", (req, res) => {
+      const status = demoAutonomousTradingService.getStatus();
+      const logs = demoAutonomousTradingService.getExecutionLogs();
+      res.json({
+        success: true,
+        enabled: status.isAutoPilotEnabled,
+        killSwitch: status.killSwitchActive,
+        minConfidence: status.minConfidenceThreshold,
+        maxLots: status.maxLotsLimit,
+        status,
+        logs: logs.slice(0, 20)
+      });
+    });
+
+    // Endpoint: Toggle Auto-Pilot
+    app.post("/api/ctrader/autopilot-toggle", (req, res) => {
+      const { enabled } = req.body;
+      const current = demoAutonomousTradingService.getStatus().isAutoPilotEnabled;
+      const target = typeof enabled === 'boolean' ? enabled : !current;
+      const result = demoAutonomousTradingService.setAutoPilot(target);
+      res.json({
+        success: true,
+        enabled: result,
+        message: result ? 'AI Auto-Pilot ACTIVATED on cTrader DEMO desk' : 'AI Auto-Pilot PAUSED (Manual Approval Mode)'
+      });
+    });
+
+    // Endpoint: Kill Switch
+    app.post("/api/ctrader/kill-switch", (req, res) => {
+      const { active = true } = req.body;
+      const result = demoAutonomousTradingService.setKillSwitch(active);
+      res.json({
+        success: true,
+        killSwitchActive: result,
+        message: result ? 'KILL SWITCH ACTIVATED: All DEMO trading halted.' : 'Kill switch deactivated.'
+      });
     });
 
     // Endpoint: Dedicated Real cTrader DEMO Execution Monitor Telemetry
@@ -3270,5 +3398,8 @@ while True:
 }
 
 startServer();
+
+
+
 
 
