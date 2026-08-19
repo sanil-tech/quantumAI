@@ -3,6 +3,7 @@ import {
   createChart, IChartApi, ISeriesApi, CandlestickSeries, LineSeries, AreaSeries, HistogramSeries, ColorType, LineStyle
 } from 'lightweight-charts';
 import {
+  ArrowUpRight, ArrowDownRight,
   ShieldCheck, ShieldAlert, Activity, TrendingUp, TrendingDown,
   AlertTriangle, CheckCircle, Clock, Database, Server, Zap,
   BarChart3, RefreshCw, Layers, Lock, Cpu, Eye, Info, Sparkles,
