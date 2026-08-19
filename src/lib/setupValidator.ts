@@ -16,7 +16,7 @@ export function evaluateSetupValidity(
   currentPrice: number,
   indicators?: IndicatorValues | null
 ): SetupValidity {
-  if (!opportunity || opportunity.action === 'WAIT / NO SETUP' || !opportunity.entryZone) {
+  if (!opportunity || opportunity.action === 'WAIT / NO SETUP' || opportunity.action === 'NO_SETUP' || opportunity.action === 'WAIT' || opportunity.action === 'VETO' || !opportunity.entryZone || opportunity.entryZone.min == null || opportunity.entryZone.max == null) {
     return {
       isValid: true,
       status: 'VALID_ACTIVE',

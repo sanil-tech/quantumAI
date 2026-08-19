@@ -476,7 +476,7 @@ export default function App() {
           pair: opp.pair,
           tradingStyle,
           direction: opp.action === 'BUY' ? 'BUY' : 'SELL',
-          entryPrice: (opp.entryZone.min + opp.entryZone.max) / 2,
+          entryPrice: opp.entryZone && typeof opp.entryZone.min === 'number' ? (opp.entryZone.min + opp.entryZone.max) / 2 : (opp as any).entryPrice || currentPrice || 0,
           stopLoss: opp.stopLoss,
           takeProfit: opp.takeProfit1,
           lotSize: 0.2,

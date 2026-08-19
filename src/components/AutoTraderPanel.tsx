@@ -597,7 +597,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
         }
 
         const validity = evaluateSetupValidity(opp, price);
-        const setupId = `${targetPair}_${opp.action}_${opp.timestamp || opp.entryZone.min}`;
+        const setupId = `${targetPair}_${opp.action}_${opp.timestamp || opp.entryZone?.min || ""}`;
 
         if (executedSetupsRef.current.has(setupId)) return;
 
@@ -1711,7 +1711,7 @@ export const AutoTraderPanel: React.FC<AutoTraderPanelProps> = ({
               </span>
 
               <span className="text-slate-300">
-                Entry: <strong className="text-amber-400 font-mono">{opportunity.entryZone.min}</strong> | SL: <strong className="text-rose-400 font-mono">{opportunity.stopLoss}</strong> | TP: <strong className="text-emerald-400 font-mono">{opportunity.takeProfit1}</strong>
+                Entry: <strong className="text-amber-400 font-mono">{opportunity.entryZone?.min ?? (opportunity as any).entryPrice ?? "Market"}</strong> | SL: <strong className="text-rose-400 font-mono">{opportunity.stopLoss}</strong> | TP: <strong className="text-emerald-400 font-mono">{opportunity.takeProfit1}</strong>
               </span>
 
               <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
