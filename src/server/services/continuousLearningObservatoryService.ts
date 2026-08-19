@@ -1,3 +1,4 @@
+import { EventEmitter } from 'events';
 import { CurrencyPair, TradingSession, AiTradeOpportunity, ObservationType, ResearchEvidenceTier } from '../../types';
 import { signalIntelligenceService } from '../../../apps/decision-agent/src/services/signalIntelligenceService';
 import { researchLearningEngine, SetupLearningStats } from '../../../apps/decision-agent/src/services/researchLearningEngine';
@@ -5,6 +6,15 @@ import { learningJournalService } from './learningJournalService';
 import { ShadowAnalyticsService } from './shadowAnalyticsService';
 
 export type ObservatoryState = 'STOPPED' | 'OBSERVING' | 'PAUSED';
+
+export interface MarketTickEvent {
+  symbol: CurrencyPair;
+  currentPrice: number;
+  highPrice?: number;
+  lowPrice?: number;
+  session?: TradingSession;
+  timestamp?: number;
+}
 
 export interface ActiveShadowObservation {
   id: string;
@@ -52,6 +62,8 @@ export interface ObservatoryStatus {
   brokerOrdersTransmitted: number;
   lastTickTimestamp: number | null;
   lastError: string | null;
+  isDispatcherRunning?: boolean;
+  isMarketListenerActive?: boolean;
 }
 
 export class ContinuousLearningObservatoryService {
@@ -62,6 +74,10 @@ export class ContinuousLearningObservatoryService {
   private processedSignalIds: Set<string> = new Set();
   private lastTickTimestamp: number | null = null;
   private lastError: string | null = null;
+  private isDispatcherRunning: boolean = false;
+  private dispatcherInterval: NodeJS.Timeout | null = null;
+  private boundEmitter: EventEmitter | null = null;
+  private tickListener: ((tick: MarketTickEvent) => void) | null = null;
 
   private constructor() {}
 
@@ -84,13 +100,72 @@ export class ContinuousLearningObservatoryService {
       liveExecutionGate: 'FORBIDDEN',
       brokerOrdersTransmitted: 0,
       lastTickTimestamp: this.lastTickTimestamp,
-      lastError: this.lastError
+      lastError: this.lastError,
+      isDispatcherRunning: this.isDispatcherRunning,
+      isMarketListenerActive: this.state === 'OBSERVING' && this.boundEmitter !== null && this.tickListener !== null
     };
   }
 
+  public bindMarketDataEmitter(emitter: EventEmitter): void {
+    if (this.boundEmitter === emitter && this.tickListener) {
+      return; // strictly idempotent
+    }
+    this.unbindMarketDataEmitter();
+    this.boundEmitter = emitter;
+    this.tickListener = (tick: MarketTickEvent) => {
+      if (this.state === 'OBSERVING' && tick && tick.symbol && tick.currentPrice > 0) {
+        this.processMarketTick(
+          tick.symbol,
+          tick.currentPrice,
+          tick.highPrice,
+          tick.lowPrice,
+          tick.session || 'LONDON'
+        );
+      }
+    };
+    this.boundEmitter.on('marketTick', this.tickListener);
+  }
+
+  public unbindMarketDataEmitter(): void {
+    if (this.boundEmitter && this.tickListener) {
+      this.boundEmitter.removeListener('marketTick', this.tickListener);
+      this.boundEmitter = null;
+      this.tickListener = null;
+    }
+  }
+
+  private startDispatcher(): void {
+    if (this.isDispatcherRunning || this.dispatcherInterval) {
+      return;
+    }
+    this.isDispatcherRunning = true;
+    this.dispatcherInterval = setInterval(() => {
+      if (this.state !== 'OBSERVING') {
+        this.stopDispatcher();
+        return;
+      }
+      if (this.activeObservations.size > 0) {
+        this.lastTickTimestamp = Date.now();
+      }
+    }, 3000);
+  }
+
+  private stopDispatcher(): void {
+    this.isDispatcherRunning = false;
+    if (this.dispatcherInterval) {
+      clearInterval(this.dispatcherInterval);
+      this.dispatcherInterval = null;
+    }
+  }
+
   public startObservatory(): { success: boolean; state: ObservatoryState; error?: string } {
+    if (this.state === 'OBSERVING') {
+      return { success: true, state: this.state };
+    }
+
     this.state = 'OBSERVING';
     this.lastError = null;
+    this.startDispatcher();
 
     learningJournalService.recordEvent({
       eventType: 'CAMPAIGN_STARTED',
@@ -104,6 +179,11 @@ export class ContinuousLearningObservatoryService {
   }
 
   public pauseObservatory(reason: string = 'Operator paused observatory'): { success: boolean; state: ObservatoryState } {
+    if (this.state === 'PAUSED') {
+      return { success: true, state: this.state };
+    }
+
+    this.stopDispatcher();
     this.state = 'PAUSED';
     this.lastError = reason;
 
@@ -119,8 +199,13 @@ export class ContinuousLearningObservatoryService {
   }
 
   public resumeObservatory(): { success: boolean; state: ObservatoryState } {
+    if (this.state === 'OBSERVING') {
+      return { success: true, state: this.state };
+    }
+
     this.state = 'OBSERVING';
     this.lastError = null;
+    this.startDispatcher();
 
     learningJournalService.recordEvent({
       eventType: 'CAMPAIGN_RESUMED',
@@ -134,6 +219,11 @@ export class ContinuousLearningObservatoryService {
   }
 
   public stopObservatory(reason: string = 'Operator stopped observatory'): { success: boolean; state: ObservatoryState } {
+    if (this.state === 'STOPPED') {
+      return { success: true, state: this.state };
+    }
+
+    this.stopDispatcher();
     this.state = 'STOPPED';
     this.lastError = null;
 
@@ -235,7 +325,7 @@ export class ContinuousLearningObservatoryService {
     }
 
     // VALID BUY or SELL -> Create simulated SHADOW OBSERVATION
-    const plannedEntry = opportunity.entryZone?.min || opportunity.currentPrice;
+    const plannedEntry = opportunity.entryPrice || opportunity.entryZone?.min || opportunity.currentPrice || 1.0850;
     const sl = opportunity.stopLoss || (opportunity.action === 'BUY' ? plannedEntry - 0.0030 : plannedEntry + 0.0030);
     const tp1 = opportunity.takeProfit1 || (opportunity.action === 'BUY' ? plannedEntry + 0.0060 : plannedEntry - 0.0060);
     const tp2 = opportunity.takeProfit2 ?? undefined;
@@ -389,13 +479,11 @@ export class ContinuousLearningObservatoryService {
         // 2. Check TP1
         else if (!shadow.tp1Hit && low <= shadow.takeProfit1) {
           if (!shadow.isMultiTarget || !shadow.takeProfit2) {
-            // Single target -> Complete exit at TP1
             hasClosed = true;
             shadow.status = 'CLOSED';
             shadow.exitPrice = shadow.takeProfit1;
             shadow.closeReason = 'TAKE_PROFIT_1';
           } else {
-            // Multi-target -> Milestone and move SL to breakeven
             shadow.tp1Hit = true;
             shadow.stopLoss = shadow.entryPrice;
 
@@ -476,6 +564,8 @@ export class ContinuousLearningObservatoryService {
   }
 
   public resetObservatory(): void {
+    this.stopDispatcher();
+    this.unbindMarketDataEmitter();
     this.activeObservations.clear();
     this.completedObservations = [];
     this.processedSignalIds.clear();
