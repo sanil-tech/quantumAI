@@ -29,9 +29,10 @@ import { SystemAuditModal } from './components/SystemAuditModal';
 import { UserDashboard } from './components/UserDashboard';
 import { AdminDeveloperDashboard } from './components/AdminDeveloperDashboard';
 import { EarlyLearnerDashboard } from './components/EarlyLearnerDashboard';
+import { DemoExecutionMonitor } from './components/DemoExecutionMonitor';
 
 export default function App() {
-  const [portalMode, setPortalMode] = useState<'USER_DASHBOARD' | 'ADMIN_DEVELOPER' | 'FULL_DESK' | 'SHADOW_COCKPIT' | 'EARLY_LEARNER'>('USER_DASHBOARD');
+  const [portalMode, setPortalMode] = useState<'USER_DASHBOARD' | 'ADMIN_DEVELOPER' | 'FULL_DESK' | 'SHADOW_COCKPIT' | 'EARLY_LEARNER' | 'DEMO_MONITOR'>('DEMO_MONITOR');
   const aiOpinionAbortControllerRef = useRef<AbortController | null>(null);
   const [activePair, setActivePair] = useState<CurrencyPair>('EUR/USD');
   const [timeframe, setTimeframe] = useState<Timeframe>('M15');
@@ -116,6 +117,9 @@ export default function App() {
           break;
         case '8':
           setPortalMode('EARLY_LEARNER');
+          break;
+        case '9':
+          setPortalMode('DEMO_MONITOR');
           break;
         default:
           break;
@@ -633,6 +637,21 @@ export default function App() {
               <Eye className="w-4 h-4 text-cyan-300" />
               <span>??? {language === 'ms' ? 'Cockpit Shadow' : 'Shadow Cockpit'}</span>
             </button>
+            <button
+              id="portal-demo-monitor-btn"
+              onClick={() => setPortalMode('DEMO_MONITOR')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shrink-0 ${
+                portalMode === 'DEMO_MONITOR'
+                  ? 'bg-gradient-to-r from-amber-500 via-orange-600 to-indigo-600 text-white shadow-lg shadow-amber-900/40 ring-2 ring-amber-400'
+                  : 'bg-amber-950/40 hover:bg-amber-900/50 text-amber-300 border border-amber-600/50'
+              }`}
+            >
+              <Activity className="w-4 h-4 text-amber-400 animate-pulse" />
+              <span>⚡ {language === 'ms' ? 'Monitor Pelaksanaan DEMO' : 'DEMO Execution'}</span>
+              <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-300 text-[10px] rounded font-bold border border-amber-500/40">
+                DEMO
+              </span>
+            </button>
           </div>
 
           <div className="flex items-center gap-2 font-mono text-xs">
@@ -648,6 +667,13 @@ export default function App() {
             </button>
           </div>
         </div>
+
+        {/* PORTAL VIEW: DEMO EXECUTION MONITOR */}
+        {portalMode === 'DEMO_MONITOR' && (
+          <div className="space-y-6">
+            <DemoExecutionMonitor />
+          </div>
+        )}
 
         {/* PORTAL VIEW 4: EARLY LEARNER COCKPIT */}
         {portalMode === 'EARLY_LEARNER' && (
