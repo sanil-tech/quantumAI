@@ -777,6 +777,7 @@ async function startServer() {
       }
     });
 
+
     // Endpoint: Execute AI Signal on cTrader DEMO Desk with Exact Bid/Ask Matching
     app.post("/api/ctrader/execute-signal-demo", async (req, res) => {
       try {
@@ -805,6 +806,37 @@ async function startServer() {
 
         const positionId = Math.floor(10000000 + Math.random() * 90000000);
         const orderId = `ORD-DEMO-${Date.now()}`;
+        const proposalId = `prop-demo-manual-${Date.now()}`;
+
+        // Register position into authoritative demoAutonomousTradingService
+        const newPos = {
+          positionId,
+          symbol: pair,
+          tradeSide: direction as 'BUY' | 'SELL',
+          volume: safeLots,
+          entryPrice: fillPrice,
+          currentPrice: fillPrice,
+          sl: slPrice,
+          tp: tpPrice,
+          unrealizedPnL: 0.00,
+          entryTime: new Date().toISOString(),
+          proposalId,
+          orderId,
+          mfe: 0.00,
+          mae: 0.00
+        };
+
+        (demoAutonomousTradingService as any).openPositions.set(positionId, newPos);
+        (demoAutonomousTradingService as any).executionLogs.unshift({
+          id: orderId,
+          timestamp: newPos.entryTime,
+          pair,
+          direction: direction as 'BUY' | 'SELL',
+          confidence: 82,
+          price: fillPrice,
+          status: 'FILLED_MANUAL_DEMO',
+          reason: 'Manual Confirmation from DEMO Monitor Dashboard'
+        });
 
         const executionReport = {
           positionId,
@@ -832,6 +864,78 @@ async function startServer() {
       }
     });
 
+
+    // Endpoint: Get Auto-Pilot Status
+    app.get("/api/ctrader/autopilot-status", (req, res) => {
+      try {
+        const status = demoAutonomousTradingService.getStatus();
+        const logs = demoAutonomousTradingService.getExecutionLogs();
+        res.json({
+          success: true,
+          enabled: status.isAutoPilotEnabled,
+          killSwitch: status.killSwitchActive,
+          minConfidence: status.minConfidenceThreshold,
+          maxLots: status.maxLotsLimit,
+          status,
+          logs: logs.slice(0, 20)
+        });
+      } catch (err: any) {
+        res.status(500).json({ success: false, error: err?.message || String(err) });
+      }
+    });
+
+    // Endpoint: Toggle Auto-Pilot
+    app.post("/api/ctrader/autopilot-toggle", (req, res) => {
+      try {
+        const { enabled } = req.body;
+        const current = demoAutonomousTradingService.getStatus().isAutoPilotEnabled;
+        const target = typeof enabled === 'boolean' ? enabled : !current;
+        const result = demoAutonomousTradingService.setAutoPilot(target);
+        res.json({
+          success: true,
+          enabled: result,
+          message: result ? 'AI Auto-Pilot ACTIVATED on cTrader DEMO desk' : 'AI Auto-Pilot PAUSED (Manual Approval Mode)'
+        });
+      } catch (err: any) {
+        res.status(500).json({ success: false, error: err?.message || String(err) });
+      }
+    });
+
+    // Endpoint: Kill Switch
+    app.post("/api/ctrader/kill-switch", (req, res) => {
+      try {
+        const { active = true } = req.body;
+        const result = demoAutonomousTradingService.setKillSwitch(active);
+        res.json({
+          success: true,
+          killSwitchActive: result,
+          message: result ? 'KILL SWITCH ACTIVATED: All DEMO trading halted.' : 'Kill switch deactivated.'
+        });
+      } catch (err: any) {
+        res.status(500).json({ success: false, error: err?.message || String(err) });
+      }
+    });
+
+    // Endpoint: Close DEMO Position
+    app.post("/api/ctrader/close-position-demo", (req, res) => {
+      try {
+        const { positionId, exitPrice } = req.body;
+        const positions = demoAutonomousTradingService.getOpenPositions();
+        const pos = positions.find(p => p.positionId === Number(positionId));
+        if (!pos) {
+          return res.status(404).json({ success: false, error: 'Position not found on DEMO desk.' });
+        }
+        const price = Number(exitPrice || pos.currentPrice);
+        const closed = demoAutonomousTradingService.closePosition(pos.positionId, price, 'MANUAL');
+        res.json({
+          success: true,
+          message: `Position #${positionId} closed @ ${price} (Realized PnL: $${closed?.realizedPnL || 0})`,
+          closedTrade: closed
+        });
+      } catch (err: any) {
+        res.status(500).json({ success: false, error: err?.message || String(err) });
+      }
+    });
 
     // Endpoint: Dedicated Real cTrader DEMO Execution Monitor Telemetry (Strict Authoritative Consolidation)
     app.get("/api/ctrader/demo-execution-monitor", (req, res) => {
@@ -3452,6 +3556,7 @@ while True:
 }
 
 startServer();
+
 
 
 

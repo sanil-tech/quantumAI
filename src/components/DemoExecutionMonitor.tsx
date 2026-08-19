@@ -877,7 +877,7 @@ export const DemoExecutionMonitor: React.FC = () => {
                       [DEMO DESK]
                     </span>
                     <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-slate-800 text-slate-300 border border-slate-700 uppercase">
-                      {aiSignal?.setupType || 'M1 QUANT SETUP'}
+                      {aiSignal?.setupType || `${selectedTimeframe} QUANT SETUP`}
                     </span>
                   </div>
                   <div className="text-[11px] text-slate-400 font-mono mt-0.5">
