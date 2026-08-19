@@ -570,39 +570,68 @@ export default function App() {
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-2.5 flex flex-wrap items-center justify-between gap-3 shadow-xl backdrop-blur-md">
           <div className="flex items-center gap-2 overflow-x-auto py-0.5 scrollbar-none w-full sm:w-auto">
             <button
+              id="portal-user-btn"
               onClick={() => setPortalMode('USER_DASHBOARD')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shrink-0 ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shrink-0 ${
                 portalMode === 'USER_DASHBOARD'
                   ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-lg shadow-blue-900/40 ring-1 ring-blue-400/50'
                   : 'bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800'
               }`}
             >
               <User className="w-4 h-4 text-blue-300" />
-              <span>ðŸ‘¤ Dashboard User / Ahli (Hook, Sim & Broker)</span>
+              <span>?? {language === 'ms' ? 'Dashboard User' : 'User Dashboard'}</span>
             </button>
 
             <button
+              id="portal-early-learner-btn"
+              onClick={() => setPortalMode('EARLY_LEARNER')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shrink-0 ${
+                portalMode === 'EARLY_LEARNER'
+                  ? 'bg-gradient-to-r from-amber-500 via-orange-600 to-rose-600 text-white shadow-lg shadow-amber-900/40 ring-2 ring-amber-400'
+                  : 'bg-amber-950/50 hover:bg-amber-900/60 text-amber-200 border border-amber-600/60 hover:border-amber-400'
+              }`}
+            >
+              <Sparkles className="w-4 h-4 text-amber-300" />
+              <span>?? {language === 'ms' ? 'Observatori Pembelajaran' : 'Learner Observatory'}</span>
+            </button>
+
+            <button
+              id="portal-admin-btn"
               onClick={() => setPortalMode('ADMIN_DEVELOPER')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shrink-0 ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shrink-0 ${
                 portalMode === 'ADMIN_DEVELOPER'
                   ? 'bg-gradient-to-r from-purple-600 via-fuchsia-600 to-pink-600 text-white shadow-lg shadow-purple-900/40 ring-1 ring-purple-400/50'
                   : 'bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800'
               }`}
             >
               <Building2 className="w-4 h-4 text-purple-300" />
-              <span>ðŸ‘‘ Dashboard Admin &amp; Developer (SaaS &amp; Relay)</span>
+              <span>?? {language === 'ms' ? 'Dashboard Admin & Dev' : 'Admin & Dev Dashboard'}</span>
             </button>
 
             <button
+              id="portal-full-desk-btn"
               onClick={() => setPortalMode('FULL_DESK')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shrink-0 ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shrink-0 ${
                 portalMode === 'FULL_DESK'
                   ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-900/40 ring-1 ring-emerald-400/50'
                   : 'bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800'
               }`}
             >
               <LayoutGrid className="w-4 h-4 text-emerald-300" />
-              <span>ðŸ“Š Meja Dagangan Sebenar (Chart &amp; Technical Desk)</span>
+              <span>?? {language === 'ms' ? 'Meja Dagangan Sebenar' : 'Trading Desk'}</span>
+            </button>
+
+            <button
+              id="portal-shadow-btn"
+              onClick={() => setPortalMode('SHADOW_COCKPIT')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shrink-0 ${
+                portalMode === 'SHADOW_COCKPIT'
+                  ? 'bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 text-white shadow-lg shadow-cyan-900/40 ring-1 ring-cyan-400/50'
+                  : 'bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800'
+              }`}
+            >
+              <Eye className="w-4 h-4 text-cyan-300" />
+              <span>??? {language === 'ms' ? 'Cockpit Shadow' : 'Shadow Cockpit'}</span>
             </button>
           </div>
 
@@ -615,7 +644,7 @@ export default function App() {
               title="Klik untuk buka Tetingkap Sambungan cTrader FIX API"
             >
               <span className="w-2 h-2 bg-emerald-400 rounded-full animate-ping" />
-              <span>âš¡ cTrader FIX (Port 5212) ONLINE</span>
+              <span>? cTrader FIX (Port 5212) ONLINE</span>
             </button>
           </div>
         </div>
