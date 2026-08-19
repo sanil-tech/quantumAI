@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { CurrencyPair, AiTradeOpportunity, TradingStyle } from '../types';
-import { Brain, TrendingUp, TrendingDown, Clock, Sparkles, ArrowRight } from 'lucide-react';
+import { Brain, TrendingUp, TrendingDown, Clock, Sparkles, ArrowRight, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { Language } from '../lib/translations';
 import { PAIR_CONFIGS } from '../lib/marketDataGenerator';
 import { calculateAllIndicators } from '../lib/indicators';
