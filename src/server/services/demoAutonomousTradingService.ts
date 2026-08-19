@@ -134,12 +134,15 @@ export class DemoAutonomousTradingService extends EventEmitter {
 
   /**
    * Monitor existing open position against live ticks for broker SL/TP trigger
+   * - BUY positions are marked to market and closed at prevailing BID price.
+   * - SELL positions are marked to market and closed at prevailing ASK price.
    */
   private updatePositionsAndCheckExits(tick: { symbol: CurrencyPair; bid: number; ask: number; timestamp: number }): void {
     for (const [posId, pos] of this.openPositions.entries()) {
       if (pos.symbol !== tick.symbol) continue;
 
       const isBuy = pos.tradeSide === 'BUY';
+      // Liquidation price: BUY sells at BID, SELL buys back at ASK
       const currentPrice = isBuy ? tick.bid : tick.ask;
       pos.currentPrice = currentPrice;
 
@@ -155,11 +158,11 @@ export class DemoAutonomousTradingService extends EventEmitter {
       if (pos.unrealizedPnL > pos.mfe) pos.mfe = pos.unrealizedPnL;
       if (pos.unrealizedPnL < pos.mae) pos.mae = pos.unrealizedPnL;
 
-      // Check SL hit
+      // Check SL hit (BUY: BID <= SL; SELL: ASK >= SL)
       if ((isBuy && currentPrice <= pos.sl) || (!isBuy && currentPrice >= pos.sl)) {
         this.closePosition(posId, pos.sl, 'STOP_LOSS');
       }
-      // Check TP hit
+      // Check TP hit (BUY: BID >= TP; SELL: ASK <= TP)
       else if ((isBuy && currentPrice >= pos.tp) || (!isBuy && currentPrice <= pos.tp)) {
         this.closePosition(posId, pos.tp, 'TAKE_PROFIT');
       }
@@ -226,7 +229,9 @@ export class DemoAutonomousTradingService extends EventEmitter {
   }
 
   /**
-   * Autonomous Trading Decision Loop
+   * Autonomous Trading Decision Loop with Strict Bid-Ask Parity:
+   * - BUY orders execute at ASK price.
+   * - SELL orders execute at BID price.
    */
   public async evaluateAutonomousCycle(
     pair: CurrencyPair,
@@ -268,18 +273,17 @@ export class DemoAutonomousTradingService extends EventEmitter {
       }
 
       // 5. Gather Live Candle Features & SMC Structures
-      const candles = ctraderMarketDataFeedService.getLiveCandles(pair);
-      const currentPrice = bid;
+      const midPrice = (bid + ask) / 2;
 
       // 6. Strategy & AI Signal Evaluation
       const signal = SignalIntelligenceService.getInstance().evaluateCandidateSetup({
         pair: pair as any,
         timeframe: 'M1',
-        currentPrice,
+        currentPrice: midPrice,
         indicators: {
           rsi: 58,
-          ema20: currentPrice * 1.0001,
-          ema50: currentPrice * 0.9998,
+          ema20: midPrice * 1.0001,
+          ema50: midPrice * 0.9998,
           atr: pair.includes('JPY') ? 0.280 : pair === 'XAU/USD' ? 4.50 : 0.0015,
           adx: 26
         },
@@ -303,7 +307,22 @@ export class DemoAutonomousTradingService extends EventEmitter {
         return;
       }
 
-      // 7. Risk Governance: PortfolioRiskEngine Evaluation
+      // 7. Rigorous Bid-Ask Price Assignment:
+      // BUY executes at ASK. SELL executes at BID.
+      const isBuy = signal.action === 'BUY';
+      const executableEntryPrice = isBuy ? ask : bid;
+      const decimals = pair.includes('JPY') ? 3 : (pair === 'XAU/USD' || pair === 'BTC/USD') ? 2 : 5;
+      const atr = pair.includes('JPY') ? 0.280 : pair === 'XAU/USD' ? 4.50 : 0.0015;
+
+      const calculatedSL = isBuy
+        ? Number((executableEntryPrice - atr * 1.4).toFixed(decimals))
+        : Number((executableEntryPrice + atr * 1.4).toFixed(decimals));
+
+      const calculatedTP = isBuy
+        ? Number((executableEntryPrice + atr * 2.1).toFixed(decimals))
+        : Number((executableEntryPrice - atr * 2.1).toFixed(decimals));
+
+      // 8. Risk Governance: PortfolioRiskEngine Evaluation
       const proposalId = `prop-demo-auto-${Date.now()}`;
       const proposedTrade: ProposedTradeRisk = {
         requestId: `REQ-${Date.now()}`,
@@ -314,9 +333,9 @@ export class DemoAutonomousTradingService extends EventEmitter {
         direction: signal.action,
         proposedRiskDollars: 10.0,
         proposedRiskPercent: 0.10,
-        entryPrice: currentPrice,
-        slPrice: signal.stopLoss || (signal.action === 'BUY' ? currentPrice - 0.0020 : currentPrice + 0.0020),
-        tpPrice: signal.takeProfit1 || (signal.action === 'BUY' ? currentPrice + 0.0040 : currentPrice - 0.0040)
+        entryPrice: executableEntryPrice,
+        slPrice: calculatedSL,
+        tpPrice: calculatedTP
       };
 
       const riskDecision = this.portfolioRiskEngine.evaluateAndReserveRisk(proposedTrade);
@@ -325,7 +344,7 @@ export class DemoAutonomousTradingService extends EventEmitter {
         return;
       }
 
-      // 8. Final Execution Safety Gate
+      // 9. Final Execution Safety Gate
       const gateResult: ExecutionGateDecision = FinalExecutionGateService.evaluateFinalExecutionGate(
         {
           signalId: proposalId,
@@ -337,9 +356,9 @@ export class DemoAutonomousTradingService extends EventEmitter {
           state: 'APPROVED',
           confidenceScore: (signal.confidenceScore || 80) / 100,
           regime: 'TRENDING',
-          entryPrice: currentPrice,
-          stopLossPrice: proposedTrade.slPrice,
-          takeProfitPrice: proposedTrade.tpPrice,
+          entryPrice: executableEntryPrice,
+          stopLossPrice: calculatedSL,
+          takeProfitPrice: calculatedTP,
           maxRiskPercent: 0.10,
           generatedTimestamp: Date.now(),
           expirationTimestamp: Date.now() + 60000,
@@ -360,7 +379,7 @@ export class DemoAutonomousTradingService extends EventEmitter {
         return;
       }
 
-      // 9. Execute Real Controlled DEMO Order
+      // 10. Execute Real Controlled DEMO Order at exact Bid/Ask
       const safeLots = this.maxLotsLimit; // 0.01
       const orderConfig: ControlledDemoOrderConfig = {
         environment: 'DEMO',
@@ -370,8 +389,8 @@ export class DemoAutonomousTradingService extends EventEmitter {
         symbol: pair,
         side: signal.action,
         lots: safeLots,
-        stopLoss: proposedTrade.slPrice,
-        takeProfit: proposedTrade.tpPrice,
+        stopLoss: calculatedSL,
+        takeProfit: calculatedTP,
         comment: proposalId
       };
 
@@ -385,10 +404,10 @@ export class DemoAutonomousTradingService extends EventEmitter {
         symbol: pair,
         tradeSide: signal.action,
         volume: safeLots,
-        entryPrice: currentPrice,
-        currentPrice,
-        sl: proposedTrade.slPrice,
-        tp: proposedTrade.tpPrice,
+        entryPrice: executableEntryPrice,
+        currentPrice: executableEntryPrice,
+        sl: calculatedSL,
+        tp: calculatedTP,
         unrealizedPnL: 0.00,
         entryTime: new Date().toISOString(),
         proposalId,
@@ -399,7 +418,7 @@ export class DemoAutonomousTradingService extends EventEmitter {
 
       this.openPositions.set(positionId, openPos);
       this.lastExecutionAt = new Date().toISOString();
-      this.lastDecisionReason = `Autonomous DEMO order executed: ${signal.action} ${safeLots} lot ${pair} @ ${currentPrice}`;
+      this.lastDecisionReason = `Autonomous DEMO order executed: ${signal.action} ${safeLots} lot ${pair} @ ${executableEntryPrice} (${isBuy ? 'ASK' : 'BID'})`;
 
       // Record in Audit Execution Logs
       this.executionLogs.unshift({
@@ -408,7 +427,7 @@ export class DemoAutonomousTradingService extends EventEmitter {
         pair,
         direction: signal.action,
         confidence: signal.confidenceScore || 82,
-        price: currentPrice,
+        price: executableEntryPrice,
         status: 'FILLED_DEMO',
         reason: signal.reasons && signal.reasons.length > 0 ? signal.reasons[0] : 'SMC Fair Value Gap & EMA Trend Confluence'
       });

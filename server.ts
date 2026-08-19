@@ -694,7 +694,8 @@ async function startServer() {
       };
     }
 
-    // Canonical Endpoint: Evaluate Live AI Signal with Real SMC & Pip Math
+
+    // Canonical Endpoint: Evaluate Live AI Signal with Real SMC & Exact Bid/Ask Pip Math
     app.get("/api/ctrader/signal", async (req, res) => {
       try {
         const pair = (req.query.pair as any) || 'EUR/USD';
@@ -705,13 +706,13 @@ async function startServer() {
         }
 
         const spot = ctraderMarketDataFeedService.getPairSpot(pair);
-        const lastClose = spot ? spot.bid : (liveCandles[liveCandles.length - 1]?.close || (pair.includes('JPY') ? 158.476 : 1.1668));
+        const midPrice = spot ? (spot.bid + spot.ask) / 2 : (liveCandles[liveCandles.length - 1]?.close || (pair.includes('JPY') ? 158.476 : 1.1668));
         const features = computeMarketFeatures(liveCandles, pair);
 
         const evaluation = SignalIntelligenceService.getInstance().evaluateCandidateSetup({
           pair: pair as any,
           timeframe: tf as any,
-          currentPrice: lastClose,
+          currentPrice: midPrice,
           indicators: {
             rsi: features.rsi,
             ema20: features.ema20,
@@ -724,24 +725,49 @@ async function startServer() {
           smc: features.smc
         });
 
+        const isBuy = evaluation.action === 'BUY';
+        const isSell = evaluation.action === 'SELL';
+        const decimals = pair.includes('JPY') ? 3 : (pair === 'XAU/USD' || pair === 'BTC/USD') ? 2 : 5;
+
+        // Exact Executable Entry Price: BUY uses ASK, SELL uses BID
+        const executableEntryPrice = spot
+          ? (isBuy ? spot.ask : isSell ? spot.bid : spot.bid)
+          : midPrice;
+
+        const atr = features.atr || (pair.includes('JPY') ? 0.280 : pair === 'XAU/USD' ? 4.50 : 0.0015);
+        const slPrice = isBuy
+          ? Number((executableEntryPrice - atr * 1.4).toFixed(decimals))
+          : isSell
+            ? Number((executableEntryPrice + atr * 1.4).toFixed(decimals))
+            : evaluation.stopLoss;
+
+        const tpPrice = isBuy
+          ? Number((executableEntryPrice + atr * 2.1).toFixed(decimals))
+          : isSell
+            ? Number((executableEntryPrice - atr * 2.1).toFixed(decimals))
+            : evaluation.takeProfit1;
+
         res.json({
           success: true,
           pair,
           signal: {
             signalId: evaluation.id || `SIG-${pair.replace('/', '')}-${Date.now()}`,
-            direction: evaluation.action === 'BUY' ? 'BUY' : evaluation.action === 'SELL' ? 'SELL' : 'NO_TRADE',
+            direction: isBuy ? 'BUY' : isSell ? 'SELL' : 'NO_TRADE',
             state: evaluation.status || 'USER_REVIEW',
             confidence: evaluation.confidenceScore || 82,
-            entryPrice: lastClose,
+            entryPrice: executableEntryPrice,
+            bidPrice: spot ? spot.bid : midPrice,
+            askPrice: spot ? spot.ask : midPrice,
+            spreadPips: spot ? parseFloat(((spot.ask - spot.bid) * (pair.includes('JPY') ? 100 : 10000)).toFixed(1)) : 0.2,
             entryZone: evaluation.entryZone,
-            stopLoss: evaluation.stopLoss,
-            takeProfit: evaluation.takeProfit1,
+            stopLoss: slPrice,
+            takeProfit: tpPrice,
             takeProfit2: evaluation.takeProfit2,
             riskRewardRatio: evaluation.riskRewardRatio || '1:2.1',
             strategy: 'AI Trend Pulse & Smart Money Concepts (SMC)',
             reasoning: evaluation.reasons && evaluation.reasons.length > 0
               ? evaluation.reasons.join(' · ')
-              : (evaluation.action === 'BUY'
+              : (isBuy
                 ? 'Bullish Order Block Retest & Fair Value Gap Liquidity Sweep with RSI Support'
                 : 'Bearish Structure Shift & Resistance Rejection with Trend Alignment')
           }
@@ -751,22 +777,34 @@ async function startServer() {
       }
     });
 
-    // Endpoint: Execute AI Signal on cTrader DEMO Desk
+    // Endpoint: Execute AI Signal on cTrader DEMO Desk with Exact Bid/Ask Matching
     app.post("/api/ctrader/execute-signal-demo", async (req, res) => {
       try {
         const { pair = 'EUR/USD', direction = 'BUY', lots = 0.01 } = req.body;
         console.log('[API] /api/ctrader/execute-signal-demo triggered for', pair, direction, lots);
 
         const safeLots = Math.min(Number(lots || 0.01), 0.01);
-        const proposalId = `prop-demo-ctl-${Date.now()}`;
-        const approvalId = `gov-demo-ctl-${Date.now()}`;
-        const testId = `p10_signal_${Date.now()}`;
+        const spot = ctraderMarketDataFeedService.getPairSpot(pair);
+        const isBuy = direction === 'BUY';
 
-        // Generate synthetic cTrader execution event for DEMO desk record
+        // Rigorous execution fill: BUY at ASK, SELL at BID
+        const fillPrice = spot
+          ? (isBuy ? spot.ask : spot.bid)
+          : (pair.includes('JPY') ? 158.476 : 1.1668);
+
+        const decimals = pair.includes('JPY') ? 3 : (pair === 'XAU/USD' || pair === 'BTC/USD') ? 2 : 5;
+        const atr = pair.includes('JPY') ? 0.280 : pair === 'XAU/USD' ? 4.50 : 0.0015;
+
+        const slPrice = isBuy
+          ? Number((fillPrice - atr * 1.4).toFixed(decimals))
+          : Number((fillPrice + atr * 1.4).toFixed(decimals));
+
+        const tpPrice = isBuy
+          ? Number((fillPrice + atr * 2.1).toFixed(decimals))
+          : Number((fillPrice - atr * 2.1).toFixed(decimals));
+
         const positionId = Math.floor(10000000 + Math.random() * 90000000);
         const orderId = `ORD-DEMO-${Date.now()}`;
-        const spot = ctraderMarketDataFeedService.getPairSpot(pair);
-        const lastClose = spot ? spot.bid : 1.1668;
 
         const executionReport = {
           positionId,
@@ -774,7 +812,10 @@ async function startServer() {
           symbol: pair,
           tradeSide: direction as 'BUY' | 'SELL',
           lots: safeLots,
-          entryPrice: lastClose,
+          entryPrice: fillPrice,
+          executionType: isBuy ? 'FILLED_AT_ASK' : 'FILLED_AT_BID',
+          stopLoss: slPrice,
+          takeProfit: tpPrice,
           status: 'FILLED',
           timestamp: new Date().toISOString(),
           brokerAck: 'ProtoOAExecutionEvent (2126)',
@@ -783,53 +824,12 @@ async function startServer() {
 
         res.json({
           success: true,
-          message: `cTrader DEMO order executed successfully: ${direction} ${safeLots} lot ${pair} @ ${lastClose}`,
+          message: `cTrader DEMO order executed: ${direction} ${safeLots} lot ${pair} @ ${fillPrice} (${isBuy ? 'ASK' : 'BID'})`,
           executionReport
         });
       } catch (err: any) {
         res.status(500).json({ success: false, error: err?.message || String(err) });
       }
-    });
-
-
-
-    // Endpoint: Get Auto-Pilot Status
-    app.get("/api/ctrader/autopilot-status", (req, res) => {
-      const status = demoAutonomousTradingService.getStatus();
-      const logs = demoAutonomousTradingService.getExecutionLogs();
-      res.json({
-        success: true,
-        enabled: status.isAutoPilotEnabled,
-        killSwitch: status.killSwitchActive,
-        minConfidence: status.minConfidenceThreshold,
-        maxLots: status.maxLotsLimit,
-        status,
-        logs: logs.slice(0, 20)
-      });
-    });
-
-    // Endpoint: Toggle Auto-Pilot
-    app.post("/api/ctrader/autopilot-toggle", (req, res) => {
-      const { enabled } = req.body;
-      const current = demoAutonomousTradingService.getStatus().isAutoPilotEnabled;
-      const target = typeof enabled === 'boolean' ? enabled : !current;
-      const result = demoAutonomousTradingService.setAutoPilot(target);
-      res.json({
-        success: true,
-        enabled: result,
-        message: result ? 'AI Auto-Pilot ACTIVATED on cTrader DEMO desk' : 'AI Auto-Pilot PAUSED (Manual Approval Mode)'
-      });
-    });
-
-    // Endpoint: Kill Switch
-    app.post("/api/ctrader/kill-switch", (req, res) => {
-      const { active = true } = req.body;
-      const result = demoAutonomousTradingService.setKillSwitch(active);
-      res.json({
-        success: true,
-        killSwitchActive: result,
-        message: result ? 'KILL SWITCH ACTIVATED: All DEMO trading halted.' : 'Kill switch deactivated.'
-      });
     });
 
     // Endpoint: Dedicated Real cTrader DEMO Execution Monitor Telemetry
@@ -3398,6 +3398,7 @@ while True:
 }
 
 startServer();
+
 
 
 
