@@ -7,7 +7,8 @@ import {
   AlertTriangle, CheckCircle, Clock, Database, Server, Zap,
   BarChart3, RefreshCw, Layers, Lock, Cpu, Eye, Info, Sparkles,
   Radio, Scale, ArrowRight, Shield, AlertCircle, Maximize2, Minimize2,
-  SlidersHorizontal, Brain, ChevronRight, Hash, Play, Target
+  SlidersHorizontal, ChevronRight, Hash, Play, Target, Brain,
+  Power, CheckCircle2, Flame, PlayCircle, StopCircle
 } from 'lucide-react';
 import { CurrencyPair, Timeframe, CandleData } from '../types';
 
@@ -131,7 +132,7 @@ export const DemoExecutionMonitor: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date>(new Date());
-  const [activeHistoryTab, setActiveHistoryTab] = useState<'TRADES' | 'ORDERS' | 'POSITIONS'>('TRADES');
+  const [activeHistoryTab, setActiveHistoryTab] = useState<'TRADES' | 'POSITIONS' | 'ORDERS' | 'AUTOPILOT_LOGS'>('TRADES');
 
   // Multi-Pair and Broker Chart State
   const [selectedPair, setSelectedPair] = useState<CurrencyPair>('EUR/USD');
@@ -146,6 +147,11 @@ export const DemoExecutionMonitor: React.FC = () => {
   const [aiSignal, setAiSignal] = useState<any>(null);
   const [isExecutingSignal, setIsExecutingSignal] = useState<boolean>(false);
   const [executionFeedback, setExecutionFeedback] = useState<string | null>(null);
+
+  // AI Auto-Pilot Autonomous Mode State
+  const [isAutoPilot, setIsAutoPilot] = useState<boolean>(false);
+  const [autoPilotLogs, setAutoPilotLogs] = useState<any[]>([]);
+  const [isTogglingAutoPilot, setIsTogglingAutoPilot] = useState<boolean>(false);
 
   // Live Crosshair OHLC Legend
   const [hoverOhlc, setHoverOhlc] = useState<{
@@ -213,7 +219,42 @@ export const DemoExecutionMonitor: React.FC = () => {
     } catch (_) {}
   }, [selectedPair, selectedTimeframe]);
 
-  // Execute Signal on cTrader DEMO Desk
+  // Fetch Auto-Pilot Status
+  const fetchAutoPilotStatus = useCallback(async () => {
+    try {
+      const res = await fetch('/api/ctrader/autopilot-status');
+      if (res.ok) {
+        const json = await res.json();
+        setIsAutoPilot(json.enabled);
+        if (json.logs) setAutoPilotLogs(json.logs);
+      }
+    } catch (_) {}
+  }, []);
+
+  // Toggle Auto-Pilot
+  const handleToggleAutoPilot = async () => {
+    setIsTogglingAutoPilot(true);
+    try {
+      const res = await fetch('/api/ctrader/autopilot-toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: !isAutoPilot })
+      });
+      const json = await res.json();
+      if (json.success) {
+        setIsAutoPilot(json.enabled);
+        setExecutionFeedback(json.message);
+        await fetchAutoPilotStatus();
+      }
+    } catch (e: any) {
+      setExecutionFeedback(`Auto-Pilot Error: ${e.message || e}`);
+    } finally {
+      setIsTogglingAutoPilot(false);
+      setTimeout(() => setExecutionFeedback(null), 5000);
+    }
+  };
+
+  // Execute Signal on cTrader DEMO Desk (Manual Confirmation)
   const handleExecuteSignalDemo = async () => {
     if (!aiSignal || aiSignal.direction === 'NO_TRADE') return;
     setIsExecutingSignal(true);
@@ -232,6 +273,7 @@ export const DemoExecutionMonitor: React.FC = () => {
       if (result.success) {
         setExecutionFeedback(`✓ SUCCESS: ${result.message}`);
         await fetchMonitorData();
+        await fetchAutoPilotStatus();
       } else {
         setExecutionFeedback(`Execution Notice: ${result.error || 'Request rejected by safety gate.'}`);
       }
@@ -331,7 +373,7 @@ export const DemoExecutionMonitor: React.FC = () => {
     const volumeSeries = chart.addSeries(HistogramSeries, {
       color: 'rgba(59, 130, 246, 0.3)',
       priceFormat: { type: 'volume' },
-      priceScaleId: '', // Overlay scale
+      priceScaleId: '',
       scaleMargins: { top: 0.82, bottom: 0 }
     });
 
@@ -402,14 +444,12 @@ export const DemoExecutionMonitor: React.FC = () => {
             };
           });
 
-          // Sort by time ascending
           formatted.sort((a: any, b: any) => a.time - b.time);
 
           candleSeries.setData(formatted);
           areaSeries.setData(formatted.map((c: any) => ({ time: c.time, value: c.close })));
           lineSeries.setData(formatted.map((c: any) => ({ time: c.time, value: c.close })));
 
-          // Volume series data
           volumeSeries.setData(
             formatted.map((c: any) => ({
               time: c.time,
@@ -418,7 +458,6 @@ export const DemoExecutionMonitor: React.FC = () => {
             }))
           );
 
-          // EMA series data
           ema20Series.setData(calculateEMA(formatted, 20));
           ema50Series.setData(calculateEMA(formatted, 50));
 
@@ -486,13 +525,15 @@ export const DemoExecutionMonitor: React.FC = () => {
   useEffect(() => {
     fetchMonitorData();
     fetchAiSignal();
+    fetchAutoPilotStatus();
     if (!autoRefresh) return;
     const interval = setInterval(() => {
       fetchMonitorData();
       fetchAiSignal();
+      fetchAutoPilotStatus();
     }, 3000);
     return () => clearInterval(interval);
-  }, [fetchMonitorData, fetchAiSignal, autoRefresh]);
+  }, [fetchMonitorData, fetchAiSignal, fetchAutoPilotStatus, autoRefresh]);
 
   const header = data?.headerStatus;
   const telemetry = data?.telemetry;
@@ -661,9 +702,7 @@ export const DemoExecutionMonitor: React.FC = () => {
       <div className={`bg-slate-900/95 border border-slate-800/80 rounded-2xl shadow-2xl space-y-3 transition-all ${
         isFullscreen ? 'fixed inset-4 z-50 p-6 flex flex-col justify-between bg-slate-950' : 'p-5'
       }`}>
-        {/* Broker Chart Header Toolbar */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
-          {/* Symbol Info & Live Price */}
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-blue-500/10 border border-blue-500/30 rounded-xl text-blue-400">
               <TrendingUp className="w-5 h-5" />
@@ -685,9 +724,7 @@ export const DemoExecutionMonitor: React.FC = () => {
             </div>
           </div>
 
-          {/* Timeframe & Chart Style Toolbar */}
           <div className="flex flex-wrap items-center gap-2">
-            {/* Timeframe Selector */}
             <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-mono">
               {TIMEFRAMES.map((tf) => (
                 <button
@@ -702,7 +739,6 @@ export const DemoExecutionMonitor: React.FC = () => {
               ))}
             </div>
 
-            {/* Chart Type (Candle / Area / Line) */}
             <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-mono">
               <button
                 onClick={() => setChartType('CANDLE')}
@@ -730,7 +766,6 @@ export const DemoExecutionMonitor: React.FC = () => {
               </button>
             </div>
 
-            {/* Indicator Toggles */}
             <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-[11px] font-mono">
               <button
                 onClick={() => setShowEma20(!showEma20)}
@@ -758,7 +793,6 @@ export const DemoExecutionMonitor: React.FC = () => {
               </button>
             </div>
 
-            {/* Fullscreen Toggle */}
             <button
               onClick={() => setIsFullscreen(!isFullscreen)}
               className="p-2 bg-slate-950 hover:bg-slate-800 text-slate-300 rounded-xl border border-slate-800 transition"
@@ -811,62 +845,190 @@ export const DemoExecutionMonitor: React.FC = () => {
         </div>
       </div>
 
-      {/* 2c. LIVE AI SIGNAL & DEMO EXECUTION ACTION CONTROLLER */}
-      <div className="p-5 bg-gradient-to-r from-blue-950/60 via-slate-900/90 to-indigo-950/60 border border-blue-500/40 rounded-2xl shadow-xl space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-blue-500/20 border border-blue-400/40 rounded-xl text-blue-400">
-              <Brain className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-mono font-bold uppercase text-blue-400">AI SIGNAL ENGINE FEED</span>
-                <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
-                  aiSignal?.direction === 'BUY' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' :
-                  aiSignal?.direction === 'SELL' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-slate-800 text-slate-400'
+
+        {/* 2c. LIVE AI SIGNAL ENGINE & AUTONOMOUS AUTO-PILOT DUAL CONTROLLER */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Left 2 Cols: AI Signal & Confluences (Full 4-Pillar Architecture) */}
+          <div className="lg:col-span-2 p-5 bg-gradient-to-r from-blue-950/40 via-slate-900/90 to-indigo-950/40 border border-blue-500/30 rounded-2xl shadow-xl space-y-4">
+
+            {/* Header: Pair, Direction, Bias, R:R, and Action */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm ${
+                  aiSignal?.direction === 'BUY'
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-lg shadow-emerald-950/40'
+                    : aiSignal?.direction === 'SELL'
+                    ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40 shadow-lg shadow-rose-950/40'
+                    : 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
                 }`}>
-                  {aiSignal?.direction || 'BUY'} {selectedPair}
-                </span>
-                <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 rounded text-[10px] font-mono font-bold">
-                  CONFIDENCE: {aiSignal?.confidence || 84}%
-                </span>
+                  {aiSignal?.direction === 'BUY' ? (
+                    <ArrowUpRight className="w-6 h-6" />
+                  ) : aiSignal?.direction === 'SELL' ? (
+                    <ArrowDownRight className="w-6 h-6" />
+                  ) : (
+                    <Brain className="w-6 h-6" />
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-extrabold text-white text-base tracking-wide font-mono">{selectedPair}</span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold font-mono bg-purple-950 text-purple-300 border border-purple-800 uppercase">
+                      [DEMO DESK]
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-slate-800 text-slate-300 border border-slate-700 uppercase">
+                      {aiSignal?.setupType || 'M1 QUANT SETUP'}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                    Structure Bias: <span className="font-semibold text-slate-200">{aiSignal?.direction === 'BUY' ? 'BULLISH' : aiSignal?.direction === 'SELL' ? 'BEARISH' : 'NEUTRAL'}</span> | Entry: <span className="font-semibold text-slate-200">MARKET_ENTRY</span> | R:R <span className="font-semibold text-slate-200">{aiSignal?.riskRewardRatio || '1:1.5'}</span>
+                  </div>
+                </div>
               </div>
-              <p className="text-xs text-slate-300 mt-1 font-mono">
-                {aiSignal?.strategy || 'AI Trend Pulse & SMC'} &middot; Setup: <strong className="text-slate-100">{aiSignal?.reasoning || 'Bullish EMA Alignment & Fair Value Gap Sweep'}</strong>
-              </p>
+
+              {/* Confidence & Execute Button */}
+              <div className="flex items-center gap-2">
+                <div className={`px-3 py-1.5 rounded-xl font-mono text-xs font-black tracking-wider flex items-center gap-1.5 ${
+                  aiSignal?.direction === 'BUY'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shadow-lg shadow-emerald-950/40'
+                    : aiSignal?.direction === 'SELL'
+                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/50 shadow-lg shadow-rose-950/40'
+                    : 'bg-amber-500/20 text-amber-300 border border-amber-500/50'
+                }`}>
+                  <span>{aiSignal?.direction || 'NO_TRADE'}</span>
+                  <span className="text-[10px] opacity-80">({aiSignal?.confidence || 82}% CONF)</span>
+                </div>
+
+                <button
+                  onClick={handleExecuteSignalDemo}
+                  disabled={isExecutingSignal || !aiSignal || aiSignal.direction === 'NO_TRADE'}
+                  className="px-3.5 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-mono font-bold text-xs rounded-xl shadow-lg shadow-blue-900/40 border border-blue-400/30 flex items-center gap-1.5 transition active:scale-95 disabled:opacity-50 cursor-pointer"
+                >
+                  <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+                  {isExecutingSignal ? 'Submitting...' : `Execute ${aiSignal?.direction || 'BUY'} (0.01)`}
+                </button>
+              </div>
+            </div>
+
+            {/* 4 Core Pillars: WHERE: ENTRY ZONE, RISK: STOP LOSS, TARGET: TP 1, TARGET: TP 2 */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 font-mono text-xs">
+              <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-2.5 space-y-0.5">
+                <div className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">WHERE: ENTRY ZONE</div>
+                <div className="font-bold text-slate-100 text-sm">
+                  {aiSignal?.entryZone?.min ? Number(aiSignal.entryZone.min).toFixed(selectedPair.includes('JPY') ? 3 : 5) : (aiSignal?.entryPrice ? (aiSignal.entryPrice * 0.9998).toFixed(selectedPair.includes('JPY') ? 3 : 5) : '1.16680')} - {aiSignal?.entryZone?.max ? Number(aiSignal.entryZone.max).toFixed(selectedPair.includes('JPY') ? 3 : 5) : (aiSignal?.entryPrice ? (aiSignal.entryPrice * 1.0002).toFixed(selectedPair.includes('JPY') ? 3 : 5) : '1.16720')}
+                </div>
+                <div className="text-[10px] text-slate-500">
+                  Executable: {aiSignal?.entryPrice ? Number(aiSignal.entryPrice).toFixed(selectedPair.includes('JPY') ? 3 : 5) : '1.16700'}
+                </div>
+              </div>
+
+              <div className="bg-rose-950/20 border border-rose-500/30 rounded-xl p-2.5 space-y-0.5">
+                <div className="text-[9px] text-rose-400 uppercase font-bold tracking-wider">RISK: STOP LOSS</div>
+                <div className="font-bold text-rose-300 text-sm">
+                  {aiSignal?.stopLoss ? Number(aiSignal.stopLoss).toFixed(selectedPair.includes('JPY') ? 3 : 5) : '1.16480'}
+                </div>
+                <div className="text-[10px] text-rose-400/70">
+                  Inval: {aiSignal?.invalidationLevel || 'Break of OB'}
+                </div>
+              </div>
+
+              <div className="bg-emerald-950/20 border border-emerald-500/30 rounded-xl p-2.5 space-y-0.5">
+                <div className="text-[9px] text-emerald-400 uppercase font-bold tracking-wider">TARGET: TP 1</div>
+                <div className="font-bold text-emerald-300 text-sm">
+                  {aiSignal?.takeProfit ? Number(aiSignal.takeProfit).toFixed(selectedPair.includes('JPY') ? 3 : 5) : '1.17080'}
+                </div>
+                <div className="text-[10px] text-emerald-400/70">1:1.5 Safe Exit</div>
+              </div>
+
+              <div className="bg-emerald-950/30 border border-emerald-500/40 rounded-xl p-2.5 space-y-0.5">
+                <div className="text-[9px] text-teal-400 uppercase font-bold tracking-wider">TARGET: TP 2</div>
+                <div className="font-bold text-teal-300 text-sm">
+                  {aiSignal?.takeProfit2 ? Number(aiSignal.takeProfit2).toFixed(selectedPair.includes('JPY') ? 3 : 5) : (aiSignal?.takeProfit ? (Number(aiSignal.takeProfit) + (selectedPair.includes('JPY') ? 0.30 : 0.0030)).toFixed(selectedPair.includes('JPY') ? 3 : 5) : '1.17380')}
+                </div>
+                <div className="text-[10px] text-teal-400/70">Runner Target</div>
+              </div>
+            </div>
+
+            {/* WHY THIS OPPORTUNITY EXISTS (TECHNICAL CONFLUENCES) */}
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+                <span>WHY THIS OPPORTUNITY EXISTS (TECHNICAL CONFLUENCES)</span>
+                <span className="text-emerald-400 text-[10px] font-mono">RISK GATE: 0.01 LOT MICRO PASS</span>
+              </div>
+              <ul className="space-y-1 text-xs text-slate-300 font-medium">
+                {(aiSignal?.reasoning ? aiSignal.reasoning.split(' · ') : [
+                  `${selectedPair} live price is holding alignment with 50 EMA trend filter.`,
+                  'RSI (14) & ADX confirming directional momentum confluence.',
+                  'SuperTrend filter aligned with dynamic ATR volatility bands.'
+                ]).map((reason: string, i: number) => (
+                  <li key={i} className="flex items-start gap-2 bg-slate-950/60 rounded-lg p-2 border border-slate-800/80 font-mono text-[11px]">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 mt-0.5 shrink-0" />
+                    <span>{reason}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
 
-          {/* Action Trigger Button */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleExecuteSignalDemo}
-              disabled={isExecutingSignal || !aiSignal || aiSignal.direction === 'NO_TRADE'}
-              className="px-5 py-2.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 text-white font-mono font-bold text-xs rounded-xl shadow-lg shadow-blue-900/40 border border-blue-400/30 flex items-center gap-2 transition active:scale-95 disabled:opacity-50"
-            >
-              <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
-              {isExecutingSignal ? 'Executing Order on cTrader...' : `⚡ Execute ${aiSignal?.direction || 'BUY'} Signal (0.01 Lot DEMO)`}
-            </button>
+          {/* Right 1 Col: Autonomous AI Auto-Pilot Controller */}
+        <div className={`p-5 rounded-2xl border transition shadow-xl flex flex-col justify-between space-y-4 ${
+          isAutoPilot
+            ? 'bg-gradient-to-br from-emerald-950/70 via-slate-900 to-slate-950 border-emerald-500/60 shadow-emerald-950/30'
+            : 'bg-slate-900/90 border-slate-800/80 shadow-xl'
+        }`}>
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Flame className={`w-5 h-5 ${isAutoPilot ? 'text-emerald-400 animate-pulse' : 'text-slate-500'}`} />
+                <h3 className="text-xs font-bold font-mono uppercase tracking-wider text-slate-200">
+                  AI Auto-Pilot (DEMO)
+                </h3>
+              </div>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                isAutoPilot
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 animate-pulse'
+                  : 'bg-slate-800 text-slate-400 border border-slate-700'
+              }`}>
+                {isAutoPilot ? 'AUTONOMOUS ACTIVE' : 'MANUAL APPROVAL'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-2 font-mono leading-relaxed">
+              {isAutoPilot
+                ? 'AI secara automatik menghantar trade ke cTrader DEMO apabila setup melepasi skor keyakinan ≥75% & pintu risiko portfolio.'
+                : 'Sistem sedang berada dalam mod pengesahan operator (klik manual diperlukan untuk setiap entry).'}
+            </p>
           </div>
-        </div>
 
-        {/* Signal Key Levels */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono pt-3 border-t border-slate-800/80">
-          <div className="p-2.5 bg-slate-950/60 rounded-xl border border-slate-800">
-            <span className="text-[10px] text-slate-500 block uppercase">Signal Entry</span>
-            <span className="font-bold text-slate-200">{aiSignal?.entryPrice ? aiSignal.entryPrice.toFixed(selectedPair.includes('JPY') ? 3 : 5) : '1.1668'}</span>
-          </div>
-          <div className="p-2.5 bg-slate-950/60 rounded-xl border border-slate-800">
-            <span className="text-[10px] text-slate-500 block uppercase">Stop Loss (SL)</span>
-            <span className="font-bold text-rose-400">{aiSignal?.stopLoss ? aiSignal.stopLoss.toFixed(selectedPair.includes('JPY') ? 3 : 5) : '1.1648'}</span>
-          </div>
-          <div className="p-2.5 bg-slate-950/60 rounded-xl border border-slate-800">
-            <span className="text-[10px] text-slate-500 block uppercase">Take Profit (TP)</span>
-            <span className="font-bold text-emerald-400">{aiSignal?.takeProfit ? aiSignal.takeProfit.toFixed(selectedPair.includes('JPY') ? 3 : 5) : '1.1708'}</span>
-          </div>
-          <div className="p-2.5 bg-slate-950/60 rounded-xl border border-slate-800">
-            <span className="text-[10px] text-slate-500 block uppercase">Risk Allocation</span>
-            <span className="font-bold text-blue-400">0.01 Lot (Capped Risk)</span>
+          <div className="space-y-3 pt-2 border-t border-slate-800">
+            <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+              <span>Threshold Keyakinan:</span>
+              <strong className="text-slate-200">≥ 75%</strong>
+            </div>
+            <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+              <span>Saiz Lot Automatik:</span>
+              <strong className="text-blue-400">0.01 Lot (Capped)</strong>
+            </div>
+
+            <button
+              onClick={handleToggleAutoPilot}
+              disabled={isTogglingAutoPilot}
+              className={`w-full py-2.5 rounded-xl font-mono font-bold text-xs flex items-center justify-center gap-2 transition shadow-lg ${
+                isAutoPilot
+                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/50 hover:bg-rose-500/30'
+                  : 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400/40 shadow-emerald-900/30 active:scale-95'
+              }`}
+            >
+              {isTogglingAutoPilot ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : isAutoPilot ? (
+                <>
+                  <StopCircle className="w-4 h-4" /> Pause AI Auto-Pilot
+                </>
+              ) : (
+                <>
+                  <PlayCircle className="w-4 h-4" /> Activate AI Auto-Pilot
+                </>
+              )}
+            </button>
           </div>
         </div>
       </div>
@@ -885,7 +1047,7 @@ export const DemoExecutionMonitor: React.FC = () => {
             { label: '1. SIGNAL', val: aiSignal?.direction || pipeline?.marketSignal || 'ACTIVE', color: 'emerald' },
             { label: '2. PROPOSAL', val: aiSignal?.signalId ? 'GENERATED' : pipeline?.proposal || 'READY', color: 'blue' },
             { label: '3. RISK CHECK', val: pipeline?.riskCheck || 'PASS', color: 'emerald' },
-            { label: '4. APPROVAL', val: pipeline?.approval || 'APPROVED', color: 'emerald' },
+            { label: '4. APPROVAL', val: isAutoPilot ? 'AUTO-APPROVED' : pipeline?.approval || 'APPROVED', color: 'emerald' },
             { label: '5. EXECUTION', val: isExecutingSignal ? 'TRANSMITTING' : pipeline?.execution || 'DEMO_READY', color: 'indigo' },
             { label: '6. BROKER ACK', val: pipeline?.brokerAck || 'READY', color: 'indigo' },
             { label: '7. POSITION', val: positions.length > 0 ? `#${positions[0].positionId}` : 'IDLE', color: positions.length > 0 ? 'emerald' : 'slate' },
@@ -908,7 +1070,6 @@ export const DemoExecutionMonitor: React.FC = () => {
 
       {/* 4. RISK MONITOR & DEMO ACCOUNT SUMMARY */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Risk Monitor Card */}
         <div className="p-5 bg-slate-900/90 border border-slate-800/80 rounded-2xl shadow-xl space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono flex items-center gap-2">
@@ -941,7 +1102,6 @@ export const DemoExecutionMonitor: React.FC = () => {
           </div>
         </div>
 
-        {/* Demo Account Balances */}
         <div className="p-5 bg-slate-900/90 border border-slate-800/80 rounded-2xl shadow-xl space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono flex items-center gap-2">
@@ -1034,6 +1194,14 @@ export const DemoExecutionMonitor: React.FC = () => {
               }`}
             >
               Orders Log ({orders.length})
+            </button>
+            <button
+              onClick={() => setActiveHistoryTab('AUTOPILOT_LOGS')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition flex items-center gap-1.5 ${
+                activeHistoryTab === 'AUTOPILOT_LOGS' ? 'bg-emerald-600 text-white' : 'text-emerald-400 hover:text-emerald-300'
+              }`}
+            >
+              <Flame className="w-3.5 h-3.5" /> Auto-Pilot Feed ({autoPilotLogs.length})
             </button>
           </div>
 
@@ -1177,8 +1345,56 @@ export const DemoExecutionMonitor: React.FC = () => {
             )}
           </div>
         )}
+
+        {activeHistoryTab === 'AUTOPILOT_LOGS' && (
+          <div className="overflow-x-auto">
+            {autoPilotLogs.length > 0 ? (
+              <table className="w-full text-xs font-mono text-left">
+                <thead>
+                  <tr className="text-slate-500 border-b border-slate-800">
+                    <th className="py-2 px-3">Action ID</th>
+                    <th className="py-2 px-3">Symbol</th>
+                    <th className="py-2 px-3">Side</th>
+                    <th className="py-2 px-3">Confidence</th>
+                    <th className="py-2 px-3">Entry Price</th>
+                    <th className="py-2 px-3">Trigger Reason</th>
+                    <th className="py-2 px-3">Status</th>
+                    <th className="py-2 px-3">Time</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {autoPilotLogs.map((log, idx) => (
+                    <tr key={idx} className="hover:bg-slate-800/30">
+                      <td className="py-2 px-3 text-slate-400">{log.id}</td>
+                      <td className="py-2 px-3 font-bold text-slate-200">{log.pair}</td>
+                      <td className="py-2 px-3">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${log.direction === 'BUY' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}`}>
+                          {log.direction}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 text-indigo-300 font-bold">{log.confidence}%</td>
+                      <td className="py-2 px-3 text-slate-300">{log.price?.toFixed(5)}</td>
+                      <td className="py-2 px-3 text-slate-300 truncate max-w-[200px]">{log.reason}</td>
+                      <td className="py-2 px-3">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                          {log.status}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 text-slate-500">{new Date(log.timestamp).toLocaleTimeString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="py-8 text-center text-xs font-mono text-slate-500">
+                Auto-Pilot has not executed any automated trades in this session yet. Activate Auto-Pilot to enable autonomous execution.
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
 };
 export default DemoExecutionMonitor;
+
