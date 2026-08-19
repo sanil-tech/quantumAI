@@ -255,7 +255,32 @@ export const DemoExecutionMonitor: React.FC = () => {
     }
   };
 
-  // Execute Signal on cTrader DEMO Desk (Manual Confirmation)
+
+    // Close Open DEMO Position
+    const handleClosePosition = async (positionId: number) => {
+      try {
+        setExecutionFeedback(`Closing DEMO position #${positionId}...`);
+        const res = await fetch('/api/ctrader/close-position-demo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ positionId })
+        });
+        const json = await res.json();
+        if (json.success) {
+          setExecutionFeedback(`✓ ${json.message}`);
+          await fetchMonitorData();
+          await fetchAutoPilotStatus();
+        } else {
+          setExecutionFeedback(`Close Error: ${json.error || 'Failed to close position.'}`);
+        }
+      } catch (e: any) {
+        setExecutionFeedback(`Close Error: ${e?.message || e}`);
+      } finally {
+        setTimeout(() => setExecutionFeedback(null), 5000);
+      }
+    };
+
+    // Execute Signal on cTrader DEMO Desk (Manual Confirmation)
   const handleExecuteSignalDemo = async () => {
     if (!aiSignal || aiSignal.direction === 'NO_TRADE') return;
     setIsExecutingSignal(true);
@@ -1259,54 +1284,71 @@ export const DemoExecutionMonitor: React.FC = () => {
           </div>
         )}
 
-        {activeHistoryTab === 'POSITIONS' && (
-          <div className="overflow-x-auto">
-            {positions.length > 0 ? (
-              <table className="w-full text-xs font-mono text-left">
-                <thead>
-                  <tr className="text-slate-500 border-b border-slate-800">
-                    <th className="py-2 px-3">Pos ID</th>
-                    <th className="py-2 px-3">Symbol</th>
-                    <th className="py-2 px-3">Side</th>
-                    <th className="py-2 px-3">Lots</th>
-                    <th className="py-2 px-3">Entry</th>
-                    <th className="py-2 px-3">Current</th>
-                    <th className="py-2 px-3">SL / TP</th>
-                    <th className="py-2 px-3">Unrealized PnL</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {positions.map((p, idx) => (
-                    <tr key={idx} className="hover:bg-slate-800/30">
-                      <td className="py-2 px-3 text-slate-400">#{p.positionId}</td>
-                      <td className="py-2 px-3 font-bold text-slate-200">{p.symbol}</td>
-                      <td className="py-2 px-3">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${p.tradeSide === 'BUY' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}`}>
-                          {p.tradeSide}
-                        </span>
-                      </td>
-                      <td className="py-2 px-3 text-slate-300">{p.volume}</td>
-                      <td className="py-2 px-3 text-slate-300">{p.entryPrice.toFixed(5)}</td>
-                      <td className="py-2 px-3 text-slate-300">{p.currentPrice.toFixed(5)}</td>
-                      <td className="py-2 px-3 text-slate-400">
-                        {p.sl ? p.sl.toFixed(5) : '-'} / {p.tp ? p.tp.toFixed(5) : '-'}
-                      </td>
-                      <td className={`py-2 px-3 font-bold ${p.unrealizedPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        ${p.unrealizedPnL.toFixed(2)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <div className="py-8 text-center text-xs font-mono text-slate-500">
-                No active open positions on broker account.
-              </div>
-            )}
-          </div>
-        )}
 
-        {activeHistoryTab === 'ORDERS' && (
+          {activeHistoryTab === 'POSITIONS' && (
+            <div className="overflow-x-auto">
+              {positions.length > 0 ? (
+                <table className="w-full text-xs font-mono text-left">
+                  <thead>
+                    <tr className="text-slate-500 border-b border-slate-800">
+                      <th className="py-2 px-3">Position ID</th>
+                      <th className="py-2 px-3">Symbol</th>
+                      <th className="py-2 px-3">Side</th>
+                      <th className="py-2 px-3">Volume</th>
+                      <th className="py-2 px-3">Entry</th>
+                      <th className="py-2 px-3">Current</th>
+                      <th className="py-2 px-3">SL / TP</th>
+                      <th className="py-2 px-3">Unrealized P&L</th>
+                      <th className="py-2 px-3">Status</th>
+                      <th className="py-2 px-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {positions.map((p, idx) => (
+                      <tr key={idx} className="hover:bg-slate-800/30">
+                        <td className="py-2 px-3 text-slate-400">#{p.positionId}</td>
+                        <td className="py-2 px-3 font-bold text-slate-200">{p.symbol}</td>
+                        <td className="py-2 px-3">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${p.tradeSide === 'BUY' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}`}>
+                            {p.tradeSide}
+                          </span>
+                        </td>
+                        <td className="py-2 px-3 text-slate-300">{p.volume}</td>
+                        <td className="py-2 px-3 text-slate-300">{p.entryPrice.toFixed(p.symbol.includes('JPY') ? 3 : 5)}</td>
+                        <td className="py-2 px-3 text-slate-300">{p.currentPrice.toFixed(p.symbol.includes('JPY') ? 3 : 5)}</td>
+                        <td className="py-2 px-3 text-slate-400">
+                          {p.sl ? p.sl.toFixed(p.symbol.includes('JPY') ? 3 : 5) : '-'} / {p.tp ? p.tp.toFixed(p.symbol.includes('JPY') ? 3 : 5) : '-'}
+                        </td>
+                        <td className={`py-2 px-3 font-bold ${p.unrealizedPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          ${p.unrealizedPnL.toFixed(2)}
+                        </td>
+                        <td className="py-2 px-3">
+                          <span className="px-2 py-0.5 bg-blue-500/20 text-blue-300 rounded text-[10px] font-bold">
+                            BROKER CONFIRMED
+                          </span>
+                        </td>
+                        <td className="py-2 px-3 text-right">
+                          <button
+                            onClick={() => handleClosePosition(p.positionId)}
+                            className="px-2.5 py-1 bg-rose-600/30 hover:bg-rose-600/50 text-rose-300 border border-rose-500/40 rounded text-[10px] font-bold transition cursor-pointer"
+                          >
+                            Close Position
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="py-12 text-center text-xs font-mono space-y-2">
+                  <div className="text-slate-400 font-bold tracking-wider text-sm">NO OPEN DEMO POSITION</div>
+                  <div className="text-slate-600 text-[11px]">cTrader DEMO ledger is clean. Zero orphan positions.</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeHistoryTab === 'ORDERS' && (
           <div className="overflow-x-auto">
             {orders.length > 0 ? (
               <table className="w-full text-xs font-mono text-left">
@@ -1398,4 +1440,5 @@ export const DemoExecutionMonitor: React.FC = () => {
   );
 };
 export default DemoExecutionMonitor;
+
 
