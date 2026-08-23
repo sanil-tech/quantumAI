@@ -1,5 +1,5 @@
 import { Pool, PoolClient } from 'pg';
-import { getDbPool } from './index';
+import { getDbPool, checkDbConnection } from './index';
 import { logger } from '@iati/core';
 
 export interface SignalRecord {
@@ -456,16 +456,13 @@ export class TradingRepository {
     return res.rows.length ? this.mapPositionRow(res.rows[0]) : null;
   }
 
-  async getPositionByIdempotencyKeyOrSetupId(idempotencyKey?: string, setupId?: string): Promise<PositionRecord | null> {
-    const isConnected = await checkDbConnection();
-    if (!isConnected) return null;
-
+  async getPositionByIdempotencyKeyOrSetupId(idempotencyKey?: string, setupId?: string, client?: PoolClient): Promise<PositionRecord | null> {
     if (idempotencyKey) {
-      const resKey = await this.query(`SELECT * FROM positions WHERE idempotency_key = $1 LIMIT 1`, [idempotencyKey]);
+      const resKey = await this.query(`SELECT * FROM positions WHERE idempotency_key = $1 LIMIT 1`, [idempotencyKey], client);
       if (resKey.rows.length) return this.mapPositionRow(resKey.rows[0]);
     }
     if (setupId) {
-      const resSetup = await this.query(`SELECT * FROM positions WHERE setup_id = $1 LIMIT 1`, [setupId]);
+      const resSetup = await this.query(`SELECT * FROM positions WHERE setup_id = $1 LIMIT 1`, [setupId], client);
       if (resSetup.rows.length) return this.mapPositionRow(resSetup.rows[0]);
     }
     return null;

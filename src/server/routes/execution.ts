@@ -7,7 +7,7 @@ import { authorizeExecution } from '../../../apps/risk-governance/src/modules/ex
 import { TradeProposal, RiskApprovalToken, RiskClearedPayload } from '@iati/core-types';
 import { ExecutionRouter } from '../../../apps/execution-router/src/router/executionRouter';
 import { PaperBrokerAdapter } from '../../../apps/execution-router/src/adapters/paperBrokerAdapter';
-import { TradingRepository, PositionRecord, AccountStateRecord } from '@iati/database';
+import { TradingRepository, PositionRecord, AccountStateRecord, checkDbConnection } from '@iati/database';
 import { globalEventBus, EventTypes, TradeClosedPayload } from '@iati/event-bus';
 import { learningService } from '../services/learningService';
 
@@ -161,6 +161,7 @@ executionRouter.get('/autotrader/state', async (req: Request, res: Response) => 
       pendingCommands
     });
   } catch (err: any) {
+    console.error('[HANDLE_EXECUTE_TRADE_ERR]', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -272,18 +273,21 @@ export async function handleExecuteTrade(req: Request, res: Response) {
     // 1. Idempotency Check in DB
     const key = typeof idempotencyKey === 'string' ? idempotencyKey : undefined;
     const setup = typeof tradeSetupId === 'string' ? tradeSetupId : undefined;
-    if (key || setup) {
-      const existingPos = await tradingRepo.getPositionByIdempotencyKeyOrSetupId(key || setup!, setup || key!);
-      if (existingPos) {
-        const existingTrade = mapPositionToAutoTrade(existingPos);
-        res.json({
-          success: true,
-          message: `Trade already executed and recorded in persistent database (Setup/Idempotency Key: ${existingPos.idempotencyKey || existingPos.setupId})`,
-          isDuplicate: true,
-          trade: existingTrade,
-          mt5Ticket: existingPos.ticketId || existingPos.positionId.replace('trade_', '')
-        });
-        return;
+    const isConnected = await checkDbConnection();
+    if (isConnected) {
+      if (key || setup) {
+        const existingPos = await tradingRepo.getPositionByIdempotencyKeyOrSetupId(key || setup!, setup || key!);
+        if (existingPos) {
+          const existingTrade = mapPositionToAutoTrade(existingPos);
+          res.json({
+            success: true,
+            message: `Trade already executed and recorded in persistent database (Setup/Idempotency Key: ${existingPos.idempotencyKey || existingPos.setupId})`,
+            isDuplicate: true,
+            trade: existingTrade,
+            mt5Ticket: existingPos.ticketId || existingPos.positionId.replace('trade_', '')
+          });
+          return;
+        }
       }
     }
 
@@ -403,7 +407,6 @@ export async function handleExecuteTrade(req: Request, res: Response) {
     };
 
     // Save Position Record in PostgreSQL Database if connected
-    const isConnected = await checkDbConnection();
     let savedPos: PositionRecord = posRecord;
 
     if (isConnected) {
@@ -456,6 +459,7 @@ export async function handleExecuteTrade(req: Request, res: Response) {
       mt5Ticket: ticket
     });
   } catch (err: any) {
+    console.error('[HANDLE_EXECUTE_TRADE_ERR]', err);
     res.status(500).json({ error: err.message });
   }
 }
@@ -615,6 +619,7 @@ executionRouter.post('/autotrader/trade/close', async (req: Request, res: Respon
       newBalance: closeResult.newBalance
     });
   } catch (err: any) {
+    console.error('[CLOSE_TRADE_ERR]', err);
     res.status(500).json({ error: err.message });
   }
 });
