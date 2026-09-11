@@ -534,51 +534,7 @@ export default function App() {
       />
 
 
-      {/* Main Dashboard Canvas Body */}
-      
-      {/* PHASE 6: PROMINENT MANUAL SIGNAL MODE SYSTEM STATUS BANNER */}
-      <div className="max-w-[1600px] w-full mx-auto px-3 sm:px-4 pt-3">
-        <div className="bg-gradient-to-r from-blue-950/80 via-slate-900 to-indigo-950/80 border-2 border-blue-500/40 rounded-2xl p-4 shadow-2xl backdrop-blur-md flex flex-col lg:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3 w-full lg:w-auto">
-            <div className="w-11 h-11 rounded-xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center shrink-0">
-              <ShieldCheck className="w-6 h-6 text-blue-400" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-white text-base tracking-wider">QUANTUMAI</span>
-                <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 border border-blue-400/50 text-blue-300 font-mono text-xs font-bold uppercase tracking-wider">
-                  MANUAL SIGNAL MODE
-                </span>
-              </div>
-              <p className="text-slate-300 text-xs mt-0.5">
-                QuantumAI provides analysis and trade setups only. No trades are executed by QuantumAI.
-              </p>
-            </div>
-          </div>
 
-          <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono w-full lg:w-auto justify-start lg:justify-end">
-            <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-semibold flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              REAL MARKET DATA: ACTIVE
-            </span>
-            <span className="px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-300 font-semibold flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-              AI ANALYSIS: ACTIVE
-            </span>
-            <span className="px-2.5 py-1 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-300 font-semibold flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-purple-400"></span>
-              ADAPTIVE LEARNING: ACTIVE
-            </span>
-            <span className="px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 font-semibold flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-              BROKER EXECUTION: DISABLED
-            </span>
-            <span className="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 font-semibold">
-              AUTOMATIC ORDERS: 0
-            </span>
-          </div>
-        </div>
-      </div>
 
       <main className="flex-1 max-w-[1600px] w-full mx-auto p-3 sm:p-4 space-y-4">
         {/* Main Role & Dashboard Portal Switcher */}
