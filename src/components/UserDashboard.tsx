@@ -195,7 +195,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
 
   useEffect(() => {
     fetchDashboardState();
-    const interval = setInterval(fetchDashboardState, 4000);
+    const interval = setInterval(fetchDashboardState, 2000);
     return () => clearInterval(interval);
   }, []);
 

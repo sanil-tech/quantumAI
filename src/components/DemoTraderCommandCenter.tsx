@@ -134,7 +134,7 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
       }
     };
     fetchRates();
-    const rateInterval = setInterval(fetchRates, 3000);
+    const rateInterval = setInterval(fetchRates, 1000);
     return () => clearInterval(rateInterval);
   }, []);
 
@@ -254,7 +254,7 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
 
   useEffect(() => {
     fetchState();
-    const interval = setInterval(fetchState, 3000);
+    const interval = setInterval(fetchState, 1500);
     return () => clearInterval(interval);
   }, [fetchState]);
 
