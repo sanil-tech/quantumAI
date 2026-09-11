@@ -22,6 +22,9 @@ interface SubscriberTrustCockpitProps {
   onSelectRiskMode: (mode: SubscriberRiskMode) => void;
   latestAiRule?: string;
   closingTradeIds?: string[];
+  onOpenPricingModal?: () => void;
+  onOpenOnboardingModal?: () => void;
+  trialInfo?: { isTrialActive: boolean; daysRemaining: number } | null;
 }
 
 export const SubscriberTrustCockpit: React.FC<SubscriberTrustCockpitProps> = ({
@@ -37,7 +40,10 @@ export const SubscriberTrustCockpit: React.FC<SubscriberTrustCockpitProps> = ({
   riskMode = 'BALANCED',
   onSelectRiskMode,
   latestAiRule,
-  closingTradeIds = []
+  closingTradeIds = [],
+  onOpenPricingModal,
+  onOpenOnboardingModal,
+  trialInfo
 }) => {
   const [showSecurityModal, setShowSecurityModal] = useState(false);
   const [isAudioMuted, setIsAudioMuted] = useState(tradeAudio.getIsMuted());
@@ -53,15 +59,15 @@ export const SubscriberTrustCockpit: React.FC<SubscriberTrustCockpitProps> = ({
   return (
     <div className="space-y-6">
       {/* 1. TOP INSTITUTIONAL TRUST & REGULATION BANNER */}
-      <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-900 via-slate-900/90 to-indigo-950/40 border border-slate-800/80 rounded-2xl shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-900 via-slate-900/90 to-indigo-950/40 border border-slate-800/80 rounded-2xl shadow-xl flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="relative flex items-center justify-center w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+          <div className="relative flex items-center justify-center w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shrink-0">
             <ShieldCheck className="w-6 h-6" />
             <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full animate-ping" />
             <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-bold text-white tracking-wide">
                 {brokerName}
               </span>
@@ -72,7 +78,7 @@ export const SubscriberTrustCockpit: React.FC<SubscriberTrustCockpitProps> = ({
                 Akaun #{accountNumber} • {latencyMs}ms
               </span>
             </div>
-            <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
+            <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5 flex-wrap">
               <Lock className="w-3 h-3 text-cyan-400" />
               <span>Model Non-Custodial: Modal &amp; dana kekal 100% selamat dalam akaun broker anda.</span>
               <button 
@@ -85,8 +91,37 @@ export const SubscriberTrustCockpit: React.FC<SubscriberTrustCockpitProps> = ({
           </div>
         </div>
 
-        {/* 1-Click Autopilot Safety Switch & Audio Feedback */}
-        <div className="flex items-center gap-2.5 w-full md:w-auto justify-between md:justify-end">
+        {/* 1-Click Autopilot Safety Switch, Trial Badge & Subscription Upgrade */}
+        <div className="flex items-center gap-2.5 w-full lg:w-auto justify-between lg:justify-end flex-wrap">
+          {/* Trial / Onboarding Badge */}
+          {trialInfo?.isTrialActive ? (
+            <div className="px-3 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 flex items-center gap-1.5 text-xs font-bold">
+              <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+              <span>Percubaan Percuma ({trialInfo.daysRemaining} Hari Baki)</span>
+            </div>
+          ) : (
+            onOpenOnboardingModal && (
+              <button
+                onClick={onOpenOnboardingModal}
+                className="px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Pendaftaran Percuma</span>
+              </button>
+            )
+          )}
+
+          {/* Upgrade Plan CTA Button */}
+          {onOpenPricingModal && (
+            <button
+              onClick={onOpenPricingModal}
+              className="px-3.5 py-2.5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-500/20 transition flex items-center gap-1.5 cursor-pointer uppercase tracking-wider"
+            >
+              <Zap className="w-3.5 h-3.5" />
+              <span>Pakej Langganan</span>
+            </button>
+          )}
+
           <button
             onClick={toggleSound}
             title={isAudioMuted ? 'Buka Audio Notifikasi' : 'Senyapkan Audio'}

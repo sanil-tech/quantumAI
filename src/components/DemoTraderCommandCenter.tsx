@@ -14,6 +14,8 @@ import { ChartWidget } from './ChartWidget';
 import { translations, Language } from '../lib/translations';
 import { SubscriberTrustCockpit, SubscriberRiskMode } from './SubscriberTrustCockpit';
 import { tradeAudio } from '../utils/tradeAudio';
+import { NewUserOnboardingModal } from './NewUserOnboardingModal';
+import { SubscriptionPricingModal } from './SubscriptionPricingModal';
 
 interface DemoTraderCommandCenterProps {
   currentPrice: number;
@@ -96,6 +98,20 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
   const [watchlistSearchQuery, setWatchlistSearchQuery] = useState<string>('');
   const [watchlistCategory, setWatchlistCategory] = useState<'ALL' | 'MAJOR' | 'JPY' | 'COMMODITIES' | 'CRYPTO_INDEX'>('ALL');
   const [closingTradeIds, setClosingTradeIds] = useState<string[]>([]);
+  const [showOnboardingModal, setShowOnboardingModal] = useState<boolean>(false);
+  const [showPricingModal, setShowPricingModal] = useState<boolean>(false);
+  const [trialInfo, setTrialInfo] = useState<{ isTrialActive: boolean; daysRemaining: number } | null>(() => {
+    try {
+      const raw = localStorage.getItem('quantum_subscriber_trial');
+      if (raw) {
+        const data = JSON.parse(raw);
+        const remainingMs = data.expiresAt - Date.now();
+        const daysRemaining = Math.max(1, Math.ceil(remainingMs / (1000 * 60 * 60 * 24)));
+        return { isTrialActive: remainingMs > 0, daysRemaining };
+      }
+    } catch {}
+    return { isTrialActive: true, daysRemaining: 7 };
+  });
   const executedSignalsRef = useRef<Set<string>>(new Set());
 
   const handleSelectRiskMode = (mode: SubscriberRiskMode) => {
@@ -597,6 +613,9 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
         riskMode={subscriberRiskMode}
         onSelectRiskMode={handleSelectRiskMode}
         latestAiRule={accountState.latestAiRule}
+        onOpenPricingModal={() => setShowPricingModal(true)}
+        onOpenOnboardingModal={() => setShowOnboardingModal(true)}
+        trialInfo={trialInfo}
       />
 
       {/* 24/7 AUTONOMOUS MARKET SCANNER DAEMON TELEMETRY BANNER */}
@@ -1749,6 +1768,30 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
           </div>
         </div>
       )}
+
+      {/* 4. NEW USER ONBOARDING MODAL */}
+      <NewUserOnboardingModal
+        isOpen={showOnboardingModal}
+        onClose={() => setShowOnboardingModal(false)}
+        onCompleteOnboarding={(userData) => {
+          setSubscriberRiskMode(userData.riskMode);
+          setTrialInfo({ isTrialActive: true, daysRemaining: 7 });
+          setExecutionFeedback(`🎉 Selamat datang ${userData.fullName}! Percubaan Demo cTrader 7 Hari anda telah diaktifkan.`);
+          setTimeout(() => setExecutionFeedback(null), 6000);
+        }}
+      />
+
+      {/* 5. SUBSCRIPTION PRICING & ROI SIMULATOR MODAL */}
+      <SubscriptionPricingModal
+        isOpen={showPricingModal}
+        onClose={() => setShowPricingModal(false)}
+        currentCapital={liveBalance}
+        onSelectPlan={(planName, price) => {
+          setShowPricingModal(false);
+          setExecutionFeedback(`🚀 Anda telah memilih Pelan ${planName} ($${price}/bln)! Pasukan kami sedang menyelaraskan akaun anda.`);
+          setTimeout(() => setExecutionFeedback(null), 6000);
+        }}
+      />
     </div>
   );
 };
