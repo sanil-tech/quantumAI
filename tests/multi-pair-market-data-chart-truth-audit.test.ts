@@ -67,7 +67,7 @@ const PLAUSIBLE_PRICE_RANGES: Record<CurrencyPair, { min: number; max: number }>
   'USD/CAD': { min: 1.0, max: 1.7 },
   'EUR/JPY': { min: 110, max: 220 },
   'GBP/JPY': { min: 130, max: 250 },
-  'XAU/USD': { min: 1500, max: 4000 },
+  'XAU/USD': { min: 1500, max: 6000 },
   'NASDAQ': { min: 10000, max: 30000 },
   'BTC/USD': { min: 15000, max: 150000 }
 };

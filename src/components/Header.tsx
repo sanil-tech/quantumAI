@@ -65,7 +65,7 @@ interface HeaderProps {
 }
 
 
-const PAIRS: CurrencyPair[] = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'XAU/USD', 'NASDAQ', 'BTC/USD'];
+const PAIRS: CurrencyPair[] = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'EUR/JPY', 'AUD/USD', 'XAU/USD', 'NASDAQ', 'BTC/USD'];
 
 const STYLES: { id: TradingStyle; label: string; desc: string }[] = [
   { id: 'SCALPER', label: 'Scalper', desc: 'M1-M15 Fast Moves' },
@@ -140,34 +140,37 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <>
-      <header className="min-h-[3.5rem] py-2 border-b border-slate-800 bg-slate-900/90 flex items-center justify-between px-3 sm:px-6 sticky top-0 z-50 backdrop-blur-md max-w-full">
+      <header className="min-h-[3.75rem] py-2 border-b border-white/[0.08] bg-[#0B0F19]/90 flex items-center justify-between px-3 sm:px-6 sticky top-0 z-50 backdrop-blur-xl max-w-full shadow-lg shadow-black/40">
         {/* Left: Brand & Instrument Selector */}
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 rounded-lg flex items-center justify-center font-bold text-white text-xs tracking-wider shadow shrink-0">
-              FX
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 via-indigo-600 to-purple-600 rounded-xl flex items-center justify-center font-extrabold text-white text-xs tracking-wider shadow-md shadow-cyan-500/20 shrink-0 border border-white/20 ring-1 ring-cyan-500/30">
+              Q
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-extrabold tracking-tight text-sm sm:text-base text-white whitespace-nowrap">
-                QUANTUM<span className="text-blue-400 font-bold">AI</span>
+              <span className="font-extrabold tracking-tight text-base sm:text-lg text-white whitespace-nowrap">
+                QUANTUM<span className="text-cyan-400 font-extrabold">AI</span>
               </span>
-              <span className="px-1.5 py-0.5 bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/40 text-[9px] font-mono text-purple-300 rounded font-bold uppercase tracking-wider hidden sm:inline-block">
-                MENTOR & AI ROBOT
+              <span className="px-2 py-0.5 bg-gradient-to-r from-cyan-500/15 via-indigo-500/15 to-purple-500/15 border border-cyan-500/30 text-[9px] font-mono text-cyan-300 rounded-full font-bold uppercase tracking-wider hidden sm:inline-block shadow-sm">
+                QUANT DESK
               </span>
             </div>
           </div>
 
-          {/* Prominent cTrader FIX API Broker Button (Always visible beside logo) */}
+          {/* Prominent cTrader FIX API Broker Button */}
           {onOpenBrokerConnection && (
             <button
               id="header-left-ctrader-btn"
               onClick={onOpenBrokerConnection}
-              className="px-2.5 py-1 bg-gradient-to-r from-emerald-950 via-teal-900 to-emerald-900 hover:from-emerald-900 hover:to-teal-800 border border-emerald-400/80 text-emerald-300 hover:text-white rounded-lg text-xs font-black flex items-center gap-1.5 transition shadow-md shadow-emerald-950/60 ring-1 ring-emerald-500/40 cursor-pointer shrink-0"
+              className="px-3 py-1.5 bg-gradient-to-r from-emerald-950/90 via-teal-950/90 to-emerald-900/90 hover:from-emerald-900 hover:to-teal-800 border border-emerald-500/40 hover:border-emerald-400 text-emerald-300 hover:text-white rounded-xl text-xs font-bold flex items-center gap-2 transition shadow-md shadow-emerald-950/60 ring-1 ring-emerald-500/20 cursor-pointer shrink-0 group"
               title={language === 'ms' ? 'Sambungkan Akaun cTrader FIX API / MT4 / MT5' : 'Connect cTrader FIX API / MT4 / MT5 Account'}
             >
-              <Wifi className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-              <span className="whitespace-nowrap font-mono tracking-tight text-emerald-200 font-bold">
-                {language === 'ms' ? '🔌 Sambung cTrader' : '🔌 Connect cTrader'}
+              <div className="relative flex items-center justify-center">
+                <Wifi className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition" />
+                <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping" />
+              </div>
+              <span className="whitespace-nowrap font-mono tracking-tight text-emerald-200 font-semibold text-[11px] sm:text-xs">
+                {language === 'ms' ? 'cTrader Live' : 'cTrader Live'}
               </span>
             </button>
           )}
@@ -175,13 +178,13 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Live Broker Capital & Balance Display Pill */}
           <div 
             onClick={onOpenBrokerConnection}
-            className="hidden sm:flex items-center gap-3 bg-slate-950/90 border border-emerald-500/40 hover:border-emerald-400 px-3 py-1 rounded-lg font-mono text-xs shadow-inner cursor-pointer transition shrink-0"
+            className="hidden sm:flex items-center gap-3 bg-slate-900/90 border border-white/[0.08] hover:border-emerald-500/40 px-3 py-1.5 rounded-xl font-mono text-xs shadow-inner cursor-pointer transition shrink-0 backdrop-blur-md"
             title="Klik untuk lihat butiran akaun broker"
           >
             <div className="flex flex-col">
-              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
+              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                BAKI (DEMO)
+                BAKI
               </span>
               <span className="font-extrabold text-emerald-400 text-xs sm:text-sm leading-tight">
                 ${brokerInfo.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -206,11 +209,11 @@ export const Header: React.FC<HeaderProps> = ({
               id="header-pair-mobile-select"
               value={activePair}
               onChange={(e) => setActivePair(e.target.value as CurrencyPair)}
-              className="bg-slate-800 hover:bg-slate-700 border border-slate-700/80 text-white text-xs rounded-md px-2 py-1 font-mono font-bold cursor-pointer outline-none focus:border-blue-500 transition shadow-sm"
+              className="bg-slate-900/90 hover:bg-slate-800 border border-white/[0.1] text-white text-xs rounded-xl px-2.5 py-1.5 font-mono font-bold cursor-pointer outline-none focus:border-cyan-500 transition shadow-sm"
               title={t.pairSelect}
             >
               {PAIRS.map((p) => (
-                <option key={p} value={p} className="bg-slate-900 text-white">
+                <option key={p} value={p} className="bg-slate-950 text-white">
                   {p}
                 </option>
               ))}

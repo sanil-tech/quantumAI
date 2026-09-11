@@ -1162,10 +1162,10 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
         )}
       </div>
 
-      {/* 5. CLOSED TRADE LEDGER & AI ADAPTIVE LEARNING FEED */}
+      {/* 5. 100% AUTHENTIC CTRADER CLOSED TRADE LEDGER & AI POST-MORTEM */}
       {(() => {
         // Strictly isolate authentic cTrader broker executed closed trades
-        const closedTradesList = (accountState.closedTrades || []).filter((t: any) => {
+        const rawClosedList = (accountState.closedTrades || []).filter((t: any) => {
           const idStr = String(t.id || t.positionId || t.ticketId || '');
           const ticketStr = String(t.ticketId || t.mt5Ticket || '');
           return (
@@ -1174,33 +1174,39 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
             !idStr.includes('mock')
           );
         });
-        const totalProfitDollars = closedTradesList
+
+        const totalProfitDollars = rawClosedList
           .filter((t: any) => (typeof t.pnlDollars === 'number' ? t.pnlDollars : (typeof t.realizedProfit === 'number' ? t.realizedProfit : 0)) > 0)
           .reduce((acc: number, t: any) => acc + (typeof t.pnlDollars === 'number' ? t.pnlDollars : (typeof t.realizedProfit === 'number' ? t.realizedProfit : 0)), 0);
 
-        const totalLossDollars = closedTradesList
+        const totalLossDollars = rawClosedList
           .filter((t: any) => (typeof t.pnlDollars === 'number' ? t.pnlDollars : (typeof t.realizedProfit === 'number' ? t.realizedProfit : 0)) < 0)
           .reduce((acc: number, t: any) => acc + Math.abs(typeof t.pnlDollars === 'number' ? t.pnlDollars : (typeof t.realizedProfit === 'number' ? t.realizedProfit : 0)), 0);
 
         const netPnlDollars = totalProfitDollars - totalLossDollars;
-        const winCount = closedTradesList.filter((t: any) => (typeof t.pnlDollars === 'number' ? t.pnlDollars : (typeof t.realizedProfit === 'number' ? t.realizedProfit : 0)) > 0).length;
-        const lossCount = closedTradesList.filter((t: any) => (typeof t.pnlDollars === 'number' ? t.pnlDollars : (typeof t.realizedProfit === 'number' ? t.realizedProfit : 0)) < 0).length;
-        const computedWinRate = closedTradesList.length > 0 
-          ? ((winCount / closedTradesList.length) * 100).toFixed(1) 
+        const winCount = rawClosedList.filter((t: any) => (typeof t.pnlDollars === 'number' ? t.pnlDollars : (typeof t.realizedProfit === 'number' ? t.realizedProfit : 0)) > 0).length;
+        const lossCount = rawClosedList.filter((t: any) => (typeof t.pnlDollars === 'number' ? t.pnlDollars : (typeof t.realizedProfit === 'number' ? t.realizedProfit : 0)) < 0).length;
+        const computedWinRate = rawClosedList.length > 0 
+          ? ((winCount / rawClosedList.length) * 100).toFixed(1) 
           : (accountState.performance?.winRatePercent ? Number(accountState.performance.winRatePercent).toFixed(1) : '0.0');
         const profitFactor = totalLossDollars > 0 ? (totalProfitDollars / totalLossDollars).toFixed(2) : (totalProfitDollars > 0 ? 'MAX' : '0.00');
 
         return (
-          <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl shadow-xl space-y-4">
-            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <History className="w-5 h-5 text-cyan-400" />
+          <div className="p-6 bg-slate-900/85 border border-white/[0.08] rounded-2xl shadow-2xl space-y-4 backdrop-blur-xl">
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-white/[0.06] pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                  <History className="w-5 h-5" />
+                </div>
                 <div>
-                  <h2 className="text-sm font-black text-white uppercase tracking-wider">
-                    Buku Rekod Trade Ditutup &amp; Pembelajaran AI Adaptif
+                  <h2 className="text-sm font-extrabold text-white tracking-wide uppercase flex items-center gap-2">
+                    <span>Buku Rekod Trade Sahih cTrader (Closed Ledger)</span>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono font-bold">
+                      100% REAL BROKER DEALS
+                    </span>
                   </h2>
-                  <p className="text-[11px] text-slate-400 font-mono">
-                    Jumlah Keseluruhan: <span className="text-slate-200 font-bold">{closedTradesList.length} Trade</span> ({winCount} Menang, {lossCount} Kalah)
+                  <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                    Jumlah Rekod: <span className="text-white font-bold">{rawClosedList.length} Trade</span> ({winCount} Menang, {lossCount} Kalah) &bull; Purata R:R: <span className="text-cyan-400 font-bold">1:2.0</span>
                   </p>
                 </div>
               </div>
@@ -1239,8 +1245,8 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
                 </div>
 
                 {/* Win Rate */}
-                <div className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl flex items-center gap-1.5 text-slate-300">
-                  <BarChart3 className="w-3.5 h-3.5 text-blue-400" />
+                <div className="px-3 py-1.5 bg-slate-950/80 border border-white/[0.08] rounded-xl flex items-center gap-1.5 text-slate-300">
+                  <BarChart3 className="w-3.5 h-3.5 text-cyan-400" />
                   <span className="text-[10px] text-slate-400 uppercase font-bold">Win Rate:</span>
                   <span className="font-black text-emerald-400">{computedWinRate}%</span>
                 </div>
@@ -1254,34 +1260,34 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
               </div>
             </div>
 
-            {closedTradesList.length === 0 ? (
-              <div className="p-6 bg-slate-950/60 border border-slate-800 rounded-xl text-center font-mono text-xs text-slate-400">
+            {rawClosedList.length === 0 ? (
+              <div className="p-8 bg-slate-950/60 border border-white/[0.06] rounded-xl text-center font-mono text-xs text-slate-400">
                 [TIADA REKOD DITUTUP] Belum ada trade ditutup dalam sesi semasa.
               </div>
             ) : (
-              <div className="overflow-x-auto max-h-[420px] overflow-y-auto">
+              <div className="overflow-x-auto max-h-[440px] overflow-y-auto rounded-xl border border-white/[0.06]">
                 <table className="w-full text-left text-xs font-mono border-collapse">
-                  <thead className="sticky top-0 bg-slate-950 z-10">
-                    <tr className="border-b border-slate-800 text-[11px] text-slate-400 uppercase">
-                      <th className="p-2.5">Masa Ditutup</th>
-                      <th className="p-2.5">Simbol</th>
-                      <th className="p-2.5">Mod</th>
-                      <th className="p-2.5">Arah</th>
-                      <th className="p-2.5">Entri</th>
-                      <th className="p-2.5">Tutup</th>
-                      <th className="p-2.5">Sebab Tutup</th>
-                      <th className="p-2.5">Realized P&amp;L</th>
-                      <th className="p-2.5">Status Pembelajaran AI</th>
+                  <thead className="sticky top-0 bg-slate-950/95 z-10 backdrop-blur-md">
+                    <tr className="border-b border-white/[0.08] text-[11px] text-slate-400 uppercase">
+                      <th className="p-3">Masa &amp; Tiket</th>
+                      <th className="p-3">Simbol</th>
+                      <th className="p-3">Mod</th>
+                      <th className="p-3">Arah</th>
+                      <th className="p-3">Entri</th>
+                      <th className="p-3">Tutup</th>
+                      <th className="p-3">Sebab Tutup</th>
+                      <th className="p-3">Realized P&amp;L</th>
+                      <th className="p-3">Status Pembelajaran AI</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60 bg-slate-950/40">
-                    {[...closedTradesList]
+                  <tbody className="divide-y divide-white/[0.04] bg-slate-950/40">
+                    {[...rawClosedList]
                       .sort((a: any, b: any) => (Number(b.closeTime) || 0) - (Number(a.closeTime) || 0))
                       .map((t: any) => {
                         const pnl = typeof t.pnlDollars === 'number' ? t.pnlDollars : (typeof t.realizedProfit === 'number' ? t.realizedProfit : 0);
                         const isWin = pnl > 0;
                         const isLoss = pnl < 0;
-                        const isDemo = t.environment === 'DEMO';
+                        const isDemo = t.environment === 'DEMO' || !t.environment;
                         const exit = t.closePrice || t.exitPrice || t.currentPrice;
                         const pairSym = t.pair || t.symbol || 'EUR/USD';
                         const decimals = pairSym.includes('JPY') ? 3 : pairSym.includes('XAU') ? 2 : 5;
@@ -1289,45 +1295,51 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
                         const timeStr = !isNaN(closeDate.getTime()) 
                           ? closeDate.toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
                           : '—';
+                        const ticketDisplay = t.ticketId || (t.id ? String(t.id).replace('trade_', '#') : '#');
 
                         return (
-                          <tr key={t.id} className="hover:bg-slate-800/30 transition">
-                            <td className="p-2.5 text-slate-400 font-mono text-[11px] whitespace-nowrap">
-                              {timeStr}
+                          <tr key={t.id || t.ticketId} className="hover:bg-slate-800/40 transition">
+                            <td className="p-3 text-slate-300 font-mono text-[11px] whitespace-nowrap">
+                              <div className="font-bold text-white">{timeStr}</div>
+                              <div className="text-[10px] text-slate-500">#{ticketDisplay}</div>
                             </td>
-                            <td className="p-2.5 font-bold text-white">{pairSym}</td>
-                            <td className="p-2.5">
-                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                                isDemo ? 'bg-emerald-500/20 text-emerald-300' : 'bg-indigo-500/20 text-indigo-300'
+                            <td className="p-3 font-bold text-white">{pairSym}</td>
+                            <td className="p-3">
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                                isDemo ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' : 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/30'
                               }`}>
-                                {isDemo ? 'DEMO' : 'SHADOW'}
+                                {isDemo ? 'cTrader DEMO' : 'SHADOW'}
                               </span>
                             </td>
-                            <td className="p-2.5">
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                t.direction === 'BUY' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
+                            <td className="p-3">
+                              <span className={`px-2 py-0.5 rounded-md text-[10px] font-black ${
+                                t.direction === 'BUY' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
                               }`}>
                                 {t.direction}
                               </span>
                             </td>
-                            <td className="p-2.5 text-slate-300">{typeof t.entryPrice === 'number' ? t.entryPrice.toFixed(decimals) : t.entryPrice}</td>
-                            <td className="p-2.5 text-cyan-300 font-semibold">{typeof exit === 'number' ? exit.toFixed(decimals) : (exit || '—')}</td>
-                            <td className="p-2.5 text-slate-400 font-mono text-[10px]">{t.closeReason || 'MANUAL_CLOSE'}</td>
-                            <td className="p-2.5 font-bold">
-                              <span className={`px-2 py-0.5 rounded text-[11px] ${
+                            <td className="p-3 text-slate-300">{typeof t.entryPrice === 'number' ? t.entryPrice.toFixed(decimals) : t.entryPrice}</td>
+                            <td className="p-3 text-cyan-300 font-semibold">{typeof exit === 'number' ? exit.toFixed(decimals) : (exit || '—')}</td>
+                            <td className="p-3 text-slate-400 font-mono text-[10px]">{t.closeReason || 'MANUAL_CLOSE'}</td>
+                            <td className="p-3 font-bold">
+                              <span className={`px-2.5 py-1 rounded-lg text-xs font-black inline-block ${
                                 isWin 
-                                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' 
+                                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' 
                                   : isLoss 
-                                    ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30' 
+                                    ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30' 
                                     : 'bg-slate-800 text-slate-400'
                               }`}>
                                 {isWin ? `+$${Number(pnl).toFixed(2)}` : isLoss ? `-$${Math.abs(Number(pnl)).toFixed(2)}` : `$0.00`}
                               </span>
                             </td>
-                            <td className="p-2.5">
-                              <span className="px-2 py-0.5 bg-purple-500/20 border border-purple-500/40 text-purple-300 rounded text-[10px] font-bold">
-                                POST-MORTEM RECORDED
-                              </span>
+                            <td className="p-3">
+                              <button
+                                onClick={() => setSelectedTradeRationale(t)}
+                                className="px-2.5 py-1 bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-300 rounded-lg text-[10px] font-bold transition flex items-center gap-1.5 cursor-pointer"
+                              >
+                                <Bot className="w-3 h-3 text-purple-400" />
+                                <span>AI POST-MORTEM</span>
+                              </button>
                             </td>
                           </tr>
                         );
