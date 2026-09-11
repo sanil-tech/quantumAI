@@ -201,18 +201,22 @@ export const SubscriberTrustCockpit: React.FC<SubscriberTrustCockpitProps> = ({
             {openPositions.map((pos: any) => {
               const sym = String(pos.pair || pos.symbol || 'EUR/USD');
               const dir = String(pos.direction || 'BUY').toUpperCase();
-              const entry = Number(pos.entryPrice || 1.0);
-              const current = Number(pos.currentPrice || entry);
+              const entry = Number(pos.sanitizedEntry ?? pos.entryPrice ?? 1.0);
+              const current = Number(pos.currentPrice ?? entry);
               const sl = Number(pos.stopLoss || 0);
               const tp = Number(pos.takeProfit || pos.takeProfit1 || 0);
               const decimals = sym.includes('JPY') ? 3 : sym.includes('XAU') ? 2 : 5;
-              const pnl = Number(pos.unrealizedProfit || pos.pnlDollars || 0);
+              const pnl = Number(pos.unrealizedProfit ?? pos.pnlDollars ?? 0);
+              const pnlPips = Number(pos.pnlPips ?? 0);
               const isProfit = pnl >= 0;
 
               // Calculate progress percentage towards Take Profit vs Stop Loss
-              const totalSpan = Math.abs(tp - sl) || 1;
-              const currentDist = dir === 'BUY' ? (current - sl) : (sl - current);
-              const progressPct = Math.max(5, Math.min(95, (currentDist / totalSpan) * 100));
+              let progressPct = 50;
+              if (sl > 0 && tp > 0) {
+                const totalSpan = Math.abs(tp - sl) || 1;
+                const currentDist = dir === 'BUY' ? (current - sl) : (sl - current);
+                progressPct = Math.max(5, Math.min(95, (currentDist / totalSpan) * 100));
+              }
 
               return (
                 <div 
@@ -228,14 +232,19 @@ export const SubscriberTrustCockpit: React.FC<SubscriberTrustCockpitProps> = ({
                         {dir}
                       </span>
                       <span className="text-[11px] font-mono text-slate-400">
-                        Lot: {Number(pos.lotSize || pos.quantity || 0.1).toFixed(2)}
+                        Lot: {Number(pos.lotSize || pos.quantity || 0.01).toFixed(2)}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <span className={`text-sm font-black font-mono ${isProfit ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {isProfit ? `+$${pnl.toFixed(2)}` : `-$${Math.abs(pnl).toFixed(2)}`}
-                      </span>
+                      <div className="text-right font-mono">
+                        <div className={`text-sm font-black ${isProfit ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {isProfit ? `+$${pnl.toFixed(2)}` : `-$${Math.abs(pnl).toFixed(2)}`}
+                        </div>
+                        <div className={`text-[10px] font-bold ${isProfit ? 'text-emerald-500/90' : 'text-rose-500/90'}`}>
+                          {pnlPips >= 0 ? `+${pnlPips.toFixed(1)}` : `${pnlPips.toFixed(1)}`} pips
+                        </div>
+                      </div>
                       <button
                         onClick={() => onViewRationale(pos)}
                         className="px-2 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded text-[10px] font-bold transition cursor-pointer flex items-center gap-1"
@@ -255,9 +264,12 @@ export const SubscriberTrustCockpit: React.FC<SubscriberTrustCockpitProps> = ({
                   {/* Visual TP / SL Progress Bar */}
                   <div className="space-y-1.5 pt-1">
                     <div className="flex justify-between text-[10px] font-mono">
-                      <span className="text-rose-400">SL: {sl.toFixed(decimals)}</span>
-                      <span className="text-cyan-300 font-bold">Semasa: {current.toFixed(decimals)}</span>
-                      <span className="text-emerald-400 font-bold">TP: {tp.toFixed(decimals)}</span>
+                      <span className="text-rose-400 font-semibold">SL: {sl > 0 ? sl.toFixed(decimals) : 'N/A'}</span>
+                      <span className="text-cyan-300 font-bold flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping inline-block" />
+                        Semasa: {current.toFixed(decimals)}
+                      </span>
+                      <span className="text-emerald-400 font-semibold">TP: {tp > 0 ? tp.toFixed(decimals) : 'N/A'}</span>
                     </div>
 
                     <div className="w-full h-3 bg-slate-900 rounded-full overflow-hidden relative border border-slate-800">

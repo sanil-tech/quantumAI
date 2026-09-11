@@ -115,7 +115,15 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
         if (res.ok) {
           const data = await res.json();
           if (data && data.rates) {
-            setLivePairPrices(prev => ({ ...prev, ...data.rates }));
+            const flatRates: Record<string, number> = {};
+            for (const [k, v] of Object.entries(data.rates)) {
+              if (typeof v === 'number') {
+                flatRates[k] = v;
+              } else if (v && typeof v === 'object' && typeof (v as any).bid === 'number') {
+                flatRates[k] = Number((((v as any).bid + ((v as any).ask || (v as any).bid)) / 2).toFixed(5));
+              }
+            }
+            setLivePairPrices(prev => ({ ...prev, ...flatRates }));
           }
         }
       } catch (e) {
@@ -578,7 +586,20 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
         latencyMs={brokerConn?.latencyMs || 38}
         isAutoTraderActive={isAutoPilotActive}
         onToggleAutoTrader={() => setIsAutoPilotActive(prev => !prev)}
-        openPositions={accountState.openTrades}
+        openPositions={accountState.openTrades.map((t: any) => {
+          const m = computeTradeMetrics(t);
+          return {
+            ...t,
+            currentPrice: m.liveCurrent,
+            entryPrice: m.sanitizedEntry,
+            unrealizedProfit: m.pnlDollars,
+            pnlDollars: m.pnlDollars,
+            pnlPips: m.pnlPips,
+            isPos: m.isPos,
+            stopLossFormatted: m.stopLossFormatted,
+            takeProfitFormatted: m.takeProfitFormatted,
+          };
+        })}
         onClosePosition={handleCloseTrade}
         onViewRationale={(trade) => setSelectedTradeRationale(trade)}
         riskMode={subscriberRiskMode}
