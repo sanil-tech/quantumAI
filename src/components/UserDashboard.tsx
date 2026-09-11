@@ -4,7 +4,8 @@ import {
   Zap, ShieldCheck, CheckCircle2, TrendingUp, TrendingDown,
   Bot, RefreshCw, BarChart3, Activity, DollarSign,
   Lock, Power, Sliders, Shield, Terminal,
-  Radio, History, User, Calendar, Cpu, Sparkles, AlertTriangle
+  Radio, History, User, Calendar, Cpu, Sparkles, AlertTriangle,
+  Download, Search, FileText, Filter, X
 } from 'lucide-react';
 import { DemoTraderCommandCenter } from './DemoTraderCommandCenter';
 import { EconomicCalendarWidget } from './EconomicCalendarWidget';
@@ -80,9 +81,34 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   const [closedHistoryPage, setClosedHistoryPage] = useState<number>(1);
   const [closedHistoryFilterPair, setClosedHistoryFilterPair] = useState<string>('ALL');
   const [closedHistoryFilterOutcome, setClosedHistoryFilterOutcome] = useState<string>('ALL');
+  const [closedHistorySearchQuery, setClosedHistorySearchQuery] = useState<string>('');
   const [isLoadingTrades, setIsLoadingTrades] = useState<boolean>(false);
   const [economicEvents, setEconomicEvents] = useState<EconomicEvent[]>([]);
   const [killSwitchActive, setKillSwitchActive] = useState<boolean>(false);
+
+  const handleExportLedgerCSV = () => {
+    if (!closedTrades || closedTrades.length === 0) return;
+    const headers = ['Ticket ID', 'Symbol', 'Direction', 'Lot Size', 'Entry Price', 'Exit Price', 'PnL ($)', 'PnL (pips)', 'Close Time'];
+    const rows = closedTrades.map(t => [
+      `"${t.brokerTicket || t.ticketId || t.id || ''}"`,
+      `"${t.pair || t.symbol || ''}"`,
+      `"${t.direction || ''}"`,
+      t.lotSize || t.quantity || 0.01,
+      t.entryPrice || 0,
+      t.exitPrice || t.closePrice || 0,
+      (t.pnlDollars || t.realizedProfit || 0).toFixed(2),
+      t.pnlPips || 0,
+      `"${new Date(t.closeTime || t.closedAt || t.timestamp || Date.now()).toISOString()}"`
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `QuantumAI_Verified_Ledger_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Fetch all state from server
   const fetchDashboardState = async () => {
@@ -426,47 +452,85 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
               <div className="flex items-center gap-2.5">
                 <History className="w-5 h-5 text-emerald-400" />
-                <h3 className="font-bold text-white text-base">Senarai Lengkap Trade Broker Selesai</h3>
+                <div>
+                  <h3 className="font-bold text-white text-base">Senarai Lengkap Trade Broker Selesai</h3>
+                  <span className="text-[11px] text-slate-400 font-mono">Direkodkan secara kekal dari pangkalan data PostgreSQL &amp; lejar cTrader</span>
+                </div>
               </div>
-              <button
-                onClick={fetchDashboardState}
-                className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border border-slate-700"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingTrades ? 'animate-spin' : ''}`} />
-                <span>KEMASKINI DARI BROKER</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleExportLedgerCSV}
+                  disabled={closedTrades.length === 0}
+                  className="px-3.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                  title="Muat turun fail CSV lejar transaksi yang disahkan untuk audit"
+                >
+                  <Download className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Eksport CSV / Audit</span>
+                </button>
+                <button
+                  onClick={fetchDashboardState}
+                  className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border border-slate-700"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isLoadingTrades ? 'animate-spin' : ''}`} />
+                  <span>KEMASKINI DARI BROKER</span>
+                </button>
+              </div>
             </div>
 
-            {/* Filter toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 font-mono text-xs">
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-400 text-[10px] uppercase font-bold">Simbol:</span>
-                {['ALL', 'EUR/USD', 'GBP/USD', 'USD/JPY', 'EUR/JPY', 'AUD/USD', 'XAU/USD', 'NASDAQ', 'BTC/USD'].map(sym => (
-                  <button
-                    key={sym}
-                    onClick={() => { setClosedHistoryFilterPair(sym); setClosedHistoryPage(1); }}
-                    className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
-                      closedHistoryFilterPair === sym ? 'bg-blue-600 text-white' : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
-                    }`}
-                  >
-                    {sym}
-                  </button>
-                ))}
+            {/* Filter toolbar & Search */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 font-mono text-xs">
+              
+              {/* Left: Filters */}
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400 text-[10px] uppercase font-bold">Simbol:</span>
+                  {['ALL', 'EUR/USD', 'GBP/USD', 'USD/JPY', 'EUR/JPY', 'AUD/USD', 'XAU/USD', 'NASDAQ', 'BTC/USD'].map(sym => (
+                    <button
+                      key={sym}
+                      onClick={() => { setClosedHistoryFilterPair(sym); setClosedHistoryPage(1); }}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+                        closedHistoryFilterPair === sym ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                      }`}
+                    >
+                      {sym}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400 text-[10px] uppercase font-bold">Keputusan:</span>
+                  {['ALL', 'WIN', 'LOSS'].map(out => (
+                    <button
+                      key={out}
+                      onClick={() => { setClosedHistoryFilterOutcome(out); setClosedHistoryPage(1); }}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+                        closedHistoryFilterOutcome === out ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                      }`}
+                    >
+                      {out}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-400 text-[10px] uppercase font-bold">Keputusan:</span>
-                {['ALL', 'WIN', 'LOSS'].map(out => (
+              {/* Right: Instant Search Box */}
+              <div className="relative w-full lg:w-64">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={closedHistorySearchQuery}
+                  onChange={(e) => { setClosedHistorySearchQuery(e.target.value); setClosedHistoryPage(1); }}
+                  placeholder="Cari No. Tiket / Simbol..."
+                  className="w-full pl-8 pr-7 py-1 bg-slate-950/90 border border-slate-800 focus:border-cyan-500/60 rounded-xl text-xs font-mono text-white placeholder-slate-500 focus:outline-none transition shadow-inner"
+                />
+                {closedHistorySearchQuery && (
                   <button
-                    key={out}
-                    onClick={() => { setClosedHistoryFilterOutcome(out); setClosedHistoryPage(1); }}
-                    className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
-                      closedHistoryFilterOutcome === out ? 'bg-blue-600 text-white' : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
-                    }`}
+                    onClick={() => setClosedHistorySearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
                   >
-                    {out}
+                    <X className="w-3 h-3" />
                   </button>
-                ))}
+                )}
               </div>
             </div>
 
@@ -477,6 +541,15 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                 const pnl = t.pnlDollars || t.realizedProfit || 0;
                 if (closedHistoryFilterOutcome === 'WIN' && pnl <= 0) return false;
                 if (closedHistoryFilterOutcome === 'LOSS' && pnl >= 0) return false;
+
+                if (closedHistorySearchQuery.trim()) {
+                  const q = closedHistorySearchQuery.trim().toUpperCase();
+                  const tkt = String(t.brokerTicket || t.ticketId || t.id || '').toUpperCase();
+                  const sym = pair.toUpperCase().replace('/', '');
+                  if (!tkt.includes(q) && !sym.includes(q.replace('/', '')) && !pair.toUpperCase().includes(q)) {
+                    return false;
+                  }
+                }
                 return true;
               });
 
