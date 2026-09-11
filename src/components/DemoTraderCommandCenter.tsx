@@ -13,6 +13,7 @@ import {
 import { ChartWidget } from './ChartWidget';
 import { translations, Language } from '../lib/translations';
 import { SubscriberTrustCockpit, SubscriberRiskMode } from './SubscriberTrustCockpit';
+import { tradeAudio } from '../utils/tradeAudio';
 
 interface DemoTraderCommandCenterProps {
   currentPrice: number;
@@ -277,46 +278,28 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
     return fallbackPrice > 0 ? fallbackPrice : 1.0;
   };
 
-  // Execute Demo Trade Function (Inherits exact AI Analysis Parameters)
-  const handleExecuteDemoTrade = async (
-    inputDirection?: 'BUY' | 'SELL', 
-    fromAiSetup: boolean = false, 
-    isAutoExecution: boolean = false
-  ) => {
-    setIsExecuting(true);
-    setExecutionFeedback(null);
+  // Execute Demo Trade Function
+  const handleExecuteDemoTrade = async (targetDirection: 'BUY' | 'SELL', fromAiSetup: boolean = false, isAutoExecution: boolean = false) => {
     try {
-      const aiDir = getAiDirection(aiOpportunity);
-      const targetDirection = inputDirection || (fromAiSetup ? aiDir : null) || 'BUY';
-      
-      const oppPair = (aiOpportunity?.pair || (aiOpportunity as any)?.symbol || '').replace('/', '').toUpperCase();
-      const curActive = activePair.replace('/', '').toUpperCase();
-      const isPairMatched = Boolean(oppPair) && oppPair === curActive;
+      setIsExecuting(true);
+      setExecutionFeedback(null);
 
-      let effectiveEntry = currentPrice > 0 ? currentPrice : 0;
-      if (fromAiSetup && isPairMatched) {
-        const aiPrice = getAiEntryPrice(aiOpportunity, currentPrice);
-        if (aiPrice > 0 && currentPrice > 0 && Math.abs(aiPrice - currentPrice) / currentPrice <= 0.05) {
-          effectiveEntry = aiPrice;
-        } else if (currentPrice > 0) {
-          effectiveEntry = currentPrice;
-        } else {
-          effectiveEntry = aiPrice > 0 ? aiPrice : 1.0;
-        }
-      } else if (currentPrice > 0) {
-        effectiveEntry = currentPrice;
-      } else {
-        effectiveEntry = 1.0;
+      let effectiveEntry = fromAiSetup 
+        ? getAiEntryPrice(aiOpportunity, currentPrice) 
+        : currentPrice;
+
+      if (!effectiveEntry || effectiveEntry <= 0) {
+        effectiveEntry = getLivePrice(activePair) || currentPrice;
       }
 
       const isJpy = activePair.includes('JPY');
-      const isGold = activePair.includes('XAU') || activePair.includes('GOLD');
+      const isGold = activePair.includes('XAU');
+      const isNas = activePair.includes('NASDAQ');
       const isBtc = activePair.includes('BTC');
-      const isNas = activePair.includes('NASDAQ') || activePair.includes('TECH') || activePair.includes('USTEC');
+      const pipMultiplier = isJpy ? 0.01 : (isGold || isNas || isBtc) ? 1.0 : 0.0001;
 
-      const pipMultiplier = isJpy ? 0.01 : (isGold || isBtc || isNas) ? 1 : 0.0001;
-      const pullbackPips = isJpy ? 15.0 : (isGold ? 8.0 : (isNas ? 40.0 : (isBtc ? 200.0 : 10.0)));
-      const slPips = isJpy ? 35.0 : (isGold ? 20.0 : (isNas ? 100.0 : (isBtc ? 500.0 : 30.0))); // Robust swing/intraday SL buffer
+      const pullbackPips = isJpy ? 3.0 : (isGold ? 1.5 : (isNas ? 10.0 : (isBtc ? 50.0 : 2.5)));
+      const slPips = isJpy ? 35.0 : (isGold ? 20.0 : (isNas ? 100.0 : (isBtc ? 500.0 : 30.0))); // Conservative institutional stop
       const tpPips = isJpy ? 70.0 : (isGold ? 40.0 : (isNas ? 200.0 : (isBtc ? 1000.0 : 60.0))); // Strict 1:2.0 Risk:Reward target
 
       // Compute precision retracement pullback entry
@@ -335,7 +318,7 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
         ? effectiveEntry + (tpPips * pipMultiplier) 
         : effectiveEntry - (tpPips * pipMultiplier);
 
-      // Dynamic Confidence-Tiered Lot Sizing: 0.02 lot for high conviction (>=80%), 0.01 lot for standard (<80%), 1.0 contract for NASDAQ/Indices
+      // Dynamic Confidence-Tiered Lot Sizing
       const confidenceScore = aiOpportunity?.confidence || 85;
       const autoTierLot = isNas ? 1.0 : (isBtc ? 0.01 : (confidenceScore >= 80 ? 0.02 : 0.01));
       const safeLot = customLot || autoTierLot;
@@ -369,10 +352,11 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
       const data = await res.json();
 
       if (data.success) {
+        tradeAudio.play('OPEN');
         if (data.isDuplicate) {
           setExecutionFeedback(`ℹ️ [${selectedExecutionEnv}] Pesanan ${targetDirection} ${activePair} sedia ada sedang berjalan.`);
         } else {
-          setExecutionFeedback(`🎯 [${selectedExecutionEnv}] Pesanan Had (Pending Limit) ${targetDirection} ${activePair} berjaya diletakkan pada harga ${payload.entryPrice}!`);
+          setExecutionFeedback(`🎯 [${selectedExecutionEnv}] Pesanan Had ${targetDirection} ${activePair} berjaya diletakkan pada harga ${payload.entryPrice}!`);
           if (data.trade) {
             setAccountState(prev => ({
               ...prev,
@@ -392,7 +376,7 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
     }
   };
 
-  // Persistent deduplication & cooldown ledger (prevents duplicate trades on refresh or timeframe switch)
+  // Persistent deduplication & cooldown ledger
   const isSetupInCooldown = useCallback((pair: string, dir: string, sl: number): boolean => {
     try {
       const raw = localStorage.getItem('quantum_executed_ai_setups');
@@ -401,7 +385,7 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
       const key = `${pair.replace('/', '')}_${dir}_${sl}`;
       const lastExecution = ledger[key];
       if (lastExecution && (Date.now() - Number(lastExecution)) < 2 * 60 * 1000) {
-        return true; // Micro-cooldown 2 minutes
+        return true;
       }
     } catch {}
     return false;
@@ -417,11 +401,10 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
     } catch {}
   }, []);
 
-  // Automatic Entry Trigger for A-Grade Signals (Strictly Guarded against duplicate entries & cross-pair contamination)
+  // Automatic Entry Trigger for A-Grade Signals
   useEffect(() => {
     if (!isAutoPilotActive || !aiOpportunity || aiLoading || isExecuting) return;
 
-    // Strict Cross-Pair Isolation Guard: Never use aiOpportunity from a different pair or empty pair
     const oppPair = (aiOpportunity.pair || (aiOpportunity as any).symbol || '').replace('/', '').toUpperCase();
     const curActive = activePair.replace('/', '').toUpperCase();
     if (!oppPair || oppPair !== curActive) {
@@ -431,19 +414,16 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
     const aiDir = getAiDirection(aiOpportunity);
     if (!aiDir) return;
 
-    // Check if signal has A-Grade confluence criteria (Confidence >= 65%)
     const conf = aiOpportunity.confidence || 0;
     if (conf < 65) return;
 
     const entryPrice = getAiEntryPrice(aiOpportunity, currentPrice);
     const slVal = Number(aiOpportunity.stopLoss || 0);
 
-    // 1. Persistent Cooldown check (across reloads, tab switches, and timeframe changes)
     if (isSetupInCooldown(activePair, aiDir, slVal)) {
       return;
     }
 
-    // 2. Check if there is already an active open position on the same pair
     const normActive = activePair.replace('/', '').toUpperCase();
     const alreadyOpen = accountState.openTrades.some((t: any) => {
       const tPair = (t.pair || t.symbol || '').replace('/', '').toUpperCase();
@@ -453,17 +433,16 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
       return;
     }
 
-    // Mark cooldown immediately before executing
     markSetupInCooldown(activePair, aiDir, slVal);
-
-    // Automatically execute the A-Grade setup into demo account!
     handleExecuteDemoTrade(aiDir, true, true);
   }, [aiOpportunity, isAutoPilotActive, activePair, aiLoading, isExecuting, accountState.openTrades, currentPrice, isSetupInCooldown, markSetupInCooldown]);
 
-  // Close Trade Function
+  // Close Trade Function with Optimistic Spinner & Sound Chime
   const handleCloseTrade = async (tradeId: string) => {
+    const cleanId = String(tradeId);
     try {
-      const trade = accountState.openTrades.find((t: any) => t.id === tradeId || t.ticketId === tradeId);
+      setClosingTradeIds(prev => [...prev, cleanId]);
+      const trade = accountState.openTrades.find((t: any) => String(t.id || t.ticketId || t.positionId) === cleanId);
       const metrics = trade ? computeTradeMetrics(trade) : null;
       const effectiveExit = metrics?.liveCurrent || currentPrice;
       const effectivePnlDollars = metrics?.pnlDollars;
@@ -473,7 +452,7 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          tradeId, 
+          tradeId: cleanId, 
           reason: 'MANUAL_CLOSE', 
           closeReason: 'MANUAL_CLOSE',
           exitPrice: effectiveExit,
@@ -486,10 +465,18 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
       });
       const data = await res.json();
       if (data.success) {
+        tradeAudio.play('CLOSE');
+        setExecutionFeedback(`✅ Pesanan cTrader ${trade?.pair || ''} #${cleanId} berjaya ditutup.`);
+        setTimeout(() => setExecutionFeedback(null), 5000);
         await fetchState();
+      } else {
+        setExecutionFeedback(`⚠️ Gagal menutup: ${data.error || 'Ralat broker'}`);
+        setTimeout(() => setExecutionFeedback(null), 5000);
       }
     } catch (err) {
       console.error('Failed to close trade:', err);
+    } finally {
+      setClosingTradeIds(prev => prev.filter(id => id !== cleanId));
     }
   };
 
@@ -604,6 +591,7 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
           };
         })}
         onClosePosition={handleCloseTrade}
+        closingTradeIds={closingTradeIds}
         onViewRationale={(trade) => setSelectedTradeRationale(trade)}
         riskMode={subscriberRiskMode}
         onSelectRiskMode={handleSelectRiskMode}
@@ -920,23 +908,71 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
               </div>
             </div>
 
-            {/* Lot size selector */}
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-mono text-slate-400">Saiz Lot:</span>
-              <div className="flex items-center gap-1.5 flex-1">
-                {[0.05, 0.10, 0.20, 0.50].map(lot => (
-                  <button
-                    key={lot}
-                    onClick={() => setCustomLot(lot)}
-                    className={`flex-1 py-1 rounded text-xs font-mono font-bold transition cursor-pointer ${
-                      customLot === lot
-                        ? 'bg-blue-600 text-white shadow'
-                        : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
-                    }`}
-                  >
-                    {lot.toFixed(2)}
-                  </button>
-                ))}
+            {/* Dynamic Risk % & Lot Sizing Selector */}
+            <div className="space-y-2 p-3 bg-slate-950/70 border border-slate-800/80 rounded-xl">
+              <div className="flex items-center justify-between text-[11px] font-mono">
+                <span className="text-slate-400">Kalkulator Risiko Modal:</span>
+                <span className="text-cyan-400 font-bold">
+                  {riskPercent}% = ${(liveBalance * (riskPercent / 100)).toFixed(2)} Risk
+                </span>
+              </div>
+              
+              {/* Risk % Quick Presets */}
+              <div className="grid grid-cols-3 gap-1.5">
+                {[0.5, 1.0, 2.0].map(pct => {
+                  const isCur = riskPercent === pct;
+                  return (
+                    <button
+                      key={pct}
+                      onClick={() => {
+                        setRiskPercent(pct);
+                        const isJpy = activePair.includes('JPY');
+                        const isGold = activePair.includes('XAU');
+                        const isNas = activePair.includes('NASDAQ');
+                        const slPips = isJpy ? 35.0 : (isGold ? 20.0 : (isNas ? 100.0 : 30.0));
+                        const calculatedLot = Number(Math.max(0.01, Math.min(2.0, (liveBalance * (pct / 100)) / (slPips * 10))).toFixed(2));
+                        setCustomLot(calculatedLot);
+                      }}
+                      className={`py-1.5 px-2 rounded-lg text-xs font-mono font-bold transition flex flex-col items-center cursor-pointer border ${
+                        isCur
+                          ? 'bg-cyan-600/30 text-cyan-300 border-cyan-500/60 shadow-sm'
+                          : 'bg-slate-900 text-slate-400 hover:text-slate-200 border-slate-800'
+                      }`}
+                    >
+                      <span>{pct}% Risiko</span>
+                      <span className="text-[10px] text-slate-400 font-normal">${(liveBalance * (pct / 100)).toFixed(0)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Exact Lot Selection */}
+              <div className="flex items-center gap-2 pt-1">
+                <span className="text-[11px] font-mono text-slate-400">Saiz Lot:</span>
+                <div className="flex items-center gap-1.5 flex-1">
+                  {[0.01, 0.05, 0.10, 0.20].map(lot => (
+                    <button
+                      key={lot}
+                      onClick={() => setCustomLot(lot)}
+                      className={`flex-1 py-1 rounded text-xs font-mono font-bold transition cursor-pointer ${
+                        customLot === lot
+                          ? 'bg-blue-600 text-white shadow'
+                          : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                      }`}
+                    >
+                      {lot.toFixed(2)}
+                    </button>
+                  ))}
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    max="10.0"
+                    value={customLot}
+                    onChange={(e) => setCustomLot(Math.max(0.01, Number(e.target.value) || 0.01))}
+                    className="w-16 py-1 px-1.5 bg-slate-900 border border-slate-700 rounded text-xs font-mono font-bold text-center text-amber-300 focus:border-cyan-500 focus:outline-none"
+                  />
+                </div>
               </div>
             </div>
 

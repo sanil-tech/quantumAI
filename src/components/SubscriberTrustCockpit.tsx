@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, Bot, Sparkles, TrendingUp, TrendingDown, DollarSign, 
   BarChart3, Zap, Lock, Power, CheckCircle, AlertTriangle, ArrowRight,
-  Info, Sliders, Activity, Clock
+  Info, Sliders, Activity, Clock, Loader2, Volume2, VolumeX
 } from 'lucide-react';
+import { tradeAudio } from '../utils/tradeAudio';
 
 export type SubscriberRiskMode = 'CONSERVATIVE' | 'BALANCED' | 'PRO';
 
@@ -20,6 +21,7 @@ interface SubscriberTrustCockpitProps {
   riskMode: SubscriberRiskMode;
   onSelectRiskMode: (mode: SubscriberRiskMode) => void;
   latestAiRule?: string;
+  closingTradeIds?: string[];
 }
 
 export const SubscriberTrustCockpit: React.FC<SubscriberTrustCockpitProps> = ({
@@ -34,9 +36,19 @@ export const SubscriberTrustCockpit: React.FC<SubscriberTrustCockpitProps> = ({
   onViewRationale,
   riskMode = 'BALANCED',
   onSelectRiskMode,
-  latestAiRule
+  latestAiRule,
+  closingTradeIds = []
 }) => {
   const [showSecurityModal, setShowSecurityModal] = useState(false);
+  const [isAudioMuted, setIsAudioMuted] = useState(tradeAudio.getIsMuted());
+
+  const toggleSound = () => {
+    const muted = tradeAudio.toggleMute();
+    setIsAudioMuted(muted);
+    if (!muted) {
+      tradeAudio.play('OPEN');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -73,8 +85,20 @@ export const SubscriberTrustCockpit: React.FC<SubscriberTrustCockpitProps> = ({
           </div>
         </div>
 
-        {/* 1-Click Autopilot Safety Switch */}
-        <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+        {/* 1-Click Autopilot Safety Switch & Audio Feedback */}
+        <div className="flex items-center gap-2.5 w-full md:w-auto justify-between md:justify-end">
+          <button
+            onClick={toggleSound}
+            title={isAudioMuted ? 'Buka Audio Notifikasi' : 'Senyapkan Audio'}
+            className={`p-2.5 rounded-xl border transition cursor-pointer flex items-center justify-center ${
+              isAudioMuted 
+                ? 'bg-slate-950/80 border-slate-800 text-slate-500 hover:text-slate-300' 
+                : 'bg-indigo-950/60 border-indigo-500/40 text-indigo-300 hover:bg-indigo-900/60 shadow'
+            }`}
+          >
+            {isAudioMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4 text-cyan-400 animate-pulse" />}
+          </button>
+
           <div className="text-right hidden sm:block">
             <div className="text-[11px] font-mono text-slate-400 uppercase">Status Autopilot AI</div>
             <div className={`text-xs font-black ${isAutoTraderActive ? 'text-emerald-400' : 'text-amber-400'}`}>
@@ -209,6 +233,8 @@ export const SubscriberTrustCockpit: React.FC<SubscriberTrustCockpitProps> = ({
               const pnl = Number(pos.unrealizedProfit ?? pos.pnlDollars ?? 0);
               const pnlPips = Number(pos.pnlPips ?? 0);
               const isProfit = pnl >= 0;
+              const posId = String(pos.id || pos.positionId);
+              const isClosing = closingTradeIds.includes(posId);
 
               // Calculate progress percentage towards Take Profit vs Stop Loss
               let progressPct = 50;
@@ -220,8 +246,10 @@ export const SubscriberTrustCockpit: React.FC<SubscriberTrustCockpitProps> = ({
 
               return (
                 <div 
-                  key={pos.id || pos.positionId} 
-                  className="p-4 bg-slate-950/70 border border-slate-800 rounded-xl space-y-3 relative overflow-hidden"
+                  key={posId} 
+                  className={`p-4 bg-slate-950/70 border rounded-xl space-y-3 relative overflow-hidden transition-all duration-300 ${
+                    isClosing ? 'border-amber-500/50 opacity-70 scale-[0.99]' : 'border-slate-800 hover:border-slate-700'
+                  }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -238,7 +266,7 @@ export const SubscriberTrustCockpit: React.FC<SubscriberTrustCockpitProps> = ({
 
                     <div className="flex items-center gap-2">
                       <div className="text-right font-mono">
-                        <div className={`text-sm font-black ${isProfit ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        <div className={`text-sm font-black transition-colors duration-200 ${isProfit ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]' : 'text-rose-400 drop-shadow-[0_0_8px_rgba(251,113,133,0.3)]'}`}>
                           {isProfit ? `+$${pnl.toFixed(2)}` : `-$${Math.abs(pnl).toFixed(2)}`}
                         </div>
                         <div className={`text-[10px] font-bold ${isProfit ? 'text-emerald-500/90' : 'text-rose-500/90'}`}>
@@ -253,10 +281,22 @@ export const SubscriberTrustCockpit: React.FC<SubscriberTrustCockpitProps> = ({
                         <span>Sebab AI</span>
                       </button>
                       <button
-                        onClick={() => onClosePosition(pos.id || pos.positionId)}
-                        className="px-2 py-1 bg-rose-600/80 hover:bg-rose-500 text-white rounded text-[10px] font-bold transition cursor-pointer"
+                        disabled={isClosing}
+                        onClick={() => onClosePosition(posId)}
+                        className={`px-2.5 py-1 rounded text-[10px] font-bold transition flex items-center gap-1 cursor-pointer ${
+                          isClosing
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 cursor-wait'
+                            : 'bg-rose-600/80 hover:bg-rose-500 text-white'
+                        }`}
                       >
-                        Tutup
+                        {isClosing ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin text-amber-300" />
+                            <span>Menutup...</span>
+                          </>
+                        ) : (
+                          'Tutup'
+                        )}
                       </button>
                     </div>
                   </div>
