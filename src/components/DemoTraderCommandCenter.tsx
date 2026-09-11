@@ -95,6 +95,7 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
   const [subscriberRiskMode, setSubscriberRiskMode] = useState<SubscriberRiskMode>('BALANCED');
   const [watchlistSearchQuery, setWatchlistSearchQuery] = useState<string>('');
   const [watchlistCategory, setWatchlistCategory] = useState<'ALL' | 'MAJOR' | 'JPY' | 'COMMODITIES' | 'CRYPTO_INDEX'>('ALL');
+  const [closingTradeIds, setClosingTradeIds] = useState<string[]>([]);
   const executedSignalsRef = useRef<Set<string>>(new Set());
 
   const handleSelectRiskMode = (mode: SubscriberRiskMode) => {
