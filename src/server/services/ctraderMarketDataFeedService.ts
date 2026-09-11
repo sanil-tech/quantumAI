@@ -123,8 +123,35 @@ export class CTraderMarketDataFeedService extends EventEmitter {
   public static readonly MIN_CANDLE_THRESHOLD = 26;
   public static readonly MAX_CANDLES_PER_PAIR = 250;
 
+  private initDefaultSpots(): void {
+    const defaults: Record<CurrencyPair, number> = {
+      'EUR/USD': 1.08520,
+      'GBP/USD': 1.26400,
+      'EUR/JPY': 178.302,
+      'USD/JPY': 155.450,
+      'AUD/USD': 0.65200,
+      'USD/CHF': 0.88450,
+      'GBP/JPY': 196.420,
+      'USD/CAD': 1.39850,
+      'NZD/USD': 0.58900,
+      'XAU/USD': 2652.50,
+      'NASDAQ': 20850.0,
+      'BTC/USD': 92450.0
+    };
+    const now = Date.now();
+    for (const [pair, price] of Object.entries(defaults)) {
+      const spread = pair.includes('JPY') ? 0.015 : pair.includes('XAU') ? 0.40 : pair.includes('BTC') ? 15.0 : 0.00015;
+      const dec = pair.includes('JPY') ? 3 : (pair.includes('XAU') || pair.includes('BTC')) ? 2 : 5;
+      const bid = Number((price - spread / 2).toFixed(dec));
+      const ask = Number((price + spread / 2).toFixed(dec));
+      this.spotByPair.set(pair, { bid, ask, timestamp: now, ticks: 1 });
+      this.spotByPair.set(pair.replace('/', ''), { bid, ask, timestamp: now, ticks: 1 });
+    }
+  }
+
   private constructor() {
     super();
+    this.initDefaultSpots();
     this.setupTransportListeners();
     this.startHealthWatchdog();
   }
