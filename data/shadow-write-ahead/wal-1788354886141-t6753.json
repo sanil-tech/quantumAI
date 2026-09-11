@@ -1,0 +1,18 @@
+{
+  "id": "wal-1788354886141-t6753",
+  "operationType": "SAVE_JOURNAL_EVENT",
+  "entityType": "JOURNAL_EVENT",
+  "entityId": "lje-1788354883896-1hhp8",
+  "payload": {
+    "id": "lje-1788354883896-1hhp8",
+    "timestamp": 1788354883896,
+    "eventType": "SHADOW_RECORDED",
+    "setupFingerprint": "USD/JPY_BUY_ORDER_BLOCK_RETEST",
+    "evidenceTier": "NO_EVIDENCE",
+    "sampleCount": 1,
+    "reason": "Simulated BUY entry at 159.2 (SL: 159, TP1: 159.6, TP2: N/A)"
+  },
+  "createdTimestamp": 1788354886141,
+  "retryCount": 0,
+  "version": 1
+}

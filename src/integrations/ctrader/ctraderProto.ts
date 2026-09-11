@@ -1,4 +1,4 @@
-﻿import * as protobuf from 'protobufjs';
+import * as protobuf from 'protobufjs';
 import * as path from 'path';
 
 export class CTraderProtoManager {
@@ -7,23 +7,16 @@ export class CTraderProtoManager {
   public static async loadSchemas(): Promise<protobuf.Root> {
     if (!this.root) {
       const protoDir = path.resolve('src/integrations/ctrader/proto');
-      const RootConstructor: any = protobuf.Root || (protobuf as any).default?.Root;
-      this.root = new RootConstructor();
-      this.root.resolvePath = (origin: string, target: string) => path.isAbsolute(target) ? target : path.join(protoDir, target);
-      await this.root.load([
+      const RootConstructor: any = (protobuf as any).Root || (protobuf as any).default?.Root || protobuf;
+      const root = new RootConstructor();
+      root.resolvePath = (origin: string, target: string) => path.join(protoDir, path.basename(target));
+      root.loadSync([
+        path.join(protoDir, 'OpenApiCommonModelMessages.proto'),
         path.join(protoDir, 'OpenApiCommonMessages.proto'),
+        path.join(protoDir, 'OpenApiModelMessages.proto'),
         path.join(protoDir, 'OpenApiMessages.proto')
       ]);
-
-      // Provide backward compatibility for lookups with or without openapi. namespace
-      if (!this.root.nested?.['openapi']) {
-        const openapiNs = this.root.define('openapi');
-        for (const [key, type] of Object.entries(this.root.nested || {})) {
-          if (key !== 'openapi') {
-            openapiNs.add(type);
-          }
-        }
-      }
+      this.root = root;
     }
     return this.root;
   }
@@ -43,6 +36,7 @@ export class CTraderProtoManager {
       case 2106: messageTypeName = 'ProtoOANewOrderReq'; break;
       case 2108: messageTypeName = 'ProtoOACancelOrderReq'; break;
       case 2109: messageTypeName = 'ProtoOAAmendOrderReq'; break;
+      case 2110: messageTypeName = 'ProtoOAAmendPositionSLTPReq'; break;
       case 2111: messageTypeName = 'ProtoOAClosePositionReq'; break;
       case 2114: messageTypeName = 'ProtoOASymbolsListReq'; break;
       case 2115: messageTypeName = 'ProtoOASymbolsListRes'; break;
@@ -55,7 +49,20 @@ export class CTraderProtoManager {
       case 2124: messageTypeName = 'ProtoOAReconcileReq'; break;
       case 2125: messageTypeName = 'ProtoOAReconcileRes'; break;
       case 2126: messageTypeName = 'ProtoOAExecutionEvent'; break;
+      case 2127: messageTypeName = 'ProtoOASubscribeSpotsReq'; break;
+      case 2128: messageTypeName = 'ProtoOASubscribeSpotsRes'; break;
+      case 2129: messageTypeName = 'ProtoOAUnsubscribeSpotsReq'; break;
+      case 2130: messageTypeName = 'ProtoOAUnsubscribeSpotsRes'; break;
+      case 2131: messageTypeName = 'ProtoOASpotEvent'; break;
       case 2132: messageTypeName = 'ProtoOAOrderErrorEvent'; break;
+      case 2133: messageTypeName = 'ProtoOADealListReq'; break;
+      case 2134: messageTypeName = 'ProtoOADealListRes'; break;
+      case 2135: messageTypeName = 'ProtoOASubscribeLiveTrendbarReq'; break;
+      case 2136: messageTypeName = 'ProtoOAUnsubscribeLiveTrendbarReq'; break;
+      case 2137: messageTypeName = 'ProtoOAGetTrendbarsReq'; break;
+      case 2138: messageTypeName = 'ProtoOAGetTrendbarsRes'; break;
+      case 2149: messageTypeName = 'ProtoOAGetAccountListByAccessTokenReq'; break;
+      case 2150: messageTypeName = 'ProtoOAGetAccountListByAccessTokenRes'; break;
       case 2142:
       case 50:
         messageTypeName = 'ProtoOAErrorRes'; break;
@@ -113,6 +120,7 @@ export class CTraderProtoManager {
       case 2106: messageTypeName = 'ProtoOANewOrderReq'; break;
       case 2108: messageTypeName = 'ProtoOACancelOrderReq'; break;
       case 2109: messageTypeName = 'ProtoOAAmendOrderReq'; break;
+      case 2110: messageTypeName = 'ProtoOAAmendPositionSLTPReq'; break;
       case 2111: messageTypeName = 'ProtoOAClosePositionReq'; break;
       case 2114: messageTypeName = 'ProtoOASymbolsListReq'; break;
       case 2115: messageTypeName = 'ProtoOASymbolsListRes'; break;
@@ -125,10 +133,18 @@ export class CTraderProtoManager {
       case 2124: messageTypeName = 'ProtoOAReconcileReq'; break;
       case 2125: messageTypeName = 'ProtoOAReconcileRes'; break;
       case 2126: messageTypeName = 'ProtoOAExecutionEvent'; break;
+      case 2127: messageTypeName = 'ProtoOASubscribeSpotsReq'; break;
+      case 2128: messageTypeName = 'ProtoOASubscribeSpotsRes'; break;
+      case 2129: messageTypeName = 'ProtoOAUnsubscribeSpotsReq'; break;
+      case 2130: messageTypeName = 'ProtoOAUnsubscribeSpotsRes'; break;
+      case 2131: messageTypeName = 'ProtoOASpotEvent'; break;
       case 2132: messageTypeName = 'ProtoOAOrderErrorEvent'; break;
-      case 2142:
-      case 50:
-        messageTypeName = 'ProtoOAErrorRes'; break;
+      case 2133: messageTypeName = 'ProtoOADealListReq'; break;
+      case 2134: messageTypeName = 'ProtoOADealListRes'; break;
+      case 2135: messageTypeName = 'ProtoOASubscribeLiveTrendbarReq'; break;
+      case 2136: messageTypeName = 'ProtoOAUnsubscribeLiveTrendbarReq'; break;
+      case 2137: messageTypeName = 'ProtoOAGetTrendbarsReq'; break;
+      case 2138: messageTypeName = 'ProtoOAGetTrendbarsRes'; break;
       default:
         break;
     }

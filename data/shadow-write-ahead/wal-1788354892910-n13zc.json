@@ -1,0 +1,21 @@
+{
+  "id": "wal-1788354892910-n13zc",
+  "operationType": "SAVE_JOURNAL_EVENT",
+  "entityType": "JOURNAL_EVENT",
+  "entityId": "lje-1788354892694-etfob",
+  "payload": {
+    "id": "lje-1788354892694-etfob",
+    "timestamp": 1788354892694,
+    "eventType": "PARAMETER_ADAPTED",
+    "setupFingerprint": "USD/JPY_SELL_ORDER_BLOCK_RETEST",
+    "evidenceTier": "NO_EVIDENCE",
+    "sampleCount": 2,
+    "previousParameter": "SL: 101",
+    "proposedParameter": "SL: 100 (Breakeven)",
+    "boundedAdjustment": "SL moved to Breakeven on TP1 hit",
+    "reason": "Shadow test-shadow-sell-be reached TP1 (99). Continuing toward TP2 (98)."
+  },
+  "createdTimestamp": 1788354892910,
+  "retryCount": 0,
+  "version": 1
+}

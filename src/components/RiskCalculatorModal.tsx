@@ -31,9 +31,18 @@ export const RiskCalculatorModal: React.FC<RiskCalculatorModalProps> = ({
   // Auto populate if syncedSetup provided
   useEffect(() => {
     if (syncedSetup) {
-      setEntryPrice((syncedSetup.entryZone.min + syncedSetup.entryZone.max) / 2);
-      setStopLossPrice(syncedSetup.stopLoss);
-      setTp1Price(syncedSetup.takeProfit1);
+      const min = syncedSetup.entryZone?.min;
+      const max = syncedSetup.entryZone?.max;
+      const entry = (typeof min === 'number' && typeof max === 'number')
+        ? (min + max) / 2
+        : ((syncedSetup as any).entryPrice || currentPrice || 1.08350);
+      setEntryPrice(entry);
+      if (typeof syncedSetup.stopLoss === 'number') {
+        setStopLossPrice(syncedSetup.stopLoss);
+      }
+      if (typeof syncedSetup.takeProfit1 === 'number') {
+        setTp1Price(syncedSetup.takeProfit1);
+      }
     } else if (currentPrice) {
       setEntryPrice(currentPrice);
       setStopLossPrice(Number((currentPrice * 0.997).toFixed(5)));

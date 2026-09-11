@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { TradingRepository } from '@iati/database';
 import { logger } from '@iati/core';
 import jwt from 'jsonwebtoken';
+import { aiDecisionEngine } from '../../../apps/decision-agent/src/services/aiDecisionEngine';
 
 export const adminRouter = Router();
 const repo = new TradingRepository();
@@ -177,7 +178,7 @@ adminRouter.get('/trades/:id/events', async (req: Request, res: Response) => {
  */
 adminRouter.get('/performance', async (req: Request, res: Response) => {
   try {
-    const accountId = (req.query.accountId as string) || 'DEFAULT';
+    const accountId = (req.query.accountId as string) || 'ALL';
     const perf = await repo.getAdminPerformance(accountId);
     res.json({
       success: true,
@@ -205,6 +206,39 @@ adminRouter.get('/learning', async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     logger.error(`Failed to fetch admin learning records: ${err.message}`);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * GET /api/admin/gemini-analysis
+ * Trigger deep strategic Gemini AI analysis over PostgreSQL trade data
+ */
+adminRouter.get('/gemini-analysis', async (req: Request, res: Response) => {
+  try {
+    const accountId = (req.query.accountId as string) || 'ALL';
+    const perf = await repo.getAdminPerformance(accountId);
+    const closedRes = await repo.getPositions({ status: 'CLOSED', limit: 50 });
+    const pmRes = await repo.getAdminLearningRecords(50, 0);
+
+    const analysis = await aiDecisionEngine.generatePortfolioDeepAnalysis({
+      totalTrades: perf.totalTrades,
+      winRate: perf.winRatePercent,
+      totalPnl: perf.totalPnlDollars,
+      profitFactor: perf.profitFactor,
+      bestPair: perf.bestPair,
+      worstPair: perf.worstPair,
+      pairPerformance: perf.pairPerformance,
+      recentTrades: closedRes.positions || [],
+      learningRecords: pmRes.learningRecords || []
+    });
+
+    res.json({
+      success: true,
+      ...analysis
+    });
+  } catch (err: any) {
+    logger.error(`Failed to execute Gemini analysis: ${err.message}`);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -256,7 +290,8 @@ adminRouter.post('/reconcile', async (req: Request, res: Response) => {
  */
 adminRouter.get('/ai-monitoring', async (req: Request, res: Response) => {
   try {
-    const perf = await repo.getAdminPerformance('DEFAULT');
+    const accountId = (req.query.accountId as string) || 'ALL';
+    const perf = await repo.getAdminPerformance(accountId);
     const openRes = await repo.getPositions({ status: 'OPEN', limit: 20 });
     const closedRes = await repo.getPositions({ status: 'CLOSED', limit: 20 });
     const pmRes = await repo.getAdminLearningRecords(20, 0);
@@ -569,6 +604,36 @@ adminRouter.post('/ctrader/close-demo-trade', async (req: Request, res: Response
     });
   } catch (err: any) {
     logger.error(`Controlled cTrader DEMO position close failed: ${err.message}`);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Admin: Trigger Continuous Adaptive Learning Backfill from PostgreSQL
+adminRouter.post('/learning/backfill', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const result = await learningService.backfillHistoricalClosedTrades(Number(req.body.batchSize) || 200);
+    res.json({
+      success: true,
+      message: 'Adaptive Learning backfill from PostgreSQL completed successfully.',
+      result
+    });
+  } catch (err: any) {
+    logger.error(`Admin learning backfill failed: ${err.message}`);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Admin: Full Administrative Rebuild from PostgreSQL
+adminRouter.post('/learning/rebuild', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const result = await learningService.rebuildAdaptiveLearningFromPostgres(req.body.learningVersion || '1.0');
+    res.json({
+      success: true,
+      message: 'Full Adaptive Learning rebuild from PostgreSQL completed successfully.',
+      result
+    });
+  } catch (err: any) {
+    logger.error(`Admin learning rebuild failed: ${err.message}`);
     res.status(500).json({ success: false, error: err.message });
   }
 });

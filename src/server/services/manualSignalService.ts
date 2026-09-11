@@ -11,6 +11,8 @@ import {
 import { TradingRepository } from '@iati/database';
 import { aiDecisionEngine } from '../../../apps/decision-agent/src/services/aiDecisionEngine';
 import { learningService } from './learningService';
+import { calculateAllIndicators } from '../../lib/indicators';
+import { analyzeSmcStructures } from '../../lib/smcEngine';
 
 export class ManualSignalService {
   private repo: TradingRepository;
@@ -148,14 +150,17 @@ export class ManualSignalService {
       }
     }
 
+    const computedIndicators = params.indicators || (candles.length >= 15 ? calculateAllIndicators(candles as any) : undefined);
+    const computedSmc = params.smc || (candles.length >= 15 ? analyzeSmcStructures(candles as any) : undefined);
+
     // Call Primary AI Decision Engine with Adaptive Learning Memory
     const opinion = await aiDecisionEngine.generateOpinion({
       pair: symbol,
       timeframe,
       style,
       currentPrice: currentPrice || (candles.length > 0 ? candles[candles.length - 1]?.close : undefined),
-      indicators: params.indicators,
-      smc: params.smc,
+      indicators: computedIndicators,
+      smc: computedSmc,
       newsContext: params.newsContext,
       dataMode,
       envelope: params.envelope

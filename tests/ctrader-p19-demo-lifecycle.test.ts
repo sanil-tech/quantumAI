@@ -328,35 +328,35 @@ describe('TASK 8B-P19: Controlled Single-Order DEMO Lifecycle Harness Unit Tests
       const mockTransport = createMockTransport({ openExecutionType: 1 });
       const evidence = await CTraderDemoLifecycleHarness.runSingleOrderDemoLifecycle(baseValidConfig, mockTransport);
       expect(evidence.finalLifecycleStatus).toBe('ORDER_REJECTED');
-      expect(evidence.errorMessage).toContain('expected 3: ORDER_FILLED');
+      expect(evidence.errorMessage).toContain('expected ORDER_ACCEPTED (2) or ORDER_FILLED (3)');
     });
 
-    it('28. rejects executionType === 2 (ORDER_ACCEPTED) for open order', async () => {
-      const mockTransport = createMockTransport({ openExecutionType: 2 });
+    it('28. accepts executionType === 2 (ORDER_ACCEPTED) for open order', async () => {
+      const mockTransport = createMockTransport({ openExecutionType: 2, closeExecutionType: 3 });
       const evidence = await CTraderDemoLifecycleHarness.runSingleOrderDemoLifecycle(baseValidConfig, mockTransport);
-      expect(evidence.finalLifecycleStatus).toBe('ORDER_REJECTED');
-      expect(evidence.errorMessage).toContain('expected 3: ORDER_FILLED');
+      expect(evidence.finalLifecycleStatus).toBe('DEMO_LIFECYCLE_CONFIRMED');
+      expect(evidence.brokerPositionId).toBe(7001);
     });
 
     it('29. rejects executionType === 4 (ORDER_REPLACED) for open order', async () => {
       const mockTransport = createMockTransport({ openExecutionType: 4 });
       const evidence = await CTraderDemoLifecycleHarness.runSingleOrderDemoLifecycle(baseValidConfig, mockTransport);
       expect(evidence.finalLifecycleStatus).toBe('ORDER_REJECTED');
-      expect(evidence.errorMessage).toContain('expected 3: ORDER_FILLED');
+      expect(evidence.errorMessage).toContain('expected ORDER_ACCEPTED (2) or ORDER_FILLED (3)');
     });
 
     it('30. rejects executionType === 7 (ORDER_REJECTED) for open order', async () => {
       const mockTransport = createMockTransport({ openExecutionType: 7 });
       const evidence = await CTraderDemoLifecycleHarness.runSingleOrderDemoLifecycle(baseValidConfig, mockTransport);
       expect(evidence.finalLifecycleStatus).toBe('ORDER_REJECTED');
-      expect(evidence.errorMessage).toContain('expected 3: ORDER_FILLED');
+      expect(evidence.errorMessage).toContain('expected ORDER_ACCEPTED (2) or ORDER_FILLED (3)');
     });
 
     it('31. rejects executionType === 8 (ORDER_CANCEL_REJECTED) for open order', async () => {
       const mockTransport = createMockTransport({ openExecutionType: 8 });
       const evidence = await CTraderDemoLifecycleHarness.runSingleOrderDemoLifecycle(baseValidConfig, mockTransport);
       expect(evidence.finalLifecycleStatus).toBe('ORDER_REJECTED');
-      expect(evidence.errorMessage).toContain('expected 3: ORDER_FILLED');
+      expect(evidence.errorMessage).toContain('expected ORDER_ACCEPTED (2) or ORDER_FILLED (3)');
     });
 
     it('32. rejects missing executionEvent on open order', async () => {
@@ -366,11 +366,11 @@ describe('TASK 8B-P19: Controlled Single-Order DEMO Lifecycle Harness Unit Tests
       expect(evidence.errorMessage).toContain('Broker did not return an execution event');
     });
 
-    it('33. rejects unexpected executionType (e.g. 2) on close operation', async () => {
-      const mockTransport = createMockTransport({ openExecutionType: 3, closeExecutionType: 2 });
+    it('33. rejects unexpected executionType (e.g. 7) on close operation', async () => {
+      const mockTransport = createMockTransport({ openExecutionType: 3, closeExecutionType: 7 });
       const evidence = await CTraderDemoLifecycleHarness.runSingleOrderDemoLifecycle(baseValidConfig, mockTransport);
       expect(evidence.finalLifecycleStatus).toBe('DEMO_CLOSE_UNVERIFIED');
-      expect(evidence.errorMessage).toContain('expected 3: ORDER_FILLED');
+      expect(evidence.errorMessage).toContain('expected ORDER_ACCEPTED (2) or ORDER_FILLED (3)');
     });
 
     it('34. rejects missing executionEvent on close operation', async () => {

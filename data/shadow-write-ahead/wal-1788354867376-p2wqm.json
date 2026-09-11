@@ -1,0 +1,19 @@
+{
+  "id": "wal-1788354867376-p2wqm",
+  "operationType": "SAVE_JOURNAL_EVENT",
+  "entityType": "JOURNAL_EVENT",
+  "entityId": "lje-1788354866512-vskya",
+  "payload": {
+    "id": "lje-1788354866512-vskya",
+    "timestamp": 1788354866512,
+    "eventType": "TRADE_CLOSED",
+    "setupFingerprint": "EUR/USD_BUY_ORDER_BLOCK_RETEST",
+    "evidenceTier": "NO_EVIDENCE",
+    "sampleCount": 1,
+    "realizedR": 0,
+    "reason": "Shadow trade closed with BREAKEVEN at 1.0846 (Realized: +0R, MFE: 54p, MAE: 1p)"
+  },
+  "createdTimestamp": 1788354867376,
+  "retryCount": 0,
+  "version": 1
+}

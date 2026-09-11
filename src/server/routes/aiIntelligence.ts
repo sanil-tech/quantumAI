@@ -3,6 +3,7 @@ import { serverSmcService } from '../services/smcService';
 import { MarketDataLineage } from '../domain/types';
 import { fetchRealCandleEnvelope } from '../../lib/marketDataGenerator';
 import { CurrencyPair, Timeframe } from '../../types';
+import { economicCalendarProvider } from '../services/economicCalendarProvider';
 
 export const aiIntelligenceRouter = Router();
 
@@ -206,12 +207,22 @@ aiIntelligenceRouter.post('/forex/ai-opinion', (req: Request, res: Response) => 
  * GET /api/forex/economic-calendar
  */
 aiIntelligenceRouter.get('/forex/economic-calendar', (req: Request, res: Response) => {
-  res.json({
-    events: [
-      { id: '1', title: 'US Non-Farm Payrolls', impact: 'HIGH', currency: 'USD', date: new Date().toISOString() },
-      { id: '2', title: 'EUR Consumer Price Index', impact: 'MEDIUM', currency: 'EUR', date: new Date().toISOString() }
-    ]
-  });
+  try {
+    const events = economicCalendarProvider.getWeeklyEvents();
+    res.json({
+      events,
+      provider: 'GLOBAL_MACRO_CALENDAR_PROVIDER',
+      status: 'ACTIVE',
+      message: 'Authoritative macroeconomic calendar feed active.'
+    });
+  } catch (err: any) {
+    res.json({
+      events: [],
+      provider: 'NONE',
+      status: 'ERROR',
+      message: err.message
+    });
+  }
 });
 
 /**

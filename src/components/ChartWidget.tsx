@@ -1,9 +1,8 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createChart, IChartApi, ISeriesApi, ColorType, CandlestickData, LineStyle, CandlestickSeries } from 'lightweight-charts';
 import { CandleData, CurrencyPair, Timeframe, AiTradeOpportunity, SmcStructures, SupportResistanceZone } from '../types';
 import { calculate24hRollingChange } from '../lib/marketDataGenerator';
-import { Layers, Eye, RefreshCw, TrendingUp, TrendingDown, Zap, CheckCircle2, XCircle, DollarSign, Brain, ShieldCheck, AlertTriangle, Sparkles, Target, Fingerprint, ChevronDown, ChevronUp } from 'lucide-react';
-import { Language, translations } from '../lib/translations';
+import { Layers, Eye, RefreshCw, TrendingUp, TrendingDown, Zap, CheckCircle2, XCircle, DollarSign, Brain, ShieldCheck, AlertTriangle, Sparkles, Target, Fingerprint, ChevronDown, ChevronUp, Bot } from 'lucide-react';
 
 interface ChartWidgetProps {
   candles: CandleData[];
@@ -15,7 +14,7 @@ interface ChartWidgetProps {
   srZones?: SupportResistanceZone[];
   onRefreshData?: () => void;
   onAskPakar?: (prompt: string) => void;
-  language?: Language;
+  language?: 'en' | 'ms';
   onExecuteTrade?: (direction: 'BUY' | 'SELL', entryPrice?: number) => void;
 }
 
@@ -25,21 +24,31 @@ const TIMEFRAMES: Timeframe[] = ['M1', 'M5', 'M15', 'M30', 'H1', 'H4', 'D1', 'W1
 const getPairMeta = (pair: CurrencyPair) => {
   switch (pair) {
     case 'EUR/USD':
-      return { title: 'EUR to USD', quote: 'USD', baseFlag: 'ðŸ‡ªðŸ‡º', quoteFlag: 'ðŸ‡ºðŸ‡¸' };
+      return { title: 'EUR to USD', quote: 'USD', baseFlag: '🇪🇺', quoteFlag: '🇺🇸' };
     case 'GBP/USD':
-      return { title: 'GBP to USD', quote: 'USD', baseFlag: 'ðŸ‡¬ðŸ‡§', quoteFlag: 'ðŸ‡ºðŸ‡¸' };
+      return { title: 'GBP to USD', quote: 'USD', baseFlag: '🇬🇧', quoteFlag: '🇺🇸' };
     case 'USD/JPY':
-      return { title: 'USD to JPY', quote: 'JPY', baseFlag: 'ðŸ‡ºðŸ‡¸', quoteFlag: 'ðŸ‡¯ðŸ‡µ' };
+      return { title: 'USD to JPY', quote: 'JPY', baseFlag: '🇺🇸', quoteFlag: '🇯🇵' };
     case 'AUD/USD':
-      return { title: 'AUD to USD', quote: 'USD', baseFlag: 'ðŸ‡¦ðŸ‡º', quoteFlag: 'ðŸ‡ºðŸ‡¸' };
+      return { title: 'AUD to USD', quote: 'USD', baseFlag: '🇦🇺', quoteFlag: '🇺🇸' };
+    case 'USD/CHF':
+      return { title: 'USD to CHF', quote: 'CHF', baseFlag: '🇺🇸', quoteFlag: '🇨🇭' };
+    case 'NZD/USD':
+      return { title: 'NZD to USD', quote: 'USD', baseFlag: '🇳🇿', quoteFlag: '🇺🇸' };
+    case 'USD/CAD':
+      return { title: 'USD to CAD', quote: 'CAD', baseFlag: '🇺🇸', quoteFlag: '🇨🇦' };
+    case 'EUR/JPY':
+      return { title: 'EUR to JPY', quote: 'JPY', baseFlag: '🇪🇺', quoteFlag: '🇯🇵' };
+    case 'GBP/JPY':
+      return { title: 'GBP to JPY', quote: 'JPY', baseFlag: '🇬🇧', quoteFlag: '🇯🇵' };
     case 'XAU/USD':
-      return { title: 'Gold to USD', quote: 'USD', baseFlag: 'ðŸ¥‡', quoteFlag: 'ðŸ‡ºðŸ‡¸' };
+      return { title: 'Gold to USD', quote: 'USD', baseFlag: '🥇', quoteFlag: '🇺🇸' };
     case 'NASDAQ':
-      return { title: 'NASDAQ 100', quote: 'USD', baseFlag: 'ðŸ“ˆ', quoteFlag: 'ðŸ‡ºðŸ‡¸' };
+      return { title: 'NASDAQ 100', quote: 'USD', baseFlag: '📈', quoteFlag: '🇺🇸' };
     case 'BTC/USD':
-      return { title: 'BTC to USD', quote: 'USD', baseFlag: 'â‚¿', quoteFlag: 'ðŸ‡ºðŸ‡¸' };
+      return { title: 'BTC to USD', quote: 'USD', baseFlag: '₿', quoteFlag: '🇺🇸' };
     default:
-      return { title: String(pair).replace('/', ' to '), quote: 'USD', baseFlag: 'ðŸŒ', quoteFlag: 'ðŸ‡ºðŸ‡¸' };
+      return { title: String(pair).replace('/', ' to '), quote: 'USD', baseFlag: '🌐', quoteFlag: '🇺🇸' };
   }
 };
 
@@ -289,7 +298,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
   };
 
   // Compute live floating PnL for active pair
-  const currentLivePrice = candles[candles.length - 1]?.close || 1.0;
+  const currentLivePrice = candles && candles.length > 0 ? candles[candles.length - 1]?.close : 1.0;
   let pairFloatingPnlDollars = 0;
   let pairFloatingPnlPips = 0;
 
@@ -376,7 +385,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
         id: `exec_${Date.now()}`,
         type: 'EXECUTE',
         pair,
-        title: `âš¡ CARTA EKSEKUSI: ${direction} ${pair}`,
+        title: `⚡ CARTA EKSEKUSI: ${direction} ${pair}`,
         message: `@ ${targetEntry.toFixed(decimals)} | SL: ${sl.toFixed(decimals)} | TP: ${tp.toFixed(decimals)}`,
         timestamp: new Date().toLocaleTimeString('ms-MY', { hour12: false })
       }
@@ -418,7 +427,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
     }
   };
 
-  // 1-Click AI Setup Execution Handler (Follows full AI analysis parameters exactly!)
+  // 1-Click AI Setup Execution Handler
   const handleExecuteAiSetup = () => {
     if (!aiOpportunity) {
       alert('Tiada Setup AI aktif untuk mata wang ini.');
@@ -465,7 +474,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
         id: `exec_ai_${Date.now()}`,
         type: 'EXECUTE',
         pair,
-        title: `ðŸ¤– 1-CLICK AI SETUP: ${direction} ${pair}`,
+        title: `🤖 1-CLICK AI SETUP: ${direction} ${pair}`,
         message: `Entry AI: ${targetEntry} | SL: ${sl} | TP1: ${tp1} | TP2: ${tp2} | Keyakinan: ${aiOpportunity.confidence}%`,
         timestamp: new Date().toLocaleTimeString('ms-MY', { hour12: false })
       }
@@ -496,7 +505,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
       entry: targetEntry,
       sl,
       tp: tp1,
-      customMsg: `ðŸŽ¯ SETUP AI DIEKSEKUSI: ${direction} ${pair} | Entry: ${targetEntry} | SL: ${sl} | TP1: ${tp1}`
+      customMsg: `🎯 SETUP AI DIEKSEKUSI: ${direction} ${pair} | Entry: ${targetEntry} | SL: ${sl} | TP1: ${tp1}`
     });
 
     setTimeout(() => {
@@ -559,7 +568,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
         id: `close_${Date.now()}`,
         type: 'MANUAL_CLOSE',
         pair,
-        title: `ðŸ”’ POSISI DITUTUP: ${pair} (${activePairTrades.length} Posisi)`,
+        title: `🔒 POSISI DITUTUP: ${pair} (${activePairTrades.length} Posisi)`,
         message: `Harga Tutup: ${price.toFixed(pair.includes('JPY') ? 3 : pair.includes('BTC') ? 2 : 5)} | Total PnL: ${closedPnl >= 0 ? '+' : ''}$${closedPnl.toFixed(2)}`,
         pnlDollars: closedPnl,
         timestamp: new Date().toLocaleTimeString('ms-MY', { hour12: false })
@@ -591,79 +600,28 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
     setActivePairTrades([]);
   };
 
-  useEffect(() => {
-    if (!chartContainerRef.current) return;
-
-    // Clear previous chart
-    if (chartInstanceRef.current) {
-      chartInstanceRef.current.remove();
-      chartInstanceRef.current = null;
+  // Helper to accurately parse and normalize candle timestamps to Unix seconds
+  const parseCandleUnixTime = (rawTime: any): number => {
+    if (typeof rawTime === 'number') {
+      if (rawTime > 100000000000) {
+        // Milliseconds timestamp (e.g. 1787626860000) -> convert to seconds
+        return Math.floor(rawTime / 1000);
+      }
+      // Already Unix seconds (e.g. 1787626860)
+      return Math.floor(rawTime);
     }
-
-    const containerWidth = chartContainerRef.current.clientWidth || 600;
-
-    const chart = createChart(chartContainerRef.current, {
-      layout: {
-        background: { type: ColorType.Solid, color: '#0f172a' }, // Slate 900
-        textColor: '#94a3b8',
-      },
-      grid: {
-        vertLines: { color: '#1e293b' },
-        horzLines: { color: '#1e293b' },
-      },
-      width: containerWidth,
-      height: 480,
-      crosshair: {
-        mode: 1,
-      },
-      timeScale: {
-        borderColor: '#334155',
-        timeVisible: true,
-        secondsVisible: false,
-      },
-      rightPriceScale: {
-        borderColor: '#334155',
-        autoScale: true,
-      },
-    });
-
-    chartInstanceRef.current = chart;
-
-    const seriesOptions = {
-      upColor: '#10b981', // Emerald 500
-      downColor: '#f43f5e', // Rose 500
-      borderUpColor: '#10b981',
-      borderDownColor: '#f43f5e',
-      wickUpColor: '#34d399',
-      wickDownColor: '#fb7185',
-    };
-
-    const candleSeries = typeof (chart as any).addCandlestickSeries === 'function'
-      ? (chart as any).addCandlestickSeries(seriesOptions)
-      : (chart as any).addSeries(CandlestickSeries, seriesOptions);
-
-    candlestickSeriesRef.current = candleSeries;
-
-    // Handle Resize Observer
-    const handleResize = () => {
-      if (chartContainerRef.current && chartInstanceRef.current) {
-        chartInstanceRef.current.applyOptions({
-          width: chartContainerRef.current.clientWidth,
-        });
+    if (typeof rawTime === 'string') {
+      const num = Number(rawTime);
+      if (!isNaN(num) && num > 0) {
+        return parseCandleUnixTime(num);
       }
-    };
-
-    const resizeObserver = new ResizeObserver(handleResize);
-    resizeObserver.observe(chartContainerRef.current);
-
-    return () => {
-      resizeObserver.disconnect();
-      if (chartInstanceRef.current) {
-        chartInstanceRef.current.remove();
-        chartInstanceRef.current = null;
+      const parsed = new Date(rawTime).getTime();
+      if (!isNaN(parsed) && parsed > 0) {
+        return Math.floor(parsed / 1000);
       }
-    };
-  }, []);
+    }
+    return Math.floor(Date.now() / 1000);
+  };
 
   const priceLinesRef = useRef<any[]>([]);
   const [levelLabels, setLevelLabels] = useState<Array<{
@@ -680,7 +638,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
   const [customSlY, setCustomSlY] = useState<number | null>(null);
   const [customTpY, setCustomTpY] = useState<number | null>(null);
 
-  const latestPrice = candles[candles.length - 1]?.close || 1.0;
+  const latestPrice = candles && candles.length > 0 ? candles[candles.length - 1]?.close : 1.0;
   const isJpy = pair.includes('JPY');
   const isGold = pair.includes('XAU');
   const isCrypto = pair.includes('BTC');
@@ -754,7 +712,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
       });
     }
 
-    if (aiOpportunity.entryZone?.min) {
+    if (aiOpportunity.entryZone && typeof aiOpportunity.entryZone.min === 'number') {
       const y = series.priceToCoordinate(aiOpportunity.entryZone.min);
       newLabels.push({
         key: 'entry',
@@ -783,28 +741,115 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
     setLevelLabels(newLabels);
   };
 
-  // Subscribe to timescale changes to update left labels dynamically on scroll/zoom
+  // 1. Initialize Lightweight Chart Instance on Mount
   useEffect(() => {
-    if (chartInstanceRef.current) {
-      chartInstanceRef.current.timeScale().subscribeVisibleLogicalRangeChange(() => {
-        updateLevelCoordinates();
-      });
-    }
-  }, [chartInstanceRef.current]);
+    if (!chartContainerRef.current) return;
 
-  // Update candlestick series data & price lines
+    if (chartInstanceRef.current) {
+      chartInstanceRef.current.remove();
+      chartInstanceRef.current = null;
+    }
+
+    const containerWidth = chartContainerRef.current.clientWidth || 600;
+
+    const chart = createChart(chartContainerRef.current, {
+      layout: {
+        background: { type: ColorType.Solid, color: '#0f172a' }, // Slate 900
+        textColor: '#94a3b8',
+      },
+      grid: {
+        vertLines: { color: '#1e293b' },
+        horzLines: { color: '#1e293b' },
+      },
+      width: containerWidth,
+      height: 480,
+      crosshair: {
+        mode: 1,
+      },
+      timeScale: {
+        borderColor: '#334155',
+        timeVisible: true,
+        secondsVisible: false,
+      },
+      rightPriceScale: {
+        borderColor: '#334155',
+        autoScale: true,
+      },
+    });
+
+    chartInstanceRef.current = chart;
+
+    const seriesOptions = {
+      upColor: '#10b981', // Emerald 500
+      downColor: '#f43f5e', // Rose 500
+      borderUpColor: '#10b981',
+      borderDownColor: '#f43f5e',
+      wickUpColor: '#34d399',
+      wickDownColor: '#fb7185',
+    };
+
+    const candleSeries = typeof (chart as any).addCandlestickSeries === 'function'
+      ? (chart as any).addCandlestickSeries(seriesOptions)
+      : (chart as any).addSeries(CandlestickSeries, seriesOptions);
+
+    candlestickSeriesRef.current = candleSeries;
+
+    chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+      updateLevelCoordinates();
+    });
+
+    const handleResize = () => {
+      if (chartContainerRef.current && chartInstanceRef.current) {
+        chartInstanceRef.current.applyOptions({
+          width: chartContainerRef.current.clientWidth,
+        });
+      }
+    };
+
+    const resizeObserver = new ResizeObserver(handleResize);
+    resizeObserver.observe(chartContainerRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+      if (chartInstanceRef.current) {
+        chartInstanceRef.current.remove();
+        chartInstanceRef.current = null;
+      }
+    };
+  }, []);
+
+  // 2. Update candlestick series data & price lines whenever candles or setup updates
   useEffect(() => {
     if (!candlestickSeriesRef.current || !candles || candles.length === 0) return;
 
-    const formattedData: CandlestickData[] = candles.map((c) => ({
-      time: c.time as any,
-      open: c.open,
-      high: c.high,
-      low: c.low,
-      close: c.close,
-    }));
+    const formattedData: CandlestickData[] = [];
+    const seenTimes = new Set<number>();
+    
+    for (const c of candles) {
+      if (!c || c.open == null || c.close == null || c.high == null || c.low == null) continue;
 
-    candlestickSeriesRef.current.setData(formattedData);
+      const unixTime = parseCandleUnixTime(c.time);
+      if (!unixTime || isNaN(unixTime) || seenTimes.has(unixTime)) {
+        continue;
+      }
+      
+      seenTimes.add(unixTime);
+      formattedData.push({
+        time: unixTime as any,
+        open: Number(c.open),
+        high: Number(c.high),
+        low: Number(c.low),
+        close: Number(c.close),
+      });
+    }
+
+    // Lightweight charts strictly requires timestamps sorted in ascending order
+    formattedData.sort((a, b) => (Number(a.time) - Number(b.time)));
+
+    if (formattedData.length > 0) {
+      candlestickSeriesRef.current.setData(formattedData);
+      chartInstanceRef.current?.timeScale().fitContent();
+    }
 
     // Remove existing price lines
     priceLinesRef.current.forEach((line) => {
@@ -850,7 +895,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
     // Apply Price Lines for Active AI Trade Setup if toggled (without title text over candles)
     if (aiOpportunity && showOverlays.setupLevels && candlestickSeriesRef.current) {
       try {
-        if (aiOpportunity.action !== 'WAIT / NO SETUP' && aiOpportunity.entryZone) {
+        if (aiOpportunity.action !== 'WAIT / NO SETUP' && aiOpportunity.entryZone && typeof aiOpportunity.entryZone.min === 'number') {
           const series = candlestickSeriesRef.current;
 
           // Entry Min Line
@@ -914,13 +959,11 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
     }, 50);
   }, [candles, aiOpportunity, showOverlays, customSlPips, customTpPips, customSlPriceVal, customTpPriceVal]);
 
-  // Calculate 24H rolling change percentage
-  const latestCandle = candles && candles.length > 0 ? candles[candles.length - 1] : null;
-  const currentPrice = latestCandle?.close || 0;
+  const meta = getPairMeta(pair);
+
+  const currentPrice = candles && candles.length > 0 ? candles[candles.length - 1].close : 1.0;
   const percentChange = calculate24hRollingChange(candles, currentPrice);
   const isPositive = percentChange >= 0;
-
-  const meta = getPairMeta(pair);
 
   const formatPriceParts = (price: number, p: CurrencyPair) => {
     let decimals = 5;
@@ -1125,7 +1168,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
               title="Analisis Entri Manual & Maklum Balas Corak AI"
             >
               <Brain className={`w-3.5 h-3.5 text-purple-400 ${isAnalyzingManual ? 'animate-spin' : 'animate-pulse'}`} />
-              <span className="hidden md:inline font-bold">{language === 'ms' ? 'ðŸ§  Semakan AI' : 'ðŸ§  AI Entry Guard'}</span>
+              <span className="hidden md:inline font-bold">{language === 'ms' ? 'Semakan AI' : 'AI Entry Guard'}</span>
               {showAiManualGuard ? <ChevronUp className="w-3 h-3 text-purple-300" /> : <ChevronDown className="w-3 h-3 text-purple-300" />}
             </button>
 
@@ -1142,7 +1185,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
               >
                 <Zap className="w-4 h-4 text-amber-300 animate-bounce shrink-0" />
                 <div className="flex flex-col text-left leading-none">
-                  <span className="text-[9px] text-amber-200 font-extrabold uppercase tracking-wider">âš¡ 1-CLICK SETUP AI</span>
+                  <span className="text-[9px] text-amber-200 font-extrabold uppercase tracking-wider">1-CLICK SETUP AI</span>
                   <span className="text-xs font-black">
                     {aiOpportunity.action} @ {aiOpportunity.entryZone?.min || (aiOpportunity as any).entryPrice || 'AI Entry'}
                   </span>
@@ -1190,10 +1233,10 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-purple-400 animate-pulse shrink-0" />
                 <span className="font-extrabold text-white font-mono text-xs sm:text-sm">
-                  {language === 'ms' ? 'âš¡ Analisis Entri Manual & Semakan Keselamatan AI' : 'âš¡ AI Manual Entry Pre-Flight Guard & Pattern Evaluation'}
+                  {language === 'ms' ? '⚡ Analisis Entri Manual & Semakan Keselamatan AI' : '⚡ AI Manual Entry Pre-Flight Guard & Pattern Evaluation'}
                 </span>
                 <span className="px-2 py-0.5 bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[9px] font-mono rounded-full font-bold">
-                  {pair} â€¢ {timeframe}
+                  {pair} • {timeframe}
                 </span>
               </div>
 
@@ -1225,7 +1268,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
                 <span className={`font-black text-sm flex items-center gap-1 ${parseFloat(liveRrRatio) >= 1.5 ? 'text-emerald-400' : 'text-amber-400'}`}>
                   1:{liveRrRatio}
                   <span className="text-[10px] px-1 py-0.2 rounded bg-slate-800">
-                    {parseFloat(liveRrRatio) >= 1.5 ? 'âœ“ PASS' : 'âš ï¸ LOW'}
+                    {parseFloat(liveRrRatio) >= 1.5 ? '✓ PASS' : '⚠️ LOW'}
                   </span>
                 </span>
               </div>
@@ -1310,7 +1353,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
               className="px-2.5 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-blue-300 hover:text-white text-xs font-semibold rounded-xl transition flex items-center gap-1.5"
               title="Tanya Pakar Trader AI tentang Carta Ini"
             >
-              <span>ðŸ¤–</span>
+              <Bot className="w-3.5 h-3.5 text-blue-400" />
               <span className="hidden sm:inline">Tanya Pakar</span>
             </button>
           )}
@@ -1338,7 +1381,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-white uppercase tracking-wide">
-                  âš¡ {executionToast.type === 'CLOSE' ? 'POSISI DITUTUP' : 'ORDER EXECUTED'}: <span className={executionToast.type === 'BUY' ? 'text-emerald-400' : executionToast.type === 'SELL' ? 'text-rose-400' : 'text-amber-400'}>{executionToast.type} {executionToast.pair}</span>
+                  ⚡ {executionToast.type === 'CLOSE' ? 'POSISI DITUTUP' : 'ORDER EXECUTED'}: <span className={executionToast.type === 'BUY' ? 'text-emerald-400' : executionToast.type === 'SELL' ? 'text-rose-400' : 'text-amber-400'}>{executionToast.type} {executionToast.pair}</span>
                 </span>
                 <span className="text-[10px] font-mono text-slate-400">Broker Execution</span>
               </div>
@@ -1376,7 +1419,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
             <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping shrink-0" />
             <span>SL: {customSlPriceVal} ({customSlPips}p)</span>
             <span className="text-[9px] bg-rose-900/90 px-1 py-0.5 rounded text-rose-200 uppercase font-black tracking-wider flex items-center gap-0.5">
-              <span>â†•</span> SERET
+              <span>↕</span> SERET
             </span>
           </div>
         )}
@@ -1394,7 +1437,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
             <span>TP: {customTpPriceVal} ({customTpPips}p)</span>
             <span className="text-[9px] bg-emerald-900/90 px-1 py-0.5 rounded text-emerald-200 uppercase font-black tracking-wider flex items-center gap-0.5">
-              <span>â†•</span> SERET
+              <span>↕</span> SERET
             </span>
           </div>
         )}
@@ -1402,7 +1445,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
         {/* Dragging Active Feedback Banner */}
         {draggingLevel && (
           <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-amber-500 text-slate-950 px-3.5 py-1.5 rounded-full text-xs font-mono font-black shadow-2xl z-40 animate-pulse flex items-center gap-2">
-            <span>â†• MENYERET {draggingLevel}: {draggingLevel === 'SL' ? `${customSlPriceVal} (${customSlPips} Pips)` : `${customTpPriceVal} (${customTpPips} Pips)`}</span>
+            <span>↕ MENYERET {draggingLevel}: {draggingLevel === 'SL' ? `${customSlPriceVal} (${customSlPips} Pips)` : `${customTpPriceVal} (${customTpPips} Pips)`}</span>
           </div>
         )}
 
@@ -1425,5 +1468,3 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
     </div>
   );
 };
-
-

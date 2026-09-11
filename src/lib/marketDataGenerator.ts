@@ -1,16 +1,44 @@
-﻿import { CandleData, CurrencyPair, Timeframe } from '../types';
+import { CandleData, CurrencyPair, Timeframe } from '../types';
 import { MarketDataEnvelope, MarketDataMode } from '@iati/core-types';
 import { buildMarketDataEnvelope } from '@iati/core/marketDataValidator';
 
 export const PAIR_CONFIGS: Record<CurrencyPair, { basePrice: number; decimals: number; pipValue: number; pipMultiplier: number }> = {
-  'EUR/USD': { basePrice: 1.15540, decimals: 5, pipValue: 10, pipMultiplier: 10000 },
-  'GBP/USD': { basePrice: 1.34765, decimals: 5, pipValue: 10, pipMultiplier: 10000 },
-  'USD/JPY': { basePrice: 157.545, decimals: 3, pipValue: 6.5, pipMultiplier: 100 },
-  'AUD/USD': { basePrice: 0.70510, decimals: 5, pipValue: 10, pipMultiplier: 10000 },
-  'XAU/USD': { basePrice: 2385.50, decimals: 2, pipValue: 10, pipMultiplier: 10 },
+  'EUR/USD': { basePrice: 1.16600, decimals: 5, pipValue: 10, pipMultiplier: 10000 },
+  'GBP/USD': { basePrice: 1.36300, decimals: 5, pipValue: 10, pipMultiplier: 10000 },
+  'USD/JPY': { basePrice: 159.280, decimals: 3, pipValue: 6.5, pipMultiplier: 100 },
+  'AUD/USD': { basePrice: 0.71500, decimals: 5, pipValue: 10, pipMultiplier: 10000 },
+  'USD/CHF': { basePrice: 0.88500, decimals: 5, pipValue: 10, pipMultiplier: 10000 },
+  'NZD/USD': { basePrice: 0.58500, decimals: 5, pipValue: 10, pipMultiplier: 10000 },
+  'USD/CAD': { basePrice: 1.39500, decimals: 5, pipValue: 10, pipMultiplier: 10000 },
+  'EUR/JPY': { basePrice: 185.700, decimals: 3, pipValue: 6.5, pipMultiplier: 100 },
+  'GBP/JPY': { basePrice: 217.100, decimals: 3, pipValue: 6.5, pipMultiplier: 100 },
+  'XAU/USD': { basePrice: 4455.00, decimals: 2, pipValue: 10, pipMultiplier: 10 },
   'NASDAQ':  { basePrice: 18450.00, decimals: 2, pipValue: 20, pipMultiplier: 1 },
   'BTC/USD': { basePrice: 64250.00, decimals: 2, pipValue: 1, pipMultiplier: 1 }
 };
+
+export const PAIR_SYMBOLS: Record<CurrencyPair, string> = {
+  'EUR/USD': 'EURUSD=X',
+  'GBP/USD': 'GBPUSD=X',
+  'USD/JPY': 'USDJPY=X',
+  'AUD/USD': 'AUDUSD=X',
+  'USD/CHF': 'USDCHF=X',
+  'NZD/USD': 'NZDUSD=X',
+  'USD/CAD': 'USDCAD=X',
+  'EUR/JPY': 'EURJPY=X',
+  'GBP/JPY': 'GBPJPY=X',
+  'XAU/USD': 'GC=F',
+  'NASDAQ': '^IXIC',
+  'BTC/USD': 'BTC-USD'
+};
+
+export function isSupportedPair(pair: any): pair is CurrencyPair {
+  return typeof pair === 'string' && pair in PAIR_SYMBOLS;
+}
+
+export function getProviderSymbol(pair: CurrencyPair): string | null {
+  return PAIR_SYMBOLS[pair] || null;
+}
 
 export const TIMEFRAME_SECONDS: Record<Timeframe, number> = {
   'M1': 60,
@@ -153,6 +181,19 @@ export async function fetchRealCandleEnvelope(
     );
   }
 
+  if (!isSupportedPair(pair)) {
+    return buildMarketDataEnvelope(
+      pair,
+      timeframe,
+      dataMode,
+      [],
+      'None',
+      'UNKNOWN',
+      'INVALID',
+      `UNSUPPORTED_SYMBOL: ${pair} is not supported`
+    );
+  }
+
   const cacheKey = `${pair}_${timeframe}_${count}`;
   const nowMs = Date.now();
   const cachedEntry = envelopeCache.get(cacheKey);
@@ -176,15 +217,6 @@ export async function fetchRealCandleEnvelope(
   // 3. Single flight execution
   const fetchPromise = (async (): Promise<MarketDataEnvelope<CandleData[]>> => {
     const startTime = Date.now();
-    const PAIR_SYMBOLS: Record<CurrencyPair, string> = {
-      'EUR/USD': 'EURUSD=X',
-      'GBP/USD': 'GBPUSD=X',
-      'USD/JPY': 'USDJPY=X',
-      'AUD/USD': 'AUDUSD=X',
-      'XAU/USD': 'GC=F',
-      'NASDAQ': '^IXIC',
-      'BTC/USD': 'BTC-USD'
-    };
 
     const TF_MAP: Record<Timeframe, { interval: string; range: string }> = {
       'M1': { interval: '1m', range: '1d' },
@@ -198,9 +230,12 @@ export async function fetchRealCandleEnvelope(
       'MN': { interval: '1mo', range: '5y' }
     };
 
-    const symbol = PAIR_SYMBOLS[pair] || 'EURUSD=X';
+    const symbol = PAIR_SYMBOLS[pair];
+    if (!symbol) {
+      throw new Error(`UNSUPPORTED_SYMBOL: ${pair}`);
+    }
     const tfConfig = TF_MAP[timeframe] || TF_MAP['M15'];
-    const config = PAIR_CONFIGS[pair] || PAIR_CONFIGS['EUR/USD'];
+    const config = PAIR_CONFIGS[pair];
     const decimals = config.decimals;
     let upstreamStatus: number | string = 'UNKNOWN';
 
@@ -245,11 +280,13 @@ export async function fetchRealCandleEnvelope(
         const v = quote.volume?.[i] || 0;
 
         if (o != null && h != null && l != null && c != null && !isNaN(o) && !isNaN(h) && !isNaN(l) && !isNaN(c)) {
+          const clampedHigh = Math.max(o, h, l, c);
+          const clampedLow = Math.min(o, h, l, c);
           parsedCandles.push({
             time: timestamps[i],
             open: Number(o.toFixed(decimals)),
-            high: Number(h.toFixed(decimals)),
-            low: Number(l.toFixed(decimals)),
+            high: Number(clampedHigh.toFixed(decimals)),
+            low: Number(clampedLow.toFixed(decimals)),
             close: Number(c.toFixed(decimals)),
             volume: Number(v) || 1000
           });
@@ -376,6 +413,31 @@ export async function fetchRealCandleHistory(
 }
 
 /**
+ * Fetch real historical candlestick data and envelope with explicit provenance and fallback metadata.
+ */
+export async function fetchRealCandleEnvelopeDetailed(
+  pair: CurrencyPair,
+  timeframe: Timeframe,
+  count: number = 150
+): Promise<{
+  candles: CandleData[];
+  envelope: MarketDataEnvelope;
+  provenance: 'HISTORICAL_BACKTEST' | 'SYNTHETIC_SIMULATION';
+  dataSource: 'EXTERNAL_HISTORICAL' | 'SYNTHETIC_FALLBACK';
+  fallbackUsed: boolean;
+}> {
+  const envelope = await fetchRealCandleEnvelope(pair, timeframe, count, 'LIVE');
+  const isFallback = Boolean(envelope.provenance?.provider?.includes('Fallback') || envelope.dataMode === 'SYNTHETIC_FALLBACK');
+  return {
+    candles: envelope.data || [],
+    envelope,
+    provenance: isFallback ? 'SYNTHETIC_SIMULATION' : 'HISTORICAL_BACKTEST',
+    dataSource: isFallback ? 'SYNTHETIC_FALLBACK' : 'EXTERNAL_HISTORICAL',
+    fallbackUsed: isFallback
+  };
+}
+
+/**
  * Generate synthetic realistic candlestick history for a given pair and timeframe,
  * built according to real macro market structures and anchored at the live market price.
  */
@@ -464,20 +526,122 @@ export function generateNextTick(lastCandle: CandleData, pair: CurrencyPair): Ca
   };
 }
 
-export function calculate24hRollingChange(candles: CandleData[], currentPrice: number): number {
+/**
+ * Deterministically aggregates M1 (or lower timeframe) candles into higher timeframe buckets.
+ * Buckets are aligned to UTC timeframe boundary timestamps.
+ * For each bucket:
+ *  - open: first constituent open
+ *  - high: max constituent high
+ *  - low: min constituent low
+ *  - close: last constituent close
+ *  - volume: sum of constituent volumes
+ */
+export function aggregateCandles(candles: CandleData[], targetTf: Timeframe): CandleData[] {
+  if (!candles || candles.length === 0) return [];
+  if (targetTf === 'M1') return [...candles];
+
+  const bucketSeconds = TIMEFRAME_SECONDS[targetTf] || 60;
+  if (bucketSeconds <= 60) return [...candles];
+
+  const buckets = new Map<number, CandleData[]>();
+
+  for (const c of candles) {
+    if (!c || c.open == null || c.close == null || c.high == null || c.low == null) continue;
+
+    const timeSec = typeof c.time === 'number'
+      ? (c.time > 100000000000 ? Math.floor(c.time / 1000) : Math.floor(c.time))
+      : Math.floor(new Date(c.time).getTime() / 1000);
+
+    if (!Number.isFinite(timeSec) || timeSec <= 0) continue;
+
+    const bucketTime = Math.floor(timeSec / bucketSeconds) * bucketSeconds;
+    const group = buckets.get(bucketTime);
+    if (group) {
+      group.push({ ...c, time: timeSec });
+    } else {
+      buckets.set(bucketTime, [{ ...c, time: timeSec }]);
+    }
+  }
+
+  const aggregated: CandleData[] = [];
+  const sortedBucketTimes = Array.from(buckets.keys()).sort((a, b) => a - b);
+
+  for (const bucketTime of sortedBucketTimes) {
+    const group = buckets.get(bucketTime)!;
+    if (group.length === 0) continue;
+
+    // Sort chronologically ascending
+    group.sort((a, b) => Number(a.time) - Number(b.time));
+
+    const open = group[0].open;
+    const close = group[group.length - 1].close;
+    let high = -Infinity;
+    let low = Infinity;
+    let volume = 0;
+
+    for (const item of group) {
+      if (item.high > high) high = item.high;
+      if (item.low < low) low = item.low;
+      volume += Number(item.volume) || 0;
+    }
+
+    if (Number.isFinite(high) && Number.isFinite(low)) {
+      aggregated.push({
+        time: bucketTime,
+        open,
+        high,
+        low,
+        close,
+        volume: volume || 1000
+      });
+    }
+  }
+
+  return aggregated;
+}
+
+/**
+ * Calculates 24h rolling price change percentage in a fail-safe, non-NaN manner.
+ */
+export function calculate24hRollingChange(candles: CandleData[], currentPrice?: number): number {
   if (!candles || candles.length === 0) return 0;
-  const targetTime = Math.floor(Date.now() / 1000) - 86400;
+
+  const effectiveCurrentPrice = (typeof currentPrice === 'number' && Number.isFinite(currentPrice) && currentPrice > 0)
+    ? currentPrice
+    : candles[candles.length - 1]?.close;
+
+  if (typeof effectiveCurrentPrice !== 'number' || !Number.isFinite(effectiveCurrentPrice) || effectiveCurrentPrice <= 0) {
+    return 0;
+  }
+
+  const lastCandle = candles[candles.length - 1];
+  const lastCandleTime = typeof lastCandle.time === 'number'
+    ? (lastCandle.time > 100000000000 ? Math.floor(lastCandle.time / 1000) : lastCandle.time)
+    : Math.floor(new Date(lastCandle.time).getTime() / 1000);
+
+  const targetTime = (Number.isFinite(lastCandleTime) && lastCandleTime > 0 ? lastCandleTime : Math.floor(Date.now() / 1000)) - 86400;
+
   let closest = candles[0];
-  let minDiff = Math.abs(closest.time - targetTime);
-  for (let i = 1; i < candles.length; i++) {
-    const diff = Math.abs(candles[i].time - targetTime);
+  let minDiff = Infinity;
+
+  for (let i = 0; i < candles.length; i++) {
+    const cTime = typeof candles[i].time === 'number'
+      ? (candles[i].time > 100000000000 ? Math.floor(candles[i].time / 1000) : candles[i].time)
+      : Math.floor(new Date(candles[i].time).getTime() / 1000);
+
+    const diff = Math.abs(cTime - targetTime);
     if (diff < minDiff) {
       minDiff = diff;
       closest = candles[i];
     }
   }
+
   const refPrice = closest.open || closest.close;
-  if (refPrice <= 0) return 0;
-  return ((currentPrice - refPrice) / refPrice) * 100;
+  if (typeof refPrice !== 'number' || !Number.isFinite(refPrice) || refPrice <= 0) return 0;
+
+  const change = ((effectiveCurrentPrice - refPrice) / refPrice) * 100;
+  if (!Number.isFinite(change)) return 0;
+
+  return Number(change.toFixed(2));
 }
 

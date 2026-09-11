@@ -120,8 +120,40 @@ export class ExecutionRouter {
       const targetBrokerId = payload.broker_id || payload.brokerId || token.brokerId || token.broker_id || (trade_proposal as any).brokerId || this.defaultBrokerId;
       const targetEnv: ExecutionEnvironmentMode = (payload as any).environment || (process.env.EXECUTION_ENVIRONMENT as any) || 'PAPER';
       const quantity = token.approvedLotSize || 0.10;
-      const stopLoss = token.stopLoss ?? token.stop_loss ?? trade_proposal.stopLoss ?? trade_proposal.stop_loss;
-      const takeProfit = token.takeProfit ?? token.take_profit ?? trade_proposal.takeProfit ?? trade_proposal.take_profit;
+      const stopLoss = (token as any).stopLoss ?? (token as any).stop_loss ?? (trade_proposal as any).stopLoss ?? (trade_proposal as any).stop_loss ?? (payload as any).stopLoss ?? (payload as any).stop_loss;
+      const takeProfit = (token as any).takeProfit ?? (token as any).take_profit ?? (trade_proposal as any).takeProfit ?? (trade_proposal as any).take_profit ?? (payload as any).takeProfit ?? (payload as any).take_profit ?? (payload as any).takeProfit1;
+
+      const symNorm = symbol.replace('/', '').toUpperCase();
+      const isJpy = symNorm.includes('JPY');
+      const isGold = symNorm.includes('XAU') || symNorm.includes('GOLD');
+      const isBtc = symNorm.includes('BTC');
+      const isIndex = symNorm.includes('NAS') || symNorm.includes('TECH') || symNorm.includes('USTEC');
+
+      const rawPrice = (trade_proposal as any).entryPrice ?? (trade_proposal as any).price ?? (token as any).entryPrice ?? (token as any).price ?? (payload as any).price ?? (payload as any).entryPrice;
+      const refEntry = typeof rawPrice === 'number' && Number.isFinite(rawPrice) && rawPrice > 0 ? rawPrice : (
+        symNorm === 'EURJPY' ? 185.20 :
+        symNorm === 'USDJPY' ? 159.70 :
+        symNorm === 'GBPJPY' ? 216.20 :
+        symNorm === 'EURUSD' ? 1.1595 :
+        symNorm === 'GBPUSD' ? 1.3535 :
+        symNorm === 'AUDUSD' ? 0.7160 :
+        symNorm === 'NZDUSD' ? 0.5925 :
+        symNorm === 'USDCHF' ? 0.8080 :
+        symNorm === 'USDCAD' ? 1.3885 :
+        isGold ? 4455.0 : 1.0
+      );
+
+      const decimals = isJpy ? 3 : (isGold || isBtc || isIndex) ? 2 : 5;
+      const autoSlOffset = isGold ? 20.0 : (isJpy ? 0.35 : (isBtc ? 500.0 : (isIndex ? 100.0 : 0.0030)));
+      const autoTpOffset = isGold ? 40.0 : (isJpy ? 0.70 : (isBtc ? 1000.0 : (isIndex ? 200.0 : 0.0060)));
+
+      const finalStopLoss = typeof stopLoss === 'number' && Number.isFinite(stopLoss) && stopLoss > 0
+        ? stopLoss
+        : Number((trade_proposal.direction === 'BUY' ? refEntry - autoSlOffset : refEntry + autoSlOffset).toFixed(decimals));
+
+      const finalTakeProfit = typeof takeProfit === 'number' && Number.isFinite(takeProfit) && takeProfit > 0
+        ? takeProfit
+        : Number((trade_proposal.direction === 'BUY' ? refEntry + autoTpOffset : refEntry - autoTpOffset).toFixed(decimals));
 
       const safetyResult = validateExecutionEnvironmentSafety({
         environment: targetEnv,
@@ -129,8 +161,8 @@ export class ExecutionRouter {
         symbol,
         direction: trade_proposal.direction,
         requestedLotSize: quantity,
-        stopLoss,
-        takeProfit,
+        stopLoss: finalStopLoss,
+        takeProfit: finalTakeProfit,
         token
       });
 
@@ -194,6 +226,10 @@ export class ExecutionRouter {
       const strategyId = token.strategyId || (trade_proposal as any).strategyId || trade_proposal.strategy_id;
       const strategyVersion = token.strategyVersion || (trade_proposal as any).strategyVersion || trade_proposal.strategy_version;
 
+      const orderPrice = typeof rawPrice === 'number' && Number.isFinite(rawPrice) && rawPrice > 0 ? rawPrice : undefined;
+
+      const orderType = (payload as any).orderType || (payload as any).order_type || (trade_proposal as any).orderType || (trade_proposal as any).order_type || (orderPrice ? 'LIMIT' : 'MARKET');
+
       // 1. Create Order in OMS
       const order = this.orderManager.createOrder(
         proposal_id,
@@ -202,12 +238,12 @@ export class ExecutionRouter {
         symbol,
         trade_proposal.direction,
         quantity,
-        'MARKET',
-        undefined,
+        orderType,
+        orderPrice,
         targetBrokerId,
         {
-          stop_loss: stopLoss,
-          take_profit: takeProfit,
+          stop_loss: finalStopLoss,
+          take_profit: finalTakeProfit,
           risk_percent: riskPercent,
           risk_amount: riskAmount,
           strategy_id: strategyId,

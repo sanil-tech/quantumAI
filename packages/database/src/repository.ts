@@ -1,4 +1,4 @@
-﻿import { Pool, PoolClient } from 'pg';
+import { Pool, PoolClient } from 'pg';
 import { getDbPool, checkDbConnection } from './index';
 import { logger } from '@iati/core';
 
@@ -120,8 +120,18 @@ export interface PostMortemReviewRecord {
   learningVersion: string;
   review: any;
   rootCause?: string;
+  rootCauseMs?: string;
+  rootCauseEn?: string;
+  lessonLearnedMs?: string;
+  lessonLearnedEn?: string;
+  adaptiveRuleMs?: string;
+  adaptiveRuleEn?: string;
   adaptiveActionRecommended?: string;
   adaptiveRuleCreated?: string;
+  outcome?: string;
+  pair?: string;
+  pnlDollars?: number;
+  ratingScore?: number;
   createdAt?: Date;
 }
 
@@ -488,8 +498,45 @@ export class TradingRepository {
 
   async getClosedPositions(accountId: string = 'DEFAULT', limit: number = 100, offset: number = 0): Promise<PositionRecord[]> {
     const res = await this.query(
-      `SELECT * FROM positions WHERE account_id = $1 AND status = 'CLOSED' ORDER BY closed_at DESC LIMIT $2 OFFSET $3`,
+      `SELECT * FROM positions 
+       WHERE account_id = $1 
+         AND status = 'CLOSED' 
+         AND (ticket_id ~ '^[0-9]{7,10}$' OR position_id ~ '^trade_[0-9]{7,10}$')
+         AND position_id NOT LIKE 'pos_%'
+         AND position_id NOT LIKE '%mock%'
+       ORDER BY closed_at DESC NULLS LAST, opened_at DESC 
+       LIMIT $2 OFFSET $3`,
       [accountId, limit, offset]
+    );
+    return res.rows.map(r => this.mapPositionRow(r));
+  }
+
+  async getClosedPositionsAcrossAccounts(limit: number = 100, offset: number = 0): Promise<PositionRecord[]> {
+    const res = await this.query(
+      `SELECT * FROM positions 
+       WHERE status = 'CLOSED' 
+         AND (ticket_id ~ '^[0-9]{7,10}$' OR position_id ~ '^trade_[0-9]{7,10}$')
+         AND position_id NOT LIKE 'pos_%'
+         AND position_id NOT LIKE '%mock%'
+       ORDER BY closed_at DESC NULLS LAST, opened_at DESC 
+       LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    );
+    return res.rows.map(r => this.mapPositionRow(r));
+  }
+
+  async getUnlearnedClosedPositions(learningVersion: string = '1.0', limit: number = 200): Promise<PositionRecord[]> {
+    const res = await this.query(
+      `SELECT p.* FROM positions p
+       LEFT JOIN post_mortem_reviews pm
+         ON (p.position_id = pm.trade_id AND pm.learning_version = $1)
+       WHERE p.status = 'CLOSED' 
+         AND (p.ticket_id ~ '^[0-9]{7,10}$' OR p.position_id ~ '^trade_[0-9]{7,10}$')
+         AND p.position_id NOT LIKE 'pos_%'
+         AND pm.id IS NULL
+       ORDER BY p.closed_at ASC NULLS LAST, p.opened_at ASC
+       LIMIT $2`,
+      [learningVersion, limit]
     );
     return res.rows.map(r => this.mapPositionRow(r));
   }
@@ -501,21 +548,25 @@ export class TradingRepository {
     offset?: number;
     symbol?: string;
   }): Promise<{ positions: PositionRecord[]; totalCount: number }> {
-    const accountId = params.accountId || 'DEFAULT';
     const limit = Math.min(params.limit || 50, 200);
     const offset = params.offset || 0;
 
-    let whereClause = `WHERE account_id = $1`;
-    const values: any[] = [accountId];
-    let paramIdx = 2;
+    let whereClause = `WHERE 1=1`;
+    const values: any[] = [];
+    let paramIdx = 1;
+
+    if (params.accountId && params.accountId !== 'ALL') {
+      whereClause += ` AND account_id = $${paramIdx++}`;
+      values.push(params.accountId);
+    }
 
     if (params.status && params.status !== 'ALL') {
-      whereClause += ` AND status = ${paramIdx++}`;
+      whereClause += ` AND status = $${paramIdx++}`;
       values.push(params.status.toUpperCase());
     }
 
     if (params.symbol) {
-      whereClause += ` AND symbol = ${paramIdx++}`;
+      whereClause += ` AND symbol = $${paramIdx++}`;
       values.push(params.symbol);
     }
 
@@ -553,13 +604,16 @@ export class TradingRepository {
     const res = await this.query(`
       SELECT
         COUNT(*)::int as total_trades,
-        COUNT(CASE WHEN realized_profit >= 0 THEN 1 END)::int as win_count,
+        COUNT(CASE WHEN realized_profit > 0 THEN 1 END)::int as win_count,
         COUNT(CASE WHEN realized_profit < 0 THEN 1 END)::int as loss_count,
         COALESCE(SUM(realized_profit), 0)::float as total_pnl_dollars,
         COALESCE(SUM(pnl_pips), 0)::float as total_pnl_pips
       FROM positions
-      WHERE account_id = $1 AND status = 'CLOSED'
-    `, [accountId]);
+      WHERE status = 'CLOSED' 
+        AND (ticket_id ~ '^[0-9]{7,10}$' OR position_id ~ '^trade_[0-9]{7,10}$')
+        AND position_id NOT LIKE 'pos_%'
+        AND position_id NOT LIKE '%mock%'
+    `);
 
     const row = res.rows[0] || {};
     const totalTrades = row.total_trades || 0;
@@ -567,7 +621,9 @@ export class TradingRepository {
     const lossCount = row.loss_count || 0;
     const totalPnlDollars = parseFloat((row.total_pnl_dollars || 0).toFixed(2));
     const totalPnlPips = parseFloat((row.total_pnl_pips || 0).toFixed(2));
-    const winRatePercent = totalTrades > 0 ? parseFloat(((winCount / totalTrades) * 100).toFixed(2)) : 0;
+    const winRatePercent = (winCount + lossCount) > 0 
+      ? parseFloat(((winCount / (winCount + lossCount)) * 100).toFixed(1)) 
+      : 0;
 
     return {
       winCount,
@@ -1072,9 +1128,19 @@ export class TradingRepository {
       tradeId: r.trade_id,
       learningVersion: r.learning_version || '1.0',
       review,
-      rootCause: review?.rootCause || review?.review?.rootCause,
-      adaptiveActionRecommended: review?.adaptiveActionRecommended || review?.review?.adaptiveActionRecommended,
-      adaptiveRuleCreated: review?.adaptiveRuleCreated || review?.review?.adaptiveRuleCreated,
+      rootCause: review?.rootCauseMs || review?.rootCause || review?.rootCauseEn || review?.review?.rootCause || 'Analisis pangkalan data untuk trade ditutup.',
+      rootCauseMs: review?.rootCauseMs,
+      rootCauseEn: review?.rootCauseEn,
+      lessonLearnedMs: review?.lessonLearnedMs,
+      lessonLearnedEn: review?.lessonLearnedEn,
+      adaptiveRuleMs: review?.adaptiveRuleMs,
+      adaptiveRuleEn: review?.adaptiveRuleEn,
+      adaptiveActionRecommended: review?.adaptiveRuleMs || review?.adaptiveActionRecommended || review?.adaptiveRuleEn || review?.review?.adaptiveActionRecommended || 'Kekalkan pengesahan trend dan kawalan risiko.',
+      adaptiveRuleCreated: review?.adaptiveRuleMs || review?.adaptiveRuleCreated || review?.adaptiveRuleEn || review?.review?.adaptiveRuleCreated,
+      outcome: review?.outcome || (r.realized_profit >= 0 ? 'WIN' : 'LOSS'),
+      pair: review?.pair || r.symbol,
+      pnlDollars: review?.pnlDollars ?? r.realized_profit,
+      ratingScore: review?.ratingScore || 3,
       createdAt: r.created_at ? new Date(r.created_at) : undefined
     };
   }
@@ -1377,36 +1443,36 @@ export class TradingRepository {
     let idx = 1;
 
     if (filters.accountId) {
-      conditions.push(`account_id = ${idx++}`);
+      conditions.push(`account_id = $${idx++}`);
       params.push(filters.accountId);
     }
     if (filters.symbol) {
-      conditions.push(`symbol = ${idx++}`);
+      conditions.push(`symbol = $${idx++}`);
       params.push(filters.symbol);
     }
     if (filters.direction) {
-      conditions.push(`direction = ${idx++}`);
+      conditions.push(`direction = $${idx++}`);
       params.push(filters.direction.toUpperCase());
     }
     if (filters.strategy) {
-      conditions.push(`(strategy_id = ${idx} OR proposal_id = ${idx})`);
+      conditions.push(`(strategy_id = $${idx} OR proposal_id = $${idx})`);
       params.push(filters.strategy);
       idx++;
     }
     if (filters.strategyVersion) {
-      conditions.push(`strategy_version = ${idx++}`);
+      conditions.push(`strategy_version = $${idx++}`);
       params.push(filters.strategyVersion);
     }
     if (filters.status) {
-      conditions.push(`status = ${idx++}`);
+      conditions.push(`status = $${idx++}`);
       params.push(filters.status.toUpperCase());
     }
     if (filters.environment) {
-      conditions.push(`environment = ${idx++}`);
+      conditions.push(`environment = $${idx++}`);
       params.push(filters.environment.toUpperCase());
     }
     if (filters.broker) {
-      conditions.push(`broker = ${idx++}`);
+      conditions.push(`broker = $${idx++}`);
       params.push(filters.broker);
     }
     if (filters.outcome) {
@@ -1417,28 +1483,32 @@ export class TradingRepository {
       }
     }
     if (filters.startDate) {
-      conditions.push(`opened_at >= ${idx++}`);
+      conditions.push(`opened_at >= $${idx++}`);
       params.push(new Date(filters.startDate));
     }
     if (filters.endDate) {
-      conditions.push(`opened_at <= ${idx++}`);
+      conditions.push(`opened_at <= $${idx++}`);
       params.push(new Date(filters.endDate));
     }
     if (filters.minPnl !== undefined) {
-      conditions.push(`realized_profit >= ${idx++}`);
+      conditions.push(`realized_profit >= $${idx++}`);
       params.push(filters.minPnl);
     }
     if (filters.maxPnl !== undefined) {
-      conditions.push(`realized_profit <= ${idx++}`);
+      conditions.push(`realized_profit <= $${idx++}`);
       params.push(filters.maxPnl);
     }
     if (filters.search) {
       conditions.push(`(
-        position_id ILIKE ${idx} OR
-        symbol ILIKE ${idx} OR
-        broker ILIKE ${idx} OR
-        strategy_id ILIKE ${idx} OR
-        idempotency_key ILIKE ${idx}
+        position_id ILIKE $${idx} OR
+        ticket_id ILIKE $${idx} OR
+        broker_position_id ILIKE $${idx} OR
+        broker_order_id ILIKE $${idx} OR
+        broker_deal_id ILIKE $${idx} OR
+        symbol ILIKE $${idx} OR
+        broker ILIKE $${idx} OR
+        strategy_id ILIKE $${idx} OR
+        idempotency_key ILIKE $${idx}
       )`);
       params.push(`%${filters.search}%`);
       idx++;
@@ -1518,7 +1588,11 @@ export class TradingRepository {
         COALESCE(SUM(CASE WHEN realized_profit > 0 THEN realized_profit ELSE 0 END), 0)::float as gross_profit,
         COALESCE(ABS(SUM(CASE WHEN realized_profit < 0 THEN realized_profit ELSE 0 END)), 0)::float as gross_loss
       FROM positions
-      WHERE status = 'CLOSED' AND (account_id = $1 OR $1 = 'ALL')
+      WHERE status = 'CLOSED' 
+        AND (account_id = $1 OR $1 = 'ALL')
+        AND (ticket_id ~ '^[0-9]{7,10}$' OR position_id ~ '^trade_[0-9]{7,10}$')
+        AND position_id NOT LIKE 'pos_%'
+        AND position_id NOT LIKE '%mock%'
     `, [accountId]);
 
     const s = summaryRes.rows[0] || {};
@@ -1538,19 +1612,36 @@ export class TradingRepository {
         symbol,
         COUNT(*)::int as total_trades,
         COUNT(CASE WHEN realized_profit >= 0 THEN 1 END)::int as win_count,
-        COALESCE(SUM(realized_profit), 0)::float as net_pnl
+        COUNT(CASE WHEN realized_profit < 0 THEN 1 END)::int as loss_count,
+        COALESCE(SUM(realized_profit), 0)::float as net_pnl,
+        COALESCE(SUM(CASE WHEN realized_profit > 0 THEN realized_profit ELSE 0 END), 0)::float as gross_profit,
+        COALESCE(ABS(SUM(CASE WHEN realized_profit < 0 THEN realized_profit ELSE 0 END)), 0)::float as gross_loss
       FROM positions
-      WHERE status = 'CLOSED' AND (account_id = $1 OR $1 = 'ALL')
+      WHERE status = 'CLOSED' 
+        AND (account_id = $1 OR $1 = 'ALL')
+        AND (ticket_id ~ '^[0-9]{7,10}$' OR position_id ~ '^trade_[0-9]{7,10}$')
+        AND position_id NOT LIKE 'pos_%'
+        AND position_id NOT LIKE '%mock%'
       GROUP BY symbol
       ORDER BY net_pnl DESC
     `, [accountId]);
 
-    const pairPerformance = pairsRes.rows.map(r => ({
-      symbol: r.symbol,
-      totalTrades: r.total_trades,
-      winRatePercent: r.total_trades > 0 ? parseFloat(((r.win_count / r.total_trades) * 100).toFixed(2)) : 0,
-      netPnlDollars: parseFloat((r.net_pnl || 0).toFixed(2))
-    }));
+    const pairPerformance = pairsRes.rows.map(r => {
+      const gProfit = r.gross_profit || 0;
+      const gLoss = r.gross_loss || 0;
+      const pf = gLoss > 0 ? parseFloat((gProfit / gLoss).toFixed(2)) : (gProfit > 0 ? 99.99 : 1.0);
+      return {
+        symbol: r.symbol,
+        pair: r.symbol,
+        totalTrades: r.total_trades,
+        totalTradesExecuted: r.total_trades,
+        winCount: r.win_count,
+        lossCount: r.loss_count,
+        winRatePercent: r.total_trades > 0 ? parseFloat(((r.win_count / r.total_trades) * 100).toFixed(2)) : 0,
+        profitFactor: pf,
+        netPnlDollars: parseFloat((r.net_pnl || 0).toFixed(2))
+      };
+    });
 
     const bestPair = pairPerformance.length > 0 ? {
       pair: pairPerformance[0].symbol,
@@ -1933,7 +2024,213 @@ export class TradingRepository {
 
     return [headers.join(','), ...rows].join('\n');
   }
+
+  // ==========================================
+  // PHASE 6E: MANUAL TRADING LEDGER & ALERTS
+  // ==========================================
+  private mapManualTradeRow(row: any): any {
+    if (!row) return null;
+    return {
+      manualTradeId: row.manual_trade_id,
+      signalId: row.signal_id,
+      symbol: row.symbol,
+      direction: row.direction,
+      actualEntry: parseFloat(row.actual_entry),
+      positionSize: parseFloat(row.position_size),
+      enteredAt: row.entered_at ? new Date(row.entered_at).toISOString() : new Date().toISOString(),
+      status: row.status,
+      exitPrice: row.exit_price ? parseFloat(row.exit_price) : undefined,
+      exitReason: row.exit_reason || undefined,
+      exitedAt: row.exited_at ? new Date(row.exited_at).toISOString() : undefined,
+      realizedPnl: row.realized_pnl ? parseFloat(row.realized_pnl) : undefined,
+      realizedPips: row.realized_pips ? parseFloat(row.realized_pips) : undefined,
+      result: row.result || 'PENDING',
+      executionMode: row.execution_mode || 'MANUAL',
+      brokerExecution: row.broker_execution ?? false,
+      source: row.source || 'MANUAL_USER_REPORTED',
+      notes: row.notes || undefined,
+      aiPlannedSetup: typeof row.ai_planned_setup === 'string' ? JSON.parse(row.ai_planned_setup) : (row.ai_planned_setup || {})
+    };
+  }
+
+  private mapManualTradeAlertRow(row: any): any {
+    if (!row) return null;
+    return {
+      alertId: row.alert_id,
+      manualTradeId: row.manual_trade_id,
+      signalId: row.signal_id,
+      symbol: row.symbol,
+      direction: row.direction,
+      triggerType: row.trigger_type,
+      triggeredAt: row.triggered_at ? new Date(row.triggered_at).toISOString() : new Date().toISOString(),
+      triggerPrice: parseFloat(row.trigger_price),
+      thresholdPrice: parseFloat(row.threshold_price),
+      unrealizedPips: parseFloat(row.unrealized_pips),
+      unrealizedPnl: parseFloat(row.unrealized_pnl),
+      message: row.message,
+      acknowledged: row.acknowledged ?? false
+    };
+  }
+
+  async saveManualTrade(trade: any, client?: PoolClient): Promise<any> {
+    const text = `
+      INSERT INTO manual_trades (
+        manual_trade_id, signal_id, symbol, direction, actual_entry, position_size,
+        entered_at, status, exit_price, exit_reason, exited_at, realized_pnl,
+        realized_pips, result, execution_mode, broker_execution, source, notes,
+        ai_planned_setup, created_at, updated_at
+      )
+      VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW(), NOW()
+      )
+      ON CONFLICT (manual_trade_id) DO UPDATE SET
+        status = EXCLUDED.status,
+        exit_price = EXCLUDED.exit_price,
+        exit_reason = EXCLUDED.exit_reason,
+        exited_at = EXCLUDED.exited_at,
+        realized_pnl = EXCLUDED.realized_pnl,
+        realized_pips = EXCLUDED.realized_pips,
+        result = EXCLUDED.result,
+        notes = EXCLUDED.notes,
+        updated_at = NOW()
+      RETURNING *;
+    `;
+    const values = [
+      trade.manualTradeId,
+      trade.signalId,
+      trade.symbol,
+      trade.direction,
+      trade.actualEntry,
+      trade.positionSize,
+      trade.enteredAt ? new Date(trade.enteredAt) : new Date(),
+      trade.status || 'ACTIVE',
+      trade.exitPrice || null,
+      trade.exitReason || null,
+      trade.exitedAt ? new Date(trade.exitedAt) : null,
+      trade.realizedPnl ?? null,
+      trade.realizedPips ?? null,
+      trade.result || 'PENDING',
+      trade.executionMode || 'MANUAL',
+      trade.brokerExecution ?? false,
+      trade.source || 'MANUAL_USER_REPORTED',
+      trade.notes || null,
+      JSON.stringify(trade.aiPlannedSetup || {})
+    ];
+
+    try {
+      const res = await this.query(text, values, client);
+      return this.mapManualTradeRow(res.rows[0]);
+    } catch (err: any) {
+      logger.error(`[DB-REPOSITORY] Failed to save manual trade ${trade.manualTradeId}: ${err.message}`);
+      throw new Error(`DB_SAVE_MANUAL_TRADE_FAILED: ${err.message}`);
+    }
+  }
+
+  async getManualTradeById(manualTradeId: string): Promise<any | null> {
+    try {
+      const res = await this.query(`SELECT * FROM manual_trades WHERE manual_trade_id = $1`, [manualTradeId]);
+      return res.rows.length ? this.mapManualTradeRow(res.rows[0]) : null;
+    } catch (err: any) {
+      logger.warn(`[DB-REPOSITORY] Error fetching manual trade ${manualTradeId}: ${err.message}`);
+      return null;
+    }
+  }
+
+  async getActiveManualTradeBySignal(signalId: string): Promise<any | null> {
+    try {
+      const res = await this.query(
+        `SELECT * FROM manual_trades WHERE signal_id = $1 AND status = 'ACTIVE' LIMIT 1`,
+        [signalId]
+      );
+      return res.rows.length ? this.mapManualTradeRow(res.rows[0]) : null;
+    } catch (err: any) {
+      logger.warn(`[DB-REPOSITORY] Error fetching active trade for signal ${signalId}: ${err.message}`);
+      return null;
+    }
+  }
+
+  async getManualTrades(status?: string): Promise<any[]> {
+    try {
+      let res;
+      if (status) {
+        res = await this.query(
+          `SELECT * FROM manual_trades WHERE status = $1 ORDER BY COALESCE(exited_at, entered_at) DESC`,
+          [status]
+        );
+      } else {
+        res = await this.query(`SELECT * FROM manual_trades ORDER BY COALESCE(exited_at, entered_at) DESC`);
+      }
+      return res.rows.map(r => this.mapManualTradeRow(r));
+    } catch (err: any) {
+      logger.warn(`[DB-REPOSITORY] Error fetching manual trades: ${err.message}`);
+      return [];
+    }
+  }
+
+  async saveManualTradeAlert(alert: any, client?: PoolClient): Promise<any> {
+    const text = `
+      INSERT INTO manual_trade_alerts (
+        alert_id, manual_trade_id, signal_id, symbol, direction, trigger_type,
+        triggered_at, trigger_price, threshold_price, unrealized_pips, unrealized_pnl,
+        message, acknowledged, created_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
+      ON CONFLICT (alert_id) DO NOTHING
+      RETURNING *;
+    `;
+    const values = [
+      alert.alertId,
+      alert.manualTradeId,
+      alert.signalId,
+      alert.symbol,
+      alert.direction,
+      alert.triggerType,
+      alert.triggeredAt ? new Date(alert.triggeredAt) : new Date(),
+      alert.triggerPrice,
+      alert.thresholdPrice,
+      alert.unrealizedPips,
+      alert.unrealizedPnl,
+      alert.message,
+      alert.acknowledged ?? false
+    ];
+
+    try {
+      const res = await this.query(text, values, client);
+      return res.rows.length ? this.mapManualTradeAlertRow(res.rows[0]) : alert;
+    } catch (err: any) {
+      logger.warn(`[DB-REPOSITORY] Failed to save manual trade alert ${alert.alertId}: ${err.message}`);
+      return alert;
+    }
+  }
+
+  async getManualTradeAlerts(manualTradeId?: string): Promise<any[]> {
+    try {
+      let res;
+      if (manualTradeId) {
+        res = await this.query(
+          `SELECT * FROM manual_trade_alerts WHERE manual_trade_id = $1 ORDER BY triggered_at DESC`,
+          [manualTradeId]
+        );
+      } else {
+        res = await this.query(`SELECT * FROM manual_trade_alerts ORDER BY triggered_at DESC`);
+      }
+      return res.rows.map(r => this.mapManualTradeAlertRow(r));
+    } catch (err: any) {
+      logger.warn(`[DB-REPOSITORY] Error fetching manual trade alerts: ${err.message}`);
+      return [];
+    }
+  }
+
+  async clearManualTradeAlerts(manualTradeId?: string): Promise<void> {
+    try {
+      if (manualTradeId) {
+        await this.query(`DELETE FROM manual_trade_alerts WHERE manual_trade_id = $1`, [manualTradeId]);
+      } else {
+        await this.query(`DELETE FROM manual_trade_alerts`);
+      }
+    } catch (err: any) {
+      logger.warn(`[DB-REPOSITORY] Error clearing manual trade alerts: ${err.message}`);
+    }
+  }
+
 }
-
-
-

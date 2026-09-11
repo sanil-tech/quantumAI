@@ -1,0 +1,19 @@
+{
+  "id": "wal-1788354867525-9nmvk",
+  "operationType": "SAVE_JOURNAL_EVENT",
+  "entityType": "JOURNAL_EVENT",
+  "entityId": "lje-1788354866546-9s7in",
+  "payload": {
+    "id": "lje-1788354866546-9s7in",
+    "timestamp": 1788354866546,
+    "eventType": "TRADE_CLOSED",
+    "setupFingerprint": "EUR/USD_BUY_ORDER_BLOCK_RETEST",
+    "evidenceTier": "NO_EVIDENCE",
+    "sampleCount": 1,
+    "realizedR": 3.5,
+    "reason": "Shadow trade closed with TAKE_PROFIT_2 at 1.093 (Realized: +3.5R, MFE: 94p, MAE: 0p)"
+  },
+  "createdTimestamp": 1788354867525,
+  "retryCount": 0,
+  "version": 1
+}

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Building2, Key, ShieldCheck, Zap, Wifi, AlertTriangle, CheckCircle, RefreshCw, Lock, Power, X, Sliders, DollarSign, Send } from 'lucide-react';
 import { BrokerConnectionConfig, BrokerPlatform } from '../types';
 import { Language } from '../lib/translations';
@@ -33,33 +33,33 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
     id: 'broker-ctrader-1',
     platform: 'CTRADER',
     brokerName: 'Spotware cTrader Open API',
-    accountNumber: '5877246',
-    serverHost: 'demo-uk-eqx-01.p.c-trader.com',
+    accountNumber: '',
+    serverHost: '',
     environment: 'DEMO',
     isConnected: false,
-    latencyMs: 8,
+    latencyMs: null,
     liveBalance: 0,
     liveEquity: 0,
     maxDailyLossDollars: 250.00,
     maxLotSizeCap: 0.5,
-    autoExecuteRealMoney: true
+    autoExecuteRealMoney: false
   });
 
   const [platform, setPlatform] = useState<BrokerPlatform>('CTRADER');
   const [brokerName, setBrokerName] = useState('Spotware cTrader Open API');
-  const [accountNumber, setAccountNumber] = useState('5877246');
-  const [serverHost, setServerHost] = useState('demo-uk-eqx-01.p.c-trader.com');
-  const [senderCompId, setSenderCompId] = useState('demo.ctrader.5877246');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [serverHost, setServerHost] = useState('');
+  const [senderCompId, setSenderCompId] = useState('');
   const [targetCompId, setTargetCompId] = useState('cServer');
   const [senderSubId, setSenderSubId] = useState('TRADE');
   const [portNum, setPortNum] = useState<number>(5212);
-  const [apiKeyOrPassword, setApiKeyOrPassword] = useState('demo.ctrader.5877246');
-  const [apiSecret, setApiSecret] = useState('5212');
+  const [apiKeyOrPassword, setApiKeyOrPassword] = useState('');
+  const [apiSecret, setApiSecret] = useState('');
   const [environment, setEnvironment] = useState<'DEMO' | 'REAL_LIVE'>('DEMO');
-  const [customBalance, setCustomBalance] = useState<number>(10000);
+  const [customBalance, setCustomBalance] = useState<number>(0);
   const [maxDailyLossDollars, setMaxDailyLossDollars] = useState<number>(250);
   const [maxLotSizeCap, setMaxLotSizeCap] = useState<number>(0.5);
-  const [autoExecuteRealMoney, setAutoExecuteRealMoney] = useState<boolean>(true);
+  const [autoExecuteRealMoney, setAutoExecuteRealMoney] = useState<boolean>(false);
 
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectSuccessMsg, setConnectSuccessMsg] = useState<string | null>(null);
@@ -73,7 +73,7 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
   const [portalServer, setPortalServer] = useState('cTrader Live 1');
   const [portalOtp, setPortalOtp] = useState('');
   const [isPortalAuthorizing, setIsPortalAuthorizing] = useState(false);
-  const [inputToken, setInputToken] = useState('eyJwbGFudCI6ImN0cmFkZXIiLCJlbnZpcm9ubWVudCI6ImRlbW8ifQ');
+  const [inputToken, setInputToken] = useState('');
 
   // Download & Diagnostic Bridge States
   const [downloadTab, setDownloadTab] = useState<'CTRADER' | 'TRADINGVIEW' | 'PYTHON'>('CTRADER');
@@ -93,7 +93,7 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
       const data = await res.json();
       setHandshakeResult(data);
       if (data && data.success) {
-        setConnectSuccessMsg(isMalay ? 'âœ… Ujian Handshake Bridge Berjaya! Semua saluran REST API & Webhook sedia untuk eksekusi.' : 'âœ… Bridge Handshake Test Passed! All REST API & Webhook channels ready for execution.');
+        setConnectSuccessMsg(isMalay ? '✅ Ujian Handshake Bridge Berjaya! Semua saluran REST API & Webhook sedia untuk eksekusi.' : '✅ Bridge Handshake Test Passed! All REST API & Webhook channels ready for execution.');
       }
     } catch (err: any) {
       setConnectErrMsg('Diagnostic test error: ' + err.message);
@@ -252,111 +252,6 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
     setPlatform(preset.platform as BrokerPlatform);
   };
 
-  const handleFillUploadedDemoAccount = async () => {
-    setPlatform('METATRADER5');
-    setBrokerName('MetaQuotes-Demo');
-    setAccountNumber('11075236');
-    setServerHost('demo.metaquotes.net');
-    setApiKeyOrPassword('GyC-BaZ5');
-    setApiSecret('C!UnPt1g');
-    setEnvironment('DEMO');
-    setConnectMode('DIRECT_API');
-    setIsConnecting(true);
-    setConnectSuccessMsg(null);
-    setConnectErrMsg(null);
-
-    try {
-      const res = await fetch('/api/broker/connect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          platform: 'METATRADER5',
-          brokerName: 'MetaQuotes-Demo',
-          accountNumber: '11075236',
-          serverHost: 'demo.metaquotes.net',
-          apiKeyOrPassword: 'GyC-BaZ5',
-          apiSecret: 'C!UnPt1g',
-          environment: 'DEMO',
-          maxDailyLossDollars: 500,
-          maxLotSizeCap: 0.9,
-          autoExecuteRealMoney: true
-        })
-      });
-
-      const data = await res.json();
-      if (res.ok && data.success && data.connection) {
-        setConnection(data.connection);
-        setShowFormWhenConnected(false);
-        setConnectSuccessMsg(isMalay 
-          ? 'âš¡ BERJAYA BERSAMBUNG! Akaun MetaQuotes-Demo (11075236) telah disambungkan. Modal $100,000.00 USD disinkronkan.' 
-          : 'âš¡ CONNECTED SUCCESSFULLY! MetaQuotes-Demo Account 11075236 connected. $100,000.00 USD balance synced.'
-        );
-        if (onConnectionChange) onConnectionChange(data.connection);
-      } else {
-        setConnectErrMsg(data.error || 'Failed to connect MetaQuotes-Demo account.');
-      }
-    } catch (err: any) {
-      setConnectErrMsg(err.message || 'Error connecting to broker bridge.');
-    } finally {
-      setIsConnecting(false);
-    }
-  };
-
-  const handleFillCtraderUploadedDemoAccount = async () => {
-    setPlatform('CTRADER');
-    setBrokerName('cTrader Demo (UK EQX)');
-    setAccountNumber('5877246');
-    setServerHost('demo-uk-eqx-01.p.c-trader.com');
-    setApiKeyOrPassword('demo.ctrader.5877246');
-    setApiSecret('5212');
-    setEnvironment('DEMO');
-    setConnectMode('DIRECT_API');
-    setIsConnecting(true);
-    setConnectSuccessMsg(null);
-    setConnectErrMsg(null);
-
-    try {
-      const res = await fetch('/api/broker/connect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          platform: 'CTRADER',
-          brokerName: 'cTrader Demo (UK EQX)',
-          accountNumber: '5877246',
-          serverHost: 'demo-uk-eqx-01.p.c-trader.com',
-          apiKeyOrPassword: 'demo.ctrader.5877246',
-          apiSecret: '5212',
-          senderCompId: 'demo.ctrader.5877246',
-          targetCompId: 'cServer',
-          senderSubId: 'TRADE',
-          port: 5212,
-          environment: 'DEMO',
-          customBalance: 1136.03,
-          maxDailyLossDollars: 500,
-          maxLotSizeCap: 1.0,
-          autoExecuteRealMoney: true
-        })
-      });
-
-      const data = await res.json();
-      if (res.ok && data.success && data.connection) {
-        setConnection(data.connection);
-        setShowFormWhenConnected(false);
-        setConnectSuccessMsg(isMalay 
-          ? 'âš¡ BERJAYA BERSAMBUNG! Akaun cTrader FIX API #5877246 (demo-uk-eqx-01.p.c-trader.com) telah disambungkan!' 
-          : 'âš¡ CONNECTED SUCCESSFULLY! cTrader FIX API Account #5877246 (demo-uk-eqx-01.p.c-trader.com) connected!'
-        );
-        if (onConnectionChange) onConnectionChange(data.connection);
-      } else {
-        setConnectErrMsg(data.error || 'Failed to connect cTrader account.');
-      }
-    } catch (err: any) {
-      setConnectErrMsg(err.message || 'Error connecting cTrader account.');
-    } finally {
-      setIsConnecting(false);
-    }
-  };
-
   const handleConnectWithToken = async (tokenStr?: string) => {
     const activeToken = tokenStr || inputToken;
     if (!activeToken) return;
@@ -377,8 +272,8 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
         setConnection(data.connection);
         setShowFormWhenConnected(false);
         setConnectSuccessMsg(isMalay 
-          ? `âš¡ BERJAYA BERSAMBUNG VIA TOKEN! Akaun cTrader / ${data.connection.brokerName} (#${data.connection.accountNumber}) telah disahkan!` 
-          : `âš¡ CONNECTED VIA TOKEN! cTrader Account ${data.connection.brokerName} (#${data.connection.accountNumber}) authenticated successfully!`
+          ? `⚡ BERJAYA BERSAMBUNG VIA TOKEN! Akaun cTrader / ${data.connection.brokerName} (#${data.connection.accountNumber}) telah disahkan!` 
+          : `⚡ CONNECTED VIA TOKEN! cTrader Account ${data.connection.brokerName} (#${data.connection.accountNumber}) authenticated successfully!`
         );
         if (onConnectionChange) onConnectionChange(data.connection);
       } else {
@@ -398,7 +293,7 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
     setConnectErrMsg(null);
 
     try {
-      const simulatedAccountNo = portalEmail || 'UNASSIGNED';
+      const simulatedAccountNo = portalEmail || 'ACCOUNT';
       const res = await fetch('/api/broker/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -406,28 +301,27 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
           platform,
           brokerName,
           accountNumber: simulatedAccountNo,
-          serverHost: serverHost || `${brokerName.toLowerCase().replace(/\s+/g, '')}-live.broker.com`,
-          apiKeyOrPassword: 'OAuth-SSO-Token-Secured',
-          apiSecret: 'SSO-Bearer-Session',
+          serverHost: serverHost || 'portal.broker.com',
           environment,
-          maxDailyLossDollars,
-          maxLotSizeCap,
-          autoExecuteRealMoney
+          autoExecuteRealMoney: false
         })
       });
 
       const data = await res.json();
       if (res.ok && data.success && data.connection) {
         setConnection(data.connection);
-        setShowFormWhenConnected(false);
-        setConnectSuccessMsg(data.message || (isMalay ? `Berjaya log masuk melalui Halaman Web ${brokerName}! Akaun tersambung.` : `Successfully logged in via ${brokerName} Web Portal! Account connected.`));
-        if (onConnectionChange) onConnectionChange(data.connection);
         setShowBrokerWebPortalModal(false);
+        setShowFormWhenConnected(false);
+        setConnectSuccessMsg(isMalay 
+          ? `⚡ BERJAYA BERSAMBUNG! Sesi ${brokerName} (${simulatedAccountNo}) telah disahkan via Web Portal OAuth 2.0.` 
+          : `⚡ CONNECTED! ${brokerName} (${simulatedAccountNo}) session authorized via Web Portal OAuth 2.0.`
+        );
+        if (onConnectionChange) onConnectionChange(data.connection);
       } else {
-        setConnectErrMsg(data.error || (isMalay ? 'Gagal mendapatkan pengesahan SSO dari broker.' : 'Failed to authorize via broker SSO portal.'));
+        setConnectErrMsg(data.error || 'Failed to authenticate via Web Portal.');
       }
     } catch (err: any) {
-      setConnectErrMsg(err.message || 'Error executing OAuth portal flow.');
+      setConnectErrMsg(err.message || 'Error connecting to broker portal.');
     } finally {
       setIsPortalAuthorizing(false);
     }
@@ -435,77 +329,46 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
 
   const handleConnectBroker = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!validation.isServerHostValid) {
-      setConnectErrMsg(isMalay 
-        ? 'Format server host tidak sah. Sila gunakan format seperti MetaQuotes-Demo, mt5-real.exness.com, atau IP server.' 
-        : 'Invalid server host format. Please specify MetaQuotes-Demo, a valid domain host (e.g., mt5-real.exness.com), or server IP.'
-      );
-      return;
-    }
-
-    if (!validation.isAccountValid) {
-      setConnectErrMsg(isMalay 
-        ? 'ID akaun mestilah nombor berangka (sekurang-kurangnya 5 digit).' 
-        : 'Broker account login ID must be numeric (at least 5 digits).'
-      );
-      return;
-    }
-
-    if (!validation.isPasswordValid) {
-      setConnectErrMsg(isMalay
-        ? 'Sila masukkan Kata Laluan / FIX API Password akaun cTrader anda untuk pengesahan.'
-        : 'Please enter your cTrader Account Password / FIX API Password for authentication.'
-      );
-      return;
-    }
-
     setIsConnecting(true);
-    setConnectSuccessMsg(null);
     setConnectErrMsg(null);
+    setConnectSuccessMsg(null);
 
     try {
-      const res = await fetchWithTradeExecutionLogging(
-        '/api/broker/connect',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            platform,
-            brokerName,
-            accountNumber,
-            serverHost,
-            apiKeyOrPassword,
-            apiSecret,
-            environment,
-            customBalance,
-            maxDailyLossDollars,
-            maxLotSizeCap,
-            autoExecuteRealMoney,
-            senderCompId,
-            targetCompId,
-            senderSubId,
-            port: portNum
-          })
-        },
-        {
-          actionName: `BROKER_CONNECT_HANDSHAKE_${platform}`,
-          endpoint: '/api/broker/connect',
-          timeoutMs: 10000
-        }
-      );
+      const res = await fetch('/api/broker/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          platform,
+          brokerName,
+          accountNumber,
+          serverHost,
+          apiKeyOrPassword,
+          apiSecret,
+          senderCompId,
+          targetCompId,
+          senderSubId,
+          port: portNum,
+          environment,
+          maxDailyLossDollars,
+          maxLotSizeCap,
+          autoExecuteRealMoney: false
+        })
+      });
 
       const data = await res.json();
       if (res.ok && data.success && data.connection) {
         setConnection(data.connection);
         setShowFormWhenConnected(false);
-        setConnectSuccessMsg(data.message || (isMalay ? 'Berjaya bersambung ke akaun broker real money!' : 'Successfully connected to real money broker!'));
+        setConnectSuccessMsg(isMalay 
+          ? `⚡ BERJAYA BERSAMBUNG! ${data.connection.brokerName} (#${data.connection.accountNumber}) kini aktif!` 
+          : `⚡ CONNECTED! ${data.connection.brokerName} (#${data.connection.accountNumber}) is now active!`
+        );
         if (onConnectionChange) onConnectionChange(data.connection);
       } else {
-        setConnectErrMsg(data.error || (isMalay ? 'Gagal bersambung ke pelayan broker. Sila semak semula ID / Password.' : 'Failed to connect to broker server. Please verify credentials.'));
+        setConnectErrMsg(data.error || 'Gagal menyambung ke broker.');
       }
     } catch (err: any) {
-      setConnectErrMsg(err.message || 'Network error connecting to broker bridge.');
+      setConnectErrMsg(err.message || 'Ralat semasa menyambung ke broker.');
     } finally {
       setIsConnecting(false);
     }
@@ -516,660 +379,94 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
     try {
       const res = await fetch('/api/broker/disconnect', { method: 'POST' });
       const data = await res.json();
-      if (data.success && data.connection) {
-        setConnection(data.connection);
-        setConnectSuccessMsg(isMalay ? 'Sambungan broker ditamatkan (Disconnected).' : 'Broker connection disconnected.');
-        if (onConnectionChange) onConnectionChange(data.connection);
+      if (res.ok && data.success) {
+        setConnection({
+          id: 'broker-disconnected',
+          platform: 'CTRADER',
+          brokerName: '',
+          accountNumber: '',
+          serverHost: '',
+          environment: 'DEMO',
+          autoExecuteRealMoney: false,
+          liveBalance: 0,
+          liveEquity: 0,
+          isConnected: false,
+          lastConnectedAt: Date.now()
+        });
+        setShowFormWhenConnected(true);
+        setConnectSuccessMsg(isMalay ? 'Sambungan broker telah diputuskan.' : 'Broker disconnected successfully.');
       }
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      setConnectErrMsg('Error disconnecting: ' + err.message);
     } finally {
       setIsConnecting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden my-8">
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl p-6 space-y-6">
         {/* Header */}
-        <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-slate-900 px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
-              <Building2 className="w-5 h-5" />
+            <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
+              <Building2 className="w-6 h-6" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                {isMalay ? 'Sambungan Platform Broker (Real Money)' : 'Real Money Broker Gateway'}
-                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono uppercase">
-                  MT4 / MT5 / FIX API Bridge
+                {isMalay ? 'Sambungan Broker & Akaun Trading' : 'Broker & Trading Account Connection'}
+                <span className="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono font-normal">
+                  cTrader / MT5 Bridge
                 </span>
               </h2>
               <p className="text-xs text-slate-400">
-                {isMalay ? 'Sambungkan akaun modal sebenar dari broker Forex & Kripto pilihan anda' : 'Connect real capital accounts from your chosen Forex & Crypto brokers'}
+                {isMalay 
+                  ? 'Sambungkan akaun trading anda untuk pemantauan data pasaran dan status broker secara masa nyata.'
+                  : 'Connect your trading account for real-time market data monitoring and broker status.'}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
+            className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
-          {/* Live Bridge Connection Monitor Status */}
-          <div className={`p-4 rounded-xl border ${
-            connection.isConnected
-              ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
-              : 'bg-slate-950 border-slate-800 text-slate-400'
-          }`}>
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-3">
-                <div className="relative flex h-3.5 w-3.5">
-                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${connection.isConnected ? 'bg-emerald-400' : 'bg-slate-600'}`}></span>
-                  <span className={`relative inline-flex rounded-full h-3.5 w-3.5 ${connection.isConnected ? 'bg-emerald-500' : 'bg-slate-500'}`}></span>
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-white">
-                      {connection.isConnected ? `CONNECTED: ${connection.brokerName}` : (isMalay ? 'STATUS: BUKAN TERSAMBUNG' : 'STATUS: DISCONNECTED')}
-                    </span>
-                    {connection.isConnected && (
-                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-mono font-bold">
-                        {connection.environment}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-400 font-mono mt-0.5">
-                    {connection.isConnected 
-                      ? `${connection.platform} | Host: ${connection.serverHost} | Latency: ${connection.latencyMs}ms`
-                      : (isMalay ? 'Sila masukkan maklumat akaun broker di bawah untuk memulakan jambatan paut.' : 'Enter your broker credentials below to establish live bridge execution.')
-                    }
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handlePingBroker}
-                  disabled={isPinging}
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold text-cyan-300 bg-cyan-950/80 border border-cyan-500/40 hover:bg-cyan-900 transition flex items-center gap-1.5 shadow-sm disabled:opacity-50"
-                  title={isMalay ? 'Uji kependaman rangkaian ke pelayan MetaQuotes-Demo / broker' : 'Trigger lightweight latency check to MetaQuotes-Demo broker server'}
-                >
-                  <Wifi className={`w-3.5 h-3.5 ${isPinging ? 'animate-spin text-amber-400' : 'text-cyan-400'}`} />
-                  <span>{isPinging ? (isMalay ? 'Uji Ping...' : 'Pinging...') : 'Ping Broker'}</span>
-                </button>
-
-                {connection.isConnected && (
-                  <div className="flex items-center gap-2">
-                    <div className="text-right text-xs font-mono mr-1">
-                      <div className="text-slate-400">{isMalay ? 'Baki Real' : 'Real Balance'}</div>
-                      <div className="text-emerald-400 font-bold">${connection.liveBalance?.toFixed(2)} USD</div>
-                    </div>
-                    <button
-                      onClick={handleDisconnect}
-                      disabled={isConnecting}
-                      className="px-3 py-1.5 rounded-lg text-xs font-bold text-rose-300 bg-rose-950/60 border border-rose-500/40 hover:bg-rose-900 transition flex items-center gap-1.5"
-                    >
-                      <Power className="w-3.5 h-3.5" />
-                      <span>{isMalay ? 'Putuskan' : 'Disconnect'}</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Ping Result telemetry feedback overlay */}
-            {pingResult && (
-              <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs font-mono bg-slate-900/60 p-2.5 rounded-lg border border-cyan-500/20">
-                <div className="flex items-center gap-2">
-                  <span className="text-cyan-400 font-bold">ðŸ“¡ MetaQuotes Ping:</span>
-                  <span className="text-slate-200">{pingResult.serverHost}</span>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                    pingResult.status === 'ONLINE' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
-                  }`}>
-                    {pingResult.status} ({pingResult.latencyMs}ms RTT)
-                  </span>
-                </div>
-                <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                  <span>{pingResult.message}</span>
-                  <span className="text-[10px] text-slate-500 font-mono">[{pingResult.timestamp}]</span>
-                </div>
-              </div>
-            )}
+        {/* Feedback Messages */}
+        {connectSuccessMsg && (
+          <div className="p-3.5 bg-emerald-950/60 border border-emerald-500/40 rounded-xl text-xs text-emerald-300 flex items-start gap-2.5">
+            <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            <span>{connectSuccessMsg}</span>
           </div>
+        )}
+        {connectErrMsg && (
+          <div className="p-3.5 bg-rose-950/60 border border-rose-500/40 rounded-xl text-xs text-rose-300 flex items-start gap-2.5">
+            <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+            <span>{connectErrMsg}</span>
+          </div>
+        )}
 
-          {/* If Connected and not in Edit Mode: Show Active Connected Card */}
-          {connection.isConnected && !showFormWhenConnected ? (
-            <div className="bg-gradient-to-br from-emerald-950/80 via-slate-900 to-teal-950/80 border-2 border-emerald-500/60 rounded-2xl p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-              <div className="flex items-center justify-between border-b border-emerald-500/30 pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 bg-emerald-500/20 border border-emerald-500/40 rounded-xl text-emerald-400">
-                    <CheckCircle className="w-7 h-7 animate-pulse" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-base font-bold text-white">
-                        {isMalay ? 'AKAUN BROKER BERSAMBUNG SECARA LIVE' : 'BROKER ACCOUNT LIVE CONNECTED'}
-                      </h3>
-                      <span className="text-[10px] bg-emerald-500/30 text-emerald-300 border border-emerald-500/50 px-2.5 py-0.5 rounded-full font-mono font-bold uppercase">
-                        ONLINE ({connection.latencyMs}ms)
-                      </span>
-                    </div>
-                    <p className="text-xs text-emerald-300/80 mt-0.5">
-                      {isMalay 
-                        ? `Jambatan paut ke pelayan ${connection.brokerName} beroperasi dengan sempurna. Baki modal disinkronkan ke sistem AutoTrader.`
-                        : `Bridge link to ${connection.brokerName} server operating normally. Account balance synced with AutoTrader.`}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Key Broker Metrics Display */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
-                  <span className="text-[10px] text-slate-400 block mb-0.5 font-medium">{isMalay ? 'Broker & Platform' : 'Broker & Platform'}</span>
-                  <span className="text-xs font-bold text-white font-mono truncate block">{connection.brokerName}</span>
-                  <span className="text-[10px] text-emerald-400 font-mono">{connection.platform}</span>
-                </div>
-
-                <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
-                  <span className="text-[10px] text-slate-400 block mb-0.5 font-medium">{isMalay ? 'ID Akaun (Login)' : 'Login Account ID'}</span>
-                  <span className="text-xs font-bold text-amber-300 font-mono">{connection.accountNumber}</span>
-                  <span className="text-[10px] text-slate-400 block">{connection.environment}</span>
-                </div>
-
-                <div className="bg-slate-950/80 border border-emerald-500/30 rounded-xl p-3 bg-emerald-950/20">
-                  <span className="text-[10px] text-emerald-300 block mb-0.5 font-medium">{isMalay ? 'Baki Real Disinkron' : 'Synced Real Balance'}</span>
-                  <span className="text-sm font-black text-emerald-400 font-mono">${connection.liveBalance?.toFixed(2)} USD</span>
-                  <span className="text-[10px] text-slate-400 block">{isMalay ? 'Baki Broker Sebenar' : 'Live Broker Balance'}</span>
-                </div>
-
-                <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
-                  <span className="text-[10px] text-slate-400 block mb-0.5 font-medium">{isMalay ? 'Mod Eksekusi' : 'Execution Mode'}</span>
-                  <span className="text-xs font-bold text-emerald-300 font-mono">
-                    {connection.autoExecuteRealMoney ? 'âš¡ REAL MONEY' : 'ðŸ‘ï¸ MONITORING'}
+        {/* Connected Card or Form Switch */}
+        {connection.isConnected && !showFormWhenConnected ? (
+          <div className="space-y-4">
+            <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950/40 border border-emerald-500/30 rounded-2xl p-5 space-y-4 shadow-xl">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-sm font-bold text-white">
+                    {connection.brokerName} (#{connection.accountNumber})
                   </span>
-                  <span className="text-[10px] text-slate-400 block">Cap: {connection.maxLotSizeCap} Lot</span>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-mono font-bold">
+                    {connection.environment}
+                  </span>
                 </div>
-              </div>
-
-              {connectSuccessMsg && (
-                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-300 text-xs flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 shrink-0 text-emerald-400" />
-                  <span>{connectSuccessMsg}</span>
-                </div>
-              )}
-
-              {/* MT5/MT4/cTrader EA Webhook & 2-Way Synchronization Multi-Platform Panel */}
-              <div className="p-4 bg-slate-950/90 border border-blue-500/40 rounded-xl space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-blue-400 animate-pulse" />
-                    <span className="text-xs font-bold text-slate-100">
-                      {isMalay ? 'Pautan Webhook 2-Hala MT4 / MT5 / cTrader / TradingView' : 'MT4 / MT5 / cTrader / TradingView 2-Way Relay Bridge'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleRunHandshakeTest}
-                      disabled={isTestingHandshake}
-                      className="px-3 py-1 bg-cyan-950 border border-cyan-500/40 hover:bg-cyan-900 text-cyan-300 font-bold text-[11px] rounded-lg transition flex items-center gap-1 shadow-sm disabled:opacity-50"
-                    >
-                      <Zap className={`w-3 h-3 ${isTestingHandshake ? 'animate-spin text-amber-400' : 'text-cyan-400'}`} />
-                      <span>{isTestingHandshake ? 'Testing...' : 'ðŸ§ª Handshake Test'}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        try {
-                          await fetch('/api/broker/clear-queue', { method: 'POST' });
-                          alert(isMalay ? 'Giliran pesanan pending telah dibersihkan!' : 'Pending queue cleared!');
-                        } catch (e: any) {
-                          alert('Clear queue error: ' + e.message);
-                        }
-                      }}
-                      className="text-[10px] bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 px-2 py-1 rounded font-mono font-bold transition"
-                      title={isMalay ? 'Kosongkan giliran arahan' : 'Clear pending commands'}
-                    >
-                      ðŸ§¹ Clear Queue
-                    </button>
-                  </div>
-                </div>
-
-                {/* Handshake Test Banner */}
-                {handshakeResult && (
-                  <div className="p-3 bg-slate-900/90 border border-cyan-500/40 rounded-xl space-y-2 text-xs font-mono">
-                    <div className="flex items-center justify-between text-cyan-300 font-bold">
-                      <span className="flex items-center gap-1.5">
-                        <CheckCircle className="w-4 h-4 text-emerald-400" />
-                        <span>Diagnostic Handshake OK (Ping: {handshakeResult.latencyMs}ms)</span>
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px]">
-                      {handshakeResult.diagnostics.map((d, i) => (
-                        <div key={i} className="p-2 bg-slate-950 border border-slate-800 rounded flex items-center gap-1.5">
-                          <CheckCircle className="w-3 h-3 text-emerald-400 shrink-0" />
-                          <span className="text-slate-200 truncate">{d.name}: <strong className="text-emerald-300">PASSED</strong></span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Platform Selector Tabs */}
-                <div className="grid grid-cols-5 gap-1 p-1 bg-slate-900 border border-slate-800 rounded-lg text-[10px] font-bold text-center">
-                  <button
-                    type="button"
-                    onClick={() => setDownloadTab('MT5')}
-                    className={`py-1 rounded transition ${downloadTab === 'MT5' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    MT5 (.mq5)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDownloadTab('MT4')}
-                    className={`py-1 rounded transition ${downloadTab === 'MT4' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    MT4 (.mq4)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDownloadTab('CTRADER')}
-                    className={`py-1 rounded transition ${downloadTab === 'CTRADER' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    cTrader (.cs)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDownloadTab('TRADINGVIEW')}
-                    className={`py-1 rounded transition ${downloadTab === 'TRADINGVIEW' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    TradingView
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDownloadTab('PYTHON')}
-                    className={`py-1 rounded transition ${downloadTab === 'PYTHON' ? 'bg-teal-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    Python (.py)
-                  </button>
-                </div>
-
-                {/* Selected Tab Content */}
-                {downloadTab === 'MT5' && (
-                  <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-2 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-blue-300">MetaTrader 5 MQL5 EA Bridge</span>
-                      <a href="/api/broker/download-mq5" download="Quantum_AI_MT5_Bridge.mq5" className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded text-[11px]">
-                        ðŸ“¥ Download .mq5
-                      </a>
-                    </div>
-                    <div className="p-2 bg-slate-950 border border-slate-800 rounded text-[10px] font-mono flex items-center justify-between">
-                      <span className="text-blue-300 truncate">{typeof window !== 'undefined' ? `${window.location.origin}/api/broker/mt5-webhook` : '/api/broker/mt5-webhook'}</span>
-                      <button type="button" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/api/broker/mt5-webhook`); alert('Disalin!'); }} className="px-2 py-0.5 bg-blue-600 text-white rounded">Copy</button>
-                    </div>
-                  </div>
-                )}
-
-                {downloadTab === 'MT4' && (
-                  <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-2 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-blue-300">MetaTrader 4 MQL4 EA Bridge</span>
-                      <a href="/api/broker/download-mq4" download="Quantum_AI_MT4_Bridge.mq4" className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded text-[11px]">
-                        ðŸ“¥ Download .mq4
-                      </a>
-                    </div>
-                    <div className="p-2 bg-slate-950 border border-slate-800 rounded text-[10px] font-mono flex items-center justify-between">
-                      <span className="text-blue-300 truncate">{typeof window !== 'undefined' ? `${window.location.origin}/api/broker/mt4-webhook` : '/api/broker/mt4-webhook'}</span>
-                      <button type="button" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/api/broker/mt4-webhook`); alert('Disalin!'); }} className="px-2 py-0.5 bg-blue-600 text-white rounded">Copy</button>
-                    </div>
-                  </div>
-                )}
-
-                {downloadTab === 'CTRADER' && (
-                  <div className="p-3.5 bg-slate-900 border border-emerald-500/40 rounded-xl space-y-3 text-xs">
-                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                      <div>
-                        <span className="font-bold text-emerald-300 block">ðŸ¤– QuantumAI.cs â€” cTrader cBot Autonomous Robot</span>
-                        <span className="text-[10px] text-slate-400">Padankan dengan tetingkap "New algorithm - cTrader" anda</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            try {
-                              const res = await fetch('/api/broker/download-ctrader');
-                              const text = await res.text();
-                              await navigator.clipboard.writeText(text);
-                              alert(isMalay ? 'Kod C# QuantumAI.cs telah disalin ke Clipboard!' : 'QuantumAI.cs C# Code copied to Clipboard!');
-                            } catch (e: any) {
-                              alert('Copy failed: ' + e.message);
-                            }
-                          }}
-                          className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded text-[11px] flex items-center gap-1 shadow cursor-pointer"
-                        >
-                          <span>ðŸ“‹ Salin Kod C# QuantumAI</span>
-                        </button>
-                        <a href="/api/broker/download-ctrader" download="QuantumAI.cs" className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/40 font-bold rounded text-[11px]">
-                          ðŸ“¥ Muat Turun .cs
-                        </a>
-                      </div>
-                    </div>
-
-                    {/* Step-by-Step Instructions matching screenshot */}
-                    <div className="p-2.5 bg-slate-950 border border-slate-800 rounded-lg space-y-1.5 text-[11px]">
-                      <div className="font-bold text-amber-300 flex items-center gap-1">
-                        <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>Panduan Pemasangan cTrader (Berdasarkan skrin anda):</span>
-                      </div>
-                      <ol className="list-decimal list-inside space-y-1 text-slate-300 text-[10px] font-mono">
-                        <li>Dalam tetingkap <strong className="text-white">cTrader</strong>, pastikan <strong className="text-cyan-300">cBot</strong> dipilih.</li>
-                        <li>Isi Name: <strong className="text-amber-300 font-bold">QuantumAI</strong> | Bahasa: <strong className="text-cyan-300">C# (.NET)</strong>.</li>
-                        <li>Tekan butang hijau <strong className="text-emerald-400">Create</strong> di cTrader.</li>
-                        <li>Padam semua kod sedia ada dalam editor cTrader, dan <strong className="text-amber-300">Tampal (Ctrl+V)</strong> kod QuantumAI di atas!</li>
-                        <li>Tekan <strong className="text-cyan-300">Build (Ctrl+B)</strong>. Dalam tetingkap "Add instance", pilih <strong className="text-amber-300">"Locally"</strong> (kerana sambungan Webhook memerlukan Full Access).</li>
-                        <li>Tekan <strong className="text-emerald-400">Add instance</strong> &amp; tekan ikon Play <strong className="text-emerald-400">â–¶</strong> untuk mulakan robot!</li>
-                      </ol>
-                    </div>
-
-                    <div className="p-2 bg-slate-950 border border-slate-800 rounded text-[10px] font-mono flex items-center justify-between">
-                      <span className="text-emerald-300 truncate">{typeof window !== 'undefined' ? `${window.location.origin}/api/broker/ctrader-webhook` : '/api/broker/ctrader-webhook'}</span>
-                      <button type="button" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/api/broker/ctrader-webhook`); alert('Webhook URL Disalin!'); }} className="px-2 py-0.5 bg-emerald-600 text-white rounded cursor-pointer">Copy URL</button>
-                    </div>
-                  </div>
-                )}
-
-                {downloadTab === 'TRADINGVIEW' && (
-                  <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-2 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-amber-300">TradingView Pine Script Alert</span>
-                      <a href="/api/broker/download-pine" download="Quantum_AI_TradingView_Alert.pine" className="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded text-[11px]">
-                        ðŸ“¥ Download .pine
-                      </a>
-                    </div>
-                    <div className="p-2 bg-slate-950 border border-slate-800 rounded text-[10px] font-mono flex items-center justify-between">
-                      <span className="text-amber-300 truncate">{typeof window !== 'undefined' ? `${window.location.origin}/api/broker/tradingview-webhook` : '/api/broker/tradingview-webhook'}</span>
-                      <button type="button" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/api/broker/tradingview-webhook`); alert('Disalin!'); }} className="px-2 py-0.5 bg-amber-600 text-white rounded">Copy</button>
-                    </div>
-                  </div>
-                )}
-
-                {downloadTab === 'PYTHON' && (
-                  <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-2 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-teal-300">Python MT5 Local Connector</span>
-                      <a href="/api/broker/download-python-bridge" download="quantum_mt5_bridge.py" className="px-3 py-1 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded text-[11px]">
-                        ðŸ“¥ Download .py
-                      </a>
-                    </div>
-                  </div>
-                )}
-
-                {/* Direct Connectors / EA Download Section */}
-                <div className="p-3 bg-slate-900/90 border border-slate-800 rounded-xl space-y-2">
-                  <div className="text-[11px] font-bold text-slate-200">
-                    {isMalay ? 'âš¡ Muat Turun Penghubung MT5 (Pilih Salah Satu):' : 'âš¡ Download MT5 Connector File (Choose One):'}
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <a
-                      href="/api/broker/download-mq5"
-                      download="Quantum_AI_MT5_Bridge.mq5"
-                      className="px-3 py-2 bg-blue-900/50 hover:bg-blue-800/80 border border-blue-500/50 text-blue-200 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5"
-                    >
-                      <span>ðŸ“¥ EA Script (.mq5)</span>
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const code = `//+------------------------------------------------------------------+
-//|                                        Quantum_AI_MT5_Bridge.mq5 |
-//|                                  Copyright 2026, Quantum AI Inc. |
-//+------------------------------------------------------------------+
-#property copyright "Quantum AI Automation"
-#property link      "https://ai.studio"
-#property version   "1.00"
-#property description "Automated 2-Way Execution Bridge for Quantum AI Web App"
-
-#include <Trade\\Trade.mqh>
-CTrade trade;
-
-input string WebhookURL = "${typeof window !== 'undefined' ? window.location.origin.replace(/^http:/, 'https:') : ''}/api/broker/mt5-webhook";
-input string AccountNumber = "11075236";
-input int PollIntervalSeconds = 2;
-
-// Helper function to extract string from JSON
-string ExtractJsonString(string json, string key) {
-   string searchKey = "\\"" + key + "\\"";
-   int keyPos = StringFind(json, searchKey);
-   if(keyPos < 0) return "";
-   int colonPos = StringFind(json, ":", keyPos);
-   if(colonPos < 0) return "";
-   int startQuote = StringFind(json, "\\"", colonPos);
-   if(startQuote < 0) return "";
-   int endQuote = StringFind(json, "\\"", startQuote + 1);
-   if(endQuote < 0) return "";
-   return StringSubstr(json, startQuote + 1, endQuote - startQuote - 1);
-}
-
-// Helper function to extract number from JSON
-double ExtractJsonNumber(string json, string key) {
-   string searchKey = "\\"" + key + "\\"";
-   int keyPos = StringFind(json, searchKey);
-   if(keyPos < 0) return 0.0;
-   int colonPos = StringFind(json, ":", keyPos);
-   if(colonPos < 0) return 0.0;
-   int start = colonPos + 1;
-   int len = StringLen(json);
-   while(start < len && (StringGetCharacter(json, start) == ' ' || StringGetCharacter(json, start) == '\\t')) start++;
-   int end = start;
-   while(end < len) {
-      ushort ch = StringGetCharacter(json, end);
-      if((ch >= '0' && ch <= '9') || ch == '.' || ch == '-') {
-         end++;
-      } else {
-         break;
-      }
-   }
-   if(end > start) return StringToDouble(StringSubstr(json, start, end - start));
-   return 0.0;
-}
-
-int OnInit() {
-   EventSetTimer(PollIntervalSeconds);
-   Print("ðŸš€ Quantum AI MT5 EA Bridge Active! Account: ", AccountNumber, " | Webhook: ", WebhookURL);
-   return(INIT_SUCCEEDED);
-}
-
-void OnDeinit(const int reason) {
-   EventKillTimer();
-   Print("ðŸ›‘ Quantum AI MT5 EA Bridge Unloaded.");
-}
-
-void ConfirmExecutionToServer(string cmdId, ulong ticketId) {
-   char postData[];
-   double balance = AccountInfoDouble(ACCOUNT_BALANCE);
-   double equity = AccountInfoDouble(ACCOUNT_EQUITY);
-   string postBody = "{\\"commandId\\":\\"" + cmdId + "\\",\\"ticketId\\":" + IntegerToString(ticketId) + ",\\"balance\\":" + DoubleToString(balance, 2) + ",\\"equity\\":" + DoubleToString(equity, 2) + "}";
-   StringToCharArray(postBody, postData, 0, StringLen(postBody));
-   string headers = "Content-Type: application/json\\r\\n";
-   char result[]; 
-   string respHeaders;
-   WebRequest("POST", WebhookURL, headers, 3000, postData, result, respHeaders);
-}
-
-void PollServerCommands() {
-   string headers;
-   char data[], result[];
-   double balance = AccountInfoDouble(ACCOUNT_BALANCE);
-   double equity = AccountInfoDouble(ACCOUNT_EQUITY);
-   string url = WebhookURL + "?accountNumber=" + AccountNumber + "&balance=" + DoubleToString(balance, 2) + "&equity=" + DoubleToString(equity, 2);
-   
-   int res = WebRequest("GET", url, "Content-Type: application/json\\r\\n", 3000, data, result, headers);
-   if(res == 200) {
-      string jsonResp = CharArrayToString(result);
-      
-      if(StringFind(jsonResp, "\\"action\\"") >= 0) {
-         string action = ExtractJsonString(jsonResp, "action");
-         string symbol = ExtractJsonString(jsonResp, "symbol");
-         string direction = ExtractJsonString(jsonResp, "direction");
-         double volume = ExtractJsonNumber(jsonResp, "volume");
-         double stopLoss = ExtractJsonNumber(jsonResp, "stopLoss");
-         double takeProfit = ExtractJsonNumber(jsonResp, "takeProfit");
-         string cmdId = ExtractJsonString(jsonResp, "id");
-         
-         StringReplace(symbol, "/", "");
-         if(StringLen(symbol) == 0) symbol = _Symbol;
-         if(volume <= 0) volume = 0.10;
-         
-         if(action == "OPEN") {
-            Print("ðŸ“¡ Web App Command Received: OPEN ", direction, " ", symbol, " Volume: ", DoubleToString(volume, 2));
-            bool success = false;
-            
-            if(direction == "BUY") {
-               double ask = SymbolInfoDouble(symbol, SYMBOL_ASK);
-               if(ask <= 0) ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-               success = trade.Buy(volume, symbol, ask, stopLoss, takeProfit, "Quantum AI Web App");
-            } else if(direction == "SELL") {
-               double bid = SymbolInfoDouble(symbol, SYMBOL_BID);
-               if(bid <= 0) bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-               success = trade.Sell(volume, symbol, bid, stopLoss, takeProfit, "Quantum AI Web App");
-            }
-            
-            if(success) {
-               ulong ticket = trade.ResultOrder();
-               Print("âœ… [MT5 TRADE EXECUTED] ", direction, " ", symbol, " Lot: ", DoubleToString(volume, 2), " | Ticket #", IntegerToString(ticket));
-               ConfirmExecutionToServer(cmdId, ticket);
-            } else {
-               Print("âš ï¸ [MT5 TRADE FAILED] Retcode: ", IntegerToString(trade.ResultRetcode()), " - ", trade.ResultRetcodeDescription());
-               ConfirmExecutionToServer(cmdId, 0);
-            }
-         }
-         else if(action == "CLOSE") {
-            Print("ðŸ“¡ Web App Command Received: CLOSE ", symbol);
-            for(int i = PositionsTotal() - 1; i >= 0; i--) {
-               ulong ticket = PositionGetTicket(i);
-               if(ticket > 0) {
-                  string posSymbol = PositionGetString(POSITION_SYMBOL);
-                  StringReplace(posSymbol, "/", "");
-                  if(posSymbol == symbol || symbol == _Symbol) {
-                     if(trade.PositionClose(ticket)) {
-                        Print("ðŸ–ï¸ [MT5 CLOSED POSITION] Ticket #", IntegerToString(ticket));
-                     }
-                  }
-               }
-            }
-            ConfirmExecutionToServer(cmdId, 0);
-         }
-      }
-   } else {
-      Print("âš ï¸ WebRequest Error (", IntegerToString(GetLastError()), "). Ensure Webhook URL is in MT5 Options -> Experts -> Allow WebRequest!");
-   }
-}
-
-void OnTimer() {
-   PollServerCommands();
-}
-`;
-                        navigator.clipboard.writeText(code);
-                        alert(isMalay ? 'Kod MQL5 EA disalin! Tampal dalam MetaEditor (Tekan Ctrl+A, Delete, kemudian Tampal dan tekan F7).' : 'MQL5 EA code copied! Paste inside MetaEditor (Press Ctrl+A, Delete, then Paste and press F7).');
-                      }}
-                      className="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5"
-                    >
-                      <span>ðŸ“‹ {isMalay ? 'Salin Kod EA' : 'Copy EA Code'}</span>
-                    </button>
-                    <a
-                      href="/api/broker/download-python-bridge"
-                      download="quantum_mt5_bridge.py"
-                      className="px-3 py-2 bg-amber-900/50 hover:bg-amber-800/80 border border-amber-500/50 text-amber-200 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-1.5 sm:col-span-2"
-                    >
-                      <span>ðŸ Python Bridge (.py)</span>
-                    </a>
-                  </div>
-                </div>
-
-                {/* 2-Way Test Actions */}
-                <div className="pt-2 flex flex-col sm:flex-row flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        const res = await fetch('/api/autotrader/trade/execute', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            pair: 'EUR/USD',
-                            direction: 'BUY',
-                            entryPrice: 1.0850,
-                            stopLoss: 1.0820,
-                            takeProfit1: 1.0910,
-                            takeProfit2: 1.0950,
-                            lotSize: 0.10,
-                            setupId: `test-buy-ctrader-${Date.now()}`
-                          })
-                        });
-                        const d = await res.json();
-                        if (d.success) {
-                          alert(isMalay 
-                            ? `ðŸš€ ISYARAT BUY BERJAYA DIHANTAR KE CTRADER!\n\nâ€¢ Pasangan: EUR/USD\nâ€¢ Hala: BUY (0.10 Lot)\nâ€¢ Harga Entry: 1.0850\nâ€¢ SL: 1.0820 | TP1: 1.0910\nâ€¢ Tiket cTrader: #${d.mt5Ticket}\n\nArahan telah dimasukkan ke dalam giliran (Pending Queue) cTrader FIX API Bridge. cBot QuantumAI akan melaksanakan pesanan ini secara automatik!`
-                            : `ðŸš€ BUY SIGNAL SUCCESSFULLY SENT TO CTRADER!\n\nâ€¢ Pair: EUR/USD\nâ€¢ Direction: BUY (0.10 Lot)\nâ€¢ Entry Price: 1.0850\nâ€¢ SL: 1.0820 | TP1: 1.0910\nâ€¢ cTrader Ticket: #${d.mt5Ticket}\n\nCommand queued into cTrader FIX API Bridge. QuantumAI cBot will auto-execute this order!`
-                          );
-                        } else {
-                          alert('Gagal menghantar isyarat: ' + (d.error || 'Ralat tidak diketahui'));
-                        }
-                      } catch (e: any) {
-                        alert('Error dispatching test BUY signal: ' + e.message);
-                      }
-                    }}
-                    className="flex-1 px-3 py-2 bg-gradient-to-r from-emerald-900 to-teal-900 hover:from-emerald-800 hover:to-teal-800 border border-emerald-400/60 text-emerald-200 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-md shadow-emerald-950/50"
-                  >
-                    <Send className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-                    <span>{isMalay ? 'ðŸš€ Uji Hantar Isyarat BUY ke cTrader' : 'ðŸš€ Test Send BUY Signal to cTrader'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        const testTicket = Date.now();
-                        const res = await fetch('/api/broker/ctrader-webhook', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            accountNumber: accountNumber || '5877246',
-                            balance: connection?.liveBalance || 10000.00,
-                            equity: connection?.liveEquity || 10000.00,
-                            manualPosition: {
-                              pair: 'EUR/USD',
-                              direction: 'BUY',
-                              entryPrice: 1.0850,
-                              stopLoss: 1.0820,
-                              takeProfit1: 1.0910,
-                              volume: 0.10,
-                              ticketId: testTicket
-                            }
-                          })
-                        });
-                        const d = await res.json();
-                        if (d.success) {
-                          alert(isMalay 
-                            ? `âœ… SIMULASI SINKRONISASI CTRADER BERJAYA!\n\nâ€¢ Tiket: #${testTicket}\nâ€¢ Posisi: BUY EUR/USD (0.10 Lot)\nâ€¢ Baki Diselaras: $${d.account?.balance || '10,000'}\n\nPosisi daripada terminal cTrader telah diselaraskan ke AutoTrader Dashboard.` 
-                            : `âœ… CTRADER SYNC SIMULATION SUCCESSFUL!\n\nâ€¢ Ticket: #${testTicket}\nâ€¢ Position: BUY EUR/USD (0.10 Lot)\nâ€¢ Synced Balance: $${d.account?.balance || '10,000'}\n\nPosition from cTrader terminal has been synced to AutoTrader Dashboard.`
-                          );
-                        }
-                      } catch (e: any) {
-                        alert('cTrader sync test error: ' + e.message);
-                      }
-                    }}
-                    className="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold text-xs rounded-xl transition flex items-center justify-center gap-2"
-                  >
-                    <CheckCircle className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>{isMalay ? 'ðŸ§ª Uji Terima Dagangan cTrader' : 'ðŸ§ª Test Sync Trade From cTrader'}</span>
-                  </button>
-                </div>
+                <span className="text-xs text-emerald-400 font-mono flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  ONLINE
+                </span>
               </div>
 
               {/* Big Action Buttons */}
@@ -1180,7 +477,7 @@ void OnTimer() {
                   className="w-full sm:flex-1 py-3 px-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/30 transition flex items-center justify-center gap-2"
                 >
                   <CheckCircle className="w-4 h-4" />
-                  <span>{isMalay ? 'âœ… Selesai & Buka AutoTrader Dashboard' : 'âœ… Done & Open AutoTrader Dashboard'}</span>
+                  <span>{isMalay ? '✅ Selesai & Buka Dashboard' : '✅ Done & Open Dashboard'}</span>
                 </button>
 
                 <button
@@ -1189,7 +486,7 @@ void OnTimer() {
                   className="w-full sm:w-auto py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl transition flex items-center justify-center gap-2 border border-slate-700"
                 >
                   <Sliders className="w-4 h-4" />
-                  <span>{isMalay ? 'âš™ï¸ Tukar / Re-Connect Akaun' : 'âš™ï¸ Re-Configure Connection'}</span>
+                  <span>{isMalay ? '⚙️ Tukar / Re-Connect Akaun' : '⚙️ Re-Configure Connection'}</span>
                 </button>
 
                 <button
@@ -1203,224 +500,137 @@ void OnTimer() {
                 </button>
               </div>
             </div>
-          ) : (
-            <>
-              {/* Back to Connected Card option if user expanded form while connected */}
-              {connection.isConnected && showFormWhenConnected && (
-                <div className="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300">
-                  <span className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-emerald-400" />
-                    <span>{isMalay ? 'Akaun semasa masih tersambung secara live.' : 'Current account is actively connected live.'}</span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowFormWhenConnected(false)}
-                    className="text-emerald-400 hover:underline text-xs font-bold"
-                  >
-                    {isMalay ? 'â† Kembali ke Status Akaun Aktif' : 'â† Back to Active Connection Card'}
-                  </button>
-                </div>
-              )}
-
-              {/* Quick Auto-fill Banners for Uploaded Screenshot Demo Accounts */}
-              <div className="space-y-2">
-                <div className="p-3 bg-gradient-to-r from-emerald-950/80 via-slate-900 to-teal-950/80 border border-emerald-500/40 rounded-xl flex items-center justify-between gap-3 shadow-md">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-2 bg-emerald-500/20 border border-emerald-500/40 rounded-lg text-emerald-400">
-                      <Zap className="w-5 h-5 animate-pulse" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                        <span>MetaQuotes-Demo (11075236)</span>
-                        <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-mono font-bold">
-                          $100,000 USD
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-300">
-                        {isMalay ? 'Akaun MT5 Demo yang dikesan dari imej anda.' : 'Detected MT5 Demo account from your uploaded screenshot.'}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleFillUploadedDemoAccount}
-                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg shadow-md transition shrink-0 flex items-center gap-1.5"
-                  >
-                    <CheckCircle className="w-4 h-4" />
-                    <span>{isMalay ? 'Sambung MT5' : 'Connect MT5'}</span>
-                  </button>
-                </div>
-
-                <div className="p-3 bg-gradient-to-r from-cyan-950/90 via-slate-900 to-blue-950/90 border border-cyan-500/50 rounded-xl flex items-center justify-between gap-3 shadow-md">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-2 bg-cyan-500/20 border border-cyan-500/40 rounded-lg text-cyan-400">
-                      <Zap className="w-5 h-5 animate-pulse" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                        <span>cTrader FIX API (#5877246)</span>
-                        <span className="text-[10px] bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 rounded font-mono font-bold">
-                          demo-uk-eqx-01
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-cyan-200/90">
-                        {isMalay ? 'Sambung cTrader FIX API Port 5212/5202 dikesan dari imej tangkapan skrin cTrader anda!' : 'Connect cTrader FIX API Port 5212/5202 detected from your cTrader screenshot!'}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleFillCtraderUploadedDemoAccount}
-                    className="px-3.5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs rounded-lg shadow-md transition shrink-0 flex items-center gap-1.5"
-                  >
-                    <CheckCircle className="w-4 h-4" />
-                    <span>{isMalay ? 'Sambung cTrader' : 'Connect cTrader'}</span>
-                  </button>
-                </div>
-
-                {/* Direct Token Paste & Connect Banner */}
-                <div className="p-3 bg-slate-950 border border-purple-500/40 rounded-xl space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
-                      <Key className="w-4 h-4 text-purple-400" />
-                      <span>{isMalay ? 'Sambung Menggunakan Token Akses Broker' : 'Connect Using Broker Access Token'}</span>
-                    </span>
-                    <span className="text-[10px] font-mono text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">
-                      Base64 / JSON Token
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={inputToken}
-                      onChange={(e) => setInputToken(e.target.value)}
-                      placeholder="Tampal Token Broker (e.g. eyJwbGFudCI6...)"
-                      className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:border-purple-500 outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleConnectWithToken()}
-                      className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-lg transition shrink-0 flex items-center gap-1"
-                    >
-                      <span>{isMalay ? 'Pengesahan Token' : 'Verify Token'}</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-          {/* Connection Mode Selection Tabs */}
-          <div className="grid grid-cols-2 gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
-            <button
-              type="button"
-              onClick={() => setConnectMode('WEB_SSO')}
-              className={`py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 ${
-                connectMode === 'WEB_SSO'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-900'
-              }`}
-            >
-              <Zap className="w-4 h-4" />
-              <span>{isMalay ? 'ðŸŒ Log Masuk Portal Web Broker (OAuth SSO)' : 'ðŸŒ Broker Web Portal Login (OAuth SSO)'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setConnectMode('DIRECT_API')}
-              className={`py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 ${
-                connectMode === 'DIRECT_API'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-900'
-              }`}
-            >
-              <Sliders className="w-4 h-4" />
-              <span>{isMalay ? 'âš¡ Tetapan Manual Server API (MT4 / MT5)' : 'âš¡ Manual Server API Setup (MT4 / MT5)'}</span>
-            </button>
           </div>
-
-          {/* Quick Broker Preset Selector */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                âš¡ {isMalay ? 'Pilih Broker Popular (Auto-Isi Templat)' : 'Select Popular Broker Presets (Auto-Fill)'}
-              </label>
-              <span className="text-[10px] text-emerald-400 font-mono">
-                {isMalay ? 'ðŸ’¡ Klik butang di bawah untuk auto-pilih broker' : 'ðŸ’¡ Click below to auto-select broker'}
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {BROKER_PRESETS.map(p => (
+        ) : (
+          <>
+            {/* Back to Connected Card option if user expanded form while connected */}
+            {connection.isConnected && showFormWhenConnected && (
+              <div className="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300">
+                <span className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-400" />
+                  <span>{isMalay ? 'Akaun semasa masih tersambung secara live.' : 'Current account is actively connected live.'}</span>
+                </span>
                 <button
-                  key={p.name}
                   type="button"
-                  onClick={() => handleSelectPreset(p)}
-                  className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition flex items-center gap-1 ${
-                    brokerName === p.name
-                      ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300 shadow-sm'
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-900'
-                  }`}
+                  onClick={() => setShowFormWhenConnected(false)}
+                  className="text-emerald-400 hover:underline text-xs font-bold"
                 >
-                  <span>{p.name}</span>
-                  <span className="text-[9px] opacity-60 font-mono">({p.platform})</span>
+                  {isMalay ? '← Kembali ke Status Akaun Aktif' : '← Back to Active Connection Card'}
                 </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Connect Mode 1: WEB SSO PORTAL LOGIN */}
-          {connectMode === 'WEB_SSO' && (
-            <div className="bg-gradient-to-br from-emerald-950/50 via-slate-950 to-slate-950 border border-emerald-500/30 rounded-2xl p-5 space-y-4 shadow-xl">
-              <div className="flex items-start gap-3">
-                <div className="p-3 bg-emerald-500/20 border border-emerald-500/40 rounded-xl text-emerald-400 shrink-0">
-                  <ShieldCheck className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                    {isMalay ? `Log Masuk Melalui Portal Rasmi ${brokerName}` : `Login via Official ${brokerName} Web Portal`}
-                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded font-mono">
-                      256-Bit SSL OAuth 2.0
-                    </span>
-                  </h3>
-                  <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                    {isMalay 
-                      ? 'Cara paling mudah dan selamat! Anda akan dibawa ke halaman log masuk broker anda untuk memberi kebenaran sambungan. Baki akaun real dan ID trading akan disinkronkan secara automatik.' 
-                      : 'The easiest and most secure method! You will be redirected to your broker official login page to authorize connection. Real account balance and trading ID will be synced automatically.'
-                    }
-                  </p>
-                </div>
               </div>
+            )}
 
-              <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 text-xs text-slate-300 space-y-1 font-mono">
-                <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <span>Broker Terpilih:</span>
-                  <span className="text-emerald-400 font-bold">{brokerName} ({platform})</span>
-                </div>
-                <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <span>Protokol Kebenaran:</span>
-                  <span className="text-emerald-400">cTrader Open API / Web API SSO Gateway</span>
-                </div>
-                <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <span>Persekitaran:</span>
-                  <span className="text-amber-400 font-bold">{environment}</span>
-                </div>
-              </div>
+            {/* Connection Mode Selection Tabs */}
+            <div className="grid grid-cols-2 gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
+              <button
+                type="button"
+                onClick={() => setConnectMode('WEB_SSO')}
+                className={`py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 ${
+                  connectMode === 'WEB_SSO'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                }`}
+              >
+                <Zap className="w-4 h-4" />
+                <span>{isMalay ? '🌐 Log Masuk Portal Web Broker (OAuth SSO)' : '🌐 Broker Web Portal Login (OAuth SSO)'}</span>
+              </button>
 
               <button
                 type="button"
-                onClick={() => setShowBrokerWebPortalModal(true)}
-                className="w-full py-3.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/30 transition flex items-center justify-center gap-2"
+                onClick={() => setConnectMode('DIRECT_API')}
+                className={`py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 ${
+                  connectMode === 'DIRECT_API'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                }`}
               >
-                <Building2 className="w-4 h-4" />
-                <span>
-                  {isMalay 
-                    ? `ðŸš€ Buka Halaman Login Web Rasmi ${brokerName} & Sambung` 
-                    : `ðŸš€ Launch Official ${brokerName} Web Login Portal & Connect`
-                  }
-                </span>
+                <Sliders className="w-4 h-4" />
+                <span>{isMalay ? '⚡ Tetapan Manual Server API (MT4 / MT5)' : '⚡ Manual Server API Setup (MT4 / MT5)'}</span>
               </button>
             </div>
-          )}
 
-          {/* Helper Guide Accordion / Banner */}
+            {/* Quick Broker Preset Selector */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                  ⚡ {isMalay ? 'Pilih Broker Popular (Auto-Isi Templat)' : 'Select Popular Broker Presets (Auto-Fill)'}
+                </label>
+                <span className="text-[10px] text-emerald-400 font-mono">
+                  {isMalay ? '💡 Klik butang di bawah untuk auto-pilih broker' : '💡 Click below to auto-select broker'}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {BROKER_PRESETS.map(p => (
+                  <button
+                    key={p.name}
+                    type="button"
+                    onClick={() => handleSelectPreset(p)}
+                    className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition flex items-center gap-1 ${
+                      brokerName === p.name
+                        ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300 shadow-sm'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-900'
+                    }`}
+                  >
+                    <span>{p.name}</span>
+                    <span className="text-[9px] opacity-60 font-mono">({p.platform})</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Connect Mode 1: WEB SSO PORTAL LOGIN */}
+            {connectMode === 'WEB_SSO' && (
+              <div className="bg-gradient-to-br from-emerald-950/50 via-slate-950 to-slate-950 border border-emerald-500/30 rounded-2xl p-5 space-y-4 shadow-xl">
+                <div className="flex items-start gap-3">
+                  <div className="p-3 bg-emerald-500/20 border border-emerald-500/40 rounded-xl text-emerald-400 shrink-0">
+                    <ShieldCheck className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                      {isMalay ? `Log Masuk Melalui Portal Rasmi ${brokerName}` : `Login via Official ${brokerName} Web Portal`}
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded font-mono">
+                        256-Bit SSL OAuth 2.0
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                      {isMalay 
+                        ? 'Cara paling mudah dan selamat! Anda akan dibawa ke halaman log masuk broker anda untuk memberi kebenaran sambungan. Baki akaun real dan ID trading akan disinkronkan secara automatik.' 
+                        : 'The easiest and most secure method! You will be redirected to your broker official login page to authorize connection. Real account balance and trading ID will be synced automatically.'
+                      }
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 text-xs text-slate-300 space-y-1 font-mono">
+                  <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <span>Broker Terpilih:</span>
+                    <span className="text-emerald-400 font-bold">{brokerName} ({platform})</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <span>Protokol Kebenaran:</span>
+                    <span className="text-emerald-400">cTrader Open API / Web API SSO Gateway</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <span>Persekitaran:</span>
+                    <span className="text-amber-400 font-bold">{environment}</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowBrokerWebPortalModal(true)}
+                  className="w-full py-3.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/30 transition flex items-center justify-center gap-2"
+                >
+                  <Building2 className="w-4 h-4" />
+                  <span>
+                    {isMalay 
+                      ? `🚀 Buka Halaman Login Web Rasmi ${brokerName} & Sambung` 
+                      : `🚀 Launch Official ${brokerName} Web Login Portal & Connect`
+                    }
+                  </span>
+                </button>
+              </div>
+            )}
           {platform === 'CTRADER' ? (
             <div className="p-3.5 bg-emerald-950/40 border border-emerald-500/40 rounded-xl text-xs text-emerald-200 space-y-2">
               <div className="flex items-center gap-2 font-bold text-emerald-300">
@@ -1555,25 +765,8 @@ void OnTimer() {
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-500/30 pb-2">
                   <span className="text-xs font-bold text-emerald-300 flex items-center gap-1.5 font-mono">
                     <Wifi className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-                    âš¡ cTrader FIX API Protocol Settings (SSL Port 5212 / Plain 5202)
+                    ⚡ cTrader FIX API Protocol Settings (SSL Port 5212 / Plain 5202)
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setServerHost('demo-uk-eqx-01.p.c-trader.com');
-                      setPortNum(5212);
-                      setAccountNumber('5877246');
-                      setSenderCompId('demo.ctrader.5877246');
-                      setTargetCompId('cServer');
-                      setSenderSubId('TRADE');
-                      setApiKeyOrPassword('demo.ctrader.5877246');
-                      setApiSecret('5212');
-                      setConnectSuccessMsg(isMalay ? 'Maklumat FIX API cTrader (Akaun #5877246) telah diisi!' : 'cTrader FIX API credentials (A/C #5877246) populated!');
-                    }}
-                    className="text-[10px] bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 hover:text-white px-2.5 py-1 rounded border border-emerald-500/40 font-mono font-bold transition flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>âœ¨ Auto-Fill cTrader FIX #5877246</span>
-                  </button>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
@@ -1585,7 +778,7 @@ void OnTimer() {
                       type="text"
                       value={senderCompId}
                       onChange={e => setSenderCompId(e.target.value)}
-                      placeholder="demo.ctrader.5877246"
+                      placeholder="e.g. demo.ctrader.12345"
                       className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-emerald-300 font-mono font-bold"
                     />
                   </div>
@@ -2029,9 +1222,6 @@ void OnTimer() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
-
-
-

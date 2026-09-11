@@ -19,24 +19,24 @@ export const TraderAccountModal: React.FC<TraderAccountModalProps> = ({
   const isMalay = language === 'ms';
 
   const [profile, setProfile] = useState<TraderProfile>({
-    id: 'trader-882910',
-    fullName: 'Pedagang Forex Pro',
-    email: 'trader@quantumfx.ai',
+    id: '',
+    fullName: '',
+    email: '',
     accountType: 'DEMO',
-    accountNumber: 'ACC-882910',
+    accountNumber: '',
     currency: 'USD',
     leverage: '1:500',
     riskTolerance: 'MODERATE',
-    kycVerified: true,
-    registeredAt: Date.now() - 86400000 * 30
+    kycVerified: false,
+    registeredAt: 0
   });
 
-  const [fullName, setFullName] = useState(profile.fullName);
-  const [email, setEmail] = useState(profile.email);
-  const [accountType, setAccountType] = useState<'DEMO' | 'REAL_MONEY'>(profile.accountType);
-  const [currency, setCurrency] = useState(profile.currency);
-  const [leverage, setLeverage] = useState(profile.leverage);
-  const [riskTolerance, setRiskTolerance] = useState<'CONSERVATIVE' | 'MODERATE' | 'AGGRESSIVE'>(profile.riskTolerance);
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [accountType, setAccountType] = useState<'DEMO' | 'REAL_MONEY'>('DEMO');
+  const [currency, setCurrency] = useState('USD');
+  const [leverage, setLeverage] = useState('1:500');
+  const [riskTolerance, setRiskTolerance] = useState<'CONSERVATIVE' | 'MODERATE' | 'AGGRESSIVE'>('MODERATE');
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 

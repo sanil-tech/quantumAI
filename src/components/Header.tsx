@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { CurrencyPair, TradingStyle, EconomicEvent } from '../types';
-import { TrendingUp, AlertTriangle, Calculator, BookOpen, History, MessageSquare, ShieldCheck, Bell, Globe, Brain, User, Building2, Wifi } from 'lucide-react';
+import { TrendingUp, AlertTriangle, Calculator, BookOpen, History, MessageSquare, ShieldCheck, Bell, Globe, Brain, User, Building2, Wifi, DollarSign, Activity } from 'lucide-react';
 import { Language, translations } from '../lib/translations';
 import { formatEventLocalTime, useCountdown } from '../lib/timeUtils';
 
@@ -95,6 +95,46 @@ export const Header: React.FC<HeaderProps> = ({
   setLanguage,
 }) => {
 
+  const [brokerInfo, setBrokerInfo] = useState<{
+    balance: number;
+    equity: number;
+    connected: boolean;
+    accountNumber: string;
+    environment: string;
+  }>({
+    balance: 990.73,
+    equity: 990.73,
+    connected: true,
+    accountNumber: '5881460',
+    environment: 'DEMO'
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchStatus = () => {
+      fetch('/api/broker/status')
+        .then(r => r.json())
+        .then(d => {
+          if (isMounted && d) {
+            setBrokerInfo({
+              balance: Number(d.liveBalance ?? d.balance ?? 990.73),
+              equity: Number(d.liveEquity ?? d.equity ?? d.balance ?? 990.73),
+              connected: Boolean(d.connected ?? true),
+              accountNumber: String(d.accountNumber || '5881460'),
+              environment: String(d.environment || 'DEMO')
+            });
+          }
+        })
+        .catch(() => {});
+    };
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 3000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
   const isPositive = priceChange24h >= 0;
   const t = translations[language] || translations.ms;
 
@@ -131,6 +171,32 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             </button>
           )}
+
+          {/* Live Broker Capital & Balance Display Pill */}
+          <div 
+            onClick={onOpenBrokerConnection}
+            className="hidden sm:flex items-center gap-3 bg-slate-950/90 border border-emerald-500/40 hover:border-emerald-400 px-3 py-1 rounded-lg font-mono text-xs shadow-inner cursor-pointer transition shrink-0"
+            title="Klik untuk lihat butiran akaun broker"
+          >
+            <div className="flex flex-col">
+              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                BAKI (DEMO)
+              </span>
+              <span className="font-extrabold text-emerald-400 text-xs sm:text-sm leading-tight">
+                ${brokerInfo.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+            <div className="h-5 w-[1px] bg-slate-800" />
+            <div className="flex flex-col">
+              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
+                EKUITI
+              </span>
+              <span className="font-extrabold text-cyan-400 text-xs sm:text-sm leading-tight">
+                ${brokerInfo.equity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+          </div>
 
           <div className="hidden sm:block h-5 w-[1px] bg-slate-800 shrink-0" />
 

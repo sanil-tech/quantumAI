@@ -1,8 +1,9 @@
 import { CurrencyPair, Timeframe, BacktestResult, BacktestTrade, MultiPairOneYearBacktestResult, OneYearPairSummary } from "../../../../src/types";
-import { fetchRealCandleHistory } from "../../../../src/lib/marketDataGenerator";
+import { fetchRealCandleHistory, fetchRealCandleEnvelopeDetailed } from "../../../../src/lib/marketDataGenerator";
 import { calculateAllIndicators } from "../../../../src/lib/indicators";
 import { analyzeSmcStructures } from "@iati/core";
 import { aiDecisionEngine } from "./aiDecisionEngine";
+
 
 let latest1YearBacktestResult: MultiPairOneYearBacktestResult | null = null;
 let isBacktestRunning = false;
@@ -219,7 +220,21 @@ export class BacktestEngine {
       let grandTotalPnl = 0;
 
       for (const pair of pairs) {
-        const candles = await fetchRealCandleHistory(pair, 'D1', 365);
+        let candles: any[] = [];
+        let provenance: 'HISTORICAL_BACKTEST' | 'SYNTHETIC_SIMULATION' = 'HISTORICAL_BACKTEST';
+        let dataSource = 'EXTERNAL_HISTORICAL';
+        let fallbackUsed = false;
+
+        try {
+          const detailed = await fetchRealCandleEnvelopeDetailed(pair, 'D1', 365);
+          candles = detailed.candles;
+          provenance = detailed.provenance;
+          dataSource = detailed.dataSource;
+          fallbackUsed = detailed.fallbackUsed;
+        } catch {
+          candles = await fetchRealCandleHistory(pair, 'D1', 365);
+        }
+
         const decimals = pair === 'USD/JPY' ? 3 : (pair === 'XAU/USD' || pair === 'NASDAQ' || pair === 'BTC/USD') ? 2 : 5;
 
         let winCount = 0;
@@ -291,12 +306,17 @@ export class BacktestEngine {
                 lessonLearnedEn: `365-day pattern confirms ${pair} requires wider entry zone buffers during trend transition phases.`,
                 adaptiveRuleMs: ruleTextMs,
                 adaptiveRuleEn: ruleTextEn,
-                ratingScore: 3
+                ratingScore: 3,
+                provenance: provenance || (fallbackUsed ? 'SYNTHETIC_SIMULATION' : 'HISTORICAL_BACKTEST'),
+                authority: fallbackUsed ? 'SIMULATION_ONLY' : 'BACKTEST_ENGINE',
+                dataSource: dataSource || (fallbackUsed ? 'SYNTHETIC_FALLBACK' : 'EXTERNAL_HISTORICAL'),
+                fallbackUsed
               });
             }
           }
           totalPnl += pnlDollars;
         }
+
 
         const totalExecuted = winCount + lossCount;
         const winRatePercent = Number(((winCount / Math.max(1, totalExecuted)) * 100).toFixed(1));

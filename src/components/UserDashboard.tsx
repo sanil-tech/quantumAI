@@ -1,50 +1,43 @@
-﻿import React, { useState, useEffect } from 'react';
-import { CurrencyPair, CandleData, IndicatorValues, SmcStructures, SupportResistanceZone } from '../types';
-import { 
-  Zap, ShieldCheck, CheckCircle, CheckCircle2, Download, AlertTriangle, TrendingUp, TrendingDown, 
-  Bot, Award, User, RefreshCw, Layers, Sparkles, Play, XCircle, ChevronRight, 
+import React, { useState, useEffect } from 'react';
+import { CurrencyPair, CandleData, IndicatorValues, SmcStructures, SupportResistanceZone, AiTradeOpportunity, Timeframe, TradingStyle, EconomicEvent } from '../types';
+import { AiAnalysisCard } from './AiAnalysisCard';
+import {
+  Zap, ShieldCheck, CheckCircle, CheckCircle2, Download, AlertTriangle, TrendingUp, TrendingDown,
+  Bot, Award, User, RefreshCw, Layers, Sparkles, Play, Pause, XCircle, ChevronRight,
   BarChart3, Activity, ArrowUpRight, ArrowDownRight, Clock, Target, DollarSign,
   Lock, Key, HelpCircle, FileText, Check, Cpu, Power, Sliders, Shield, Terminal,
-  Radio, CheckSquare, Sparkle, AlertCircle, History
+  Radio, CheckSquare, Sparkle, AlertCircle, History, Eye, Calendar
 } from 'lucide-react';
 import { ChartWidget } from './ChartWidget';
 import { BrokerConnectionModal } from './BrokerConnectionModal';
 import { SystemSafetyBanner, SystemEnvironment, MarketDataLineage, ReadinessStatus } from './SystemSafetyBanner';
+import { IndicatorsPanel } from './IndicatorsPanel';
+import { SMCPanel } from './SMCPanel';
+import { DemoTraderCommandCenter } from './DemoTraderCommandCenter';
+import { EconomicCalendarWidget } from './EconomicCalendarWidget';
 
-interface PracticeTrade {
-  id: string;
-  pair: CurrencyPair;
-  direction: 'BUY' | 'SELL';
-  lotSize: number;
-  entryPrice: number;
-  closePrice?: number;
-  stopLoss: number;
-  takeProfit: number;
-  openTime: number;
-  closeTime?: number;
-  pnl: number;
-  status: 'OPEN' | 'CLOSED';
-  aiFeedback?: {
-    grade: 'A+' | 'A' | 'B' | 'C' | 'D';
-    liquidityScore: number;
-    rrRatioScore: number;
-    disciplineRating: number;
-    summary: string;
-    strengths: string[];
-    improvements: string[];
-  };
-}
+
 
 interface UserDashboardProps {
   currentPrice: number;
   activePair: CurrencyPair;
   setActivePair: (pair: CurrencyPair) => void;
   candles: CandleData[];
+  candleSource?: string;
   indicators?: IndicatorValues;
   smcData?: SmcStructures;
   srZones?: SupportResistanceZone[];
   isMalay: boolean;
   onOpenBrokerModal: () => void;
+  timeframe?: Timeframe;
+  setTimeframe?: (timeframe: Timeframe) => void;
+  onRefreshData?: () => void;
+  aiOpportunity?: AiTradeOpportunity | null;
+  aiLoading?: boolean;
+  onOpenAdaptiveLearning?: () => void;
+  onAskAi?: (prompt: string) => void;
+  onSyncToRiskCalc?: (opp: AiTradeOpportunity) => void;
+  onLogToJournal?: (opp: AiTradeOpportunity) => void;
 }
 
 export const UserDashboard: React.FC<UserDashboardProps> = ({
@@ -52,81 +45,206 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   activePair,
   setActivePair,
   candles,
+  candleSource = 'UNKNOWN',
   indicators,
   smcData,
   srZones,
   isMalay,
-  onOpenBrokerModal
+  onOpenBrokerModal,
+  timeframe = 'M15',
+  setTimeframe,
+  onRefreshData,
+  aiOpportunity = null,
+  aiLoading = false,
+  onOpenAdaptiveLearning,
+  onAskAi,
+  onSyncToRiskCalc,
+  onLogToJournal
 }) => {
-  const [activeTab, setActiveTab] = useState<'STATISTICS' | 'AUTOTRADER' | 'PRACTICE_SIM' | 'BROKER_CONNECT' | 'USER_PROFILE'>('AUTOTRADER');
+  const [activeTab, setActiveTab] = useState<'DEMO_COMMAND_CENTER' | 'MANUAL_DESK' | 'ECONOMIC_CALENDAR' | 'STATISTICS' | 'BROKER_CONNECT' | 'USER_PROFILE'>('DEMO_COMMAND_CENTER');
+  // PHASE 6C & 6D: Manual Trading Desk & Live Market Monitoring States
+  const [manualTrades, setManualTrades] = useState<any[]>([]);
+  const [monitoringSnapshots, setMonitoringSnapshots] = useState<any[]>([]);
+  const [monitoringAlerts, setMonitoringAlerts] = useState<any[]>([]);
+  const [manualTradesLoading, setManualTradesLoading] = useState<boolean>(false);
+  const [closeModalTrade, setCloseModalTrade] = useState<any | null>(null);
+  const [closeExitPrice, setCloseExitPrice] = useState<string>('');
+  const [closeExitReason, setCloseExitReason] = useState<string>('MANUAL_EXIT');
+  const [closeUserNotes, setCloseUserNotes] = useState<string>('');
+  const [closeSubmitting, setCloseSubmitting] = useState<boolean>(false);
+  const [closeError, setCloseError] = useState<string | null>(null);
+  const [closeSuccess, setCloseSuccess] = useState<string | null>(null);
 
-  // User Profile & Onboarding Registration State
-  const [userProfile] = useState({
-    name: 'Sanil Bansal',
-    email: 'sanilbans88@gmail.com',
-    phone: '+60 12-345 6789',
-    tier: 'VIP_PREMIUM',
-    subscriptionExpiresAt: '2027-08-08',
-    profileCompletedPercent: 100,
-    traderExperience: 'INTERMEDIATE',
-    preferredPairs: ['EUR/USD', 'GBP/USD', 'XAU/USD'],
-    riskTolerance: 'BALANCED',
-    isEmailVerified: true,
-    isKycVerified: true,
-  });
+  // Economic Calendar Events State
+  const [economicEvents, setEconomicEvents] = useState<EconomicEvent[]>([]);
 
-  // Autonomous AI Auto-Trader SaaS States
-  const [isAiAutoPilotActive, setIsAiAutoPilotActive] = useState<boolean>(true);
-  const [selectedBrokerAccount, setSelectedBrokerAccount] = useState<'CTRADER' | 'MT5'>('CTRADER');
-  const [selectedStrategyPreset, setSelectedStrategyPreset] = useState<'QUANTUM_SMC' | 'SCALPER_PRO' | 'SWING_MASTER'>('QUANTUM_SMC');
-  const [riskPercentPerTrade, setRiskPercentPerTrade] = useState<number>(1.0);
-  const [maxConcurrentPositions, setMaxConcurrentPositions] = useState<number>(2);
-  const [hardDailyLossCap, setHardDailyLossCap] = useState<number>(300);
-  const [isNewsAvoidanceEnabled, setIsNewsAvoidanceEnabled] = useState<boolean>(true);
-  const [isTrailingStopEnabled, setIsTrailingStopEnabled] = useState<boolean>(true);
+  // Consolidated Observatory & Learning States
+  const [campaignStatus, setCampaignStatus] = useState<any>({ status: 'STOPPED', targetTrades: 30, completedTrades: 0, remainingTrades: 30, isDemoArmed: false });
+  const [observatoryStatus, setObservatoryStatus] = useState<any>({ state: 'PAUSED', observationsCount: 0 });
+  const [earlyLearnerStats, setEarlyLearnerStats] = useState<any>({ evidenceLevel: 0, adaptations: [], counterfactuals: [] });
+  const [shadowTrades, setShadowTrades] = useState<any[]>([]);
+  const [completedShadowTrades, setCompletedShadowTrades] = useState<any[]>([]);
+  const [learningJournal, setLearningJournal] = useState<any[]>([]);
+
+  // Closed Trades History Filter & Pagination States
+  const [closedHistoryPage, setClosedHistoryPage] = useState<number>(1);
+  const [closedHistoryFilterPair, setClosedHistoryFilterPair] = useState<string>('ALL');
+  const [closedHistoryFilterOutcome, setClosedHistoryFilterOutcome] = useState<string>('ALL');
+  const [authoritativeSummary, setAuthoritativeSummary] = useState<any>(null);
+
+  const fetchManualTrades = async () => {
+    setManualTradesLoading(true);
+    try {
+      const [tradesRes, monRes, campaignRes, obsStatusRes, learnerRes, obsTradesRes, journalRes, autotraderRes, ecoRes] = await Promise.all([
+        fetch('/api/forex/user-trades').catch(() => null),
+        fetch('/api/forex/user-trades/monitoring').catch(() => null),
+        fetch('/api/forex/learning/campaign-status').catch(() => null),
+        fetch('/api/forex/learning/observatory/status').catch(() => null),
+        fetch('/api/forex/learning/early-learner').catch(() => null),
+        fetch('/api/forex/learning/observatory/observations').catch(() => null),
+        fetch('/api/forex/learning/journal').catch(() => null),
+        fetch('/api/autotrader/state').catch(() => null),
+        fetch('/api/forex/economic-calendar').catch(() => null)
+      ]);
+
+      if (tradesRes && tradesRes.ok) {
+        const tradesData = await tradesRes.json();
+        if (tradesData.trades) setManualTrades(tradesData.trades);
+      }
+      if (monRes && monRes.ok) {
+        const monData = await monRes.json();
+        if (monData.snapshots) setMonitoringSnapshots(monData.snapshots);
+        if (monData.alerts) setMonitoringAlerts(monData.alerts);
+      }
+      if (campaignRes && campaignRes.ok) {
+        const data = await campaignRes.json();
+        setCampaignStatus(data);
+      }
+      if (obsStatusRes && obsStatusRes.ok) {
+        const data = await obsStatusRes.json();
+        setObservatoryStatus(data);
+      }
+      if (learnerRes && learnerRes.ok) {
+        const data = await learnerRes.json();
+        setEarlyLearnerStats(data);
+      }
+      if (obsTradesRes && obsTradesRes.ok) {
+        const data = await obsTradesRes.json();
+        if (data.active) setShadowTrades(data.active);
+        if (data.completed) setCompletedShadowTrades(data.completed);
+        if (data.summary) setAuthoritativeSummary(data.summary);
+      }
+      if (journalRes && journalRes.ok) {
+        const data = await journalRes.json();
+        if (data.events) setLearningJournal(data.events);
+      }
+      if (autotraderRes && autotraderRes.ok) {
+        const atData = await autotraderRes.json();
+        const closed = atData?.state?.closedTrades || atData?.closedTrades || [];
+        setClosedAutoTrades(closed);
+      }
+      if (ecoRes && ecoRes.ok) {
+        const ecoData = await ecoRes.json();
+        if (Array.isArray(ecoData.events)) {
+          setEconomicEvents(ecoData.events);
+        }
+      }
+    } catch (e) {
+      console.error('Error fetching manual and learning states:', e);
+    } finally {
+      setManualTradesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchManualTrades();
+    const interval = setInterval(fetchManualTrades, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleOpenCloseModal = (trade: any) => {
+    setCloseModalTrade(trade);
+    const defaultP = (trade.symbol === activePair && currentPrice > 0) ? currentPrice : trade.actualEntry;
+    setCloseExitPrice(defaultP.toFixed(trade.symbol === 'USD/JPY' ? 3 : 5));
+    setCloseExitReason('MANUAL_EXIT');
+    setCloseUserNotes('');
+    setCloseError(null);
+    setCloseSuccess(null);
+  };
+
+  const handleConfirmCloseTrade = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!closeModalTrade) return;
+
+    setCloseSubmitting(true);
+    setCloseError(null);
+
+    const exitPriceNum = Number(closeExitPrice);
+    if (!Number.isFinite(exitPriceNum) || exitPriceNum <= 0) {
+      setCloseError('Exit price must be a valid positive number.');
+      setCloseSubmitting(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/forex/user-trades/${closeModalTrade.manualTradeId}/close`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          exitPrice: exitPriceNum,
+          exitReason: closeExitReason,
+          exitedAt: new Date().toISOString(),
+          userNotes: closeUserNotes
+        })
+      });
+
+      const resJson = await res.json();
+      if (!res.ok || !resJson.success) {
+        throw new Error(resJson.error || 'Failed to close manual trade.');
+      }
+
+      setCloseSuccess(`Trade ${closeModalTrade.manualTradeId} closed successfully! Realized PnL: ${resJson.trade?.realizedPnl}`);
+      await fetchManualTrades();
+      setTimeout(() => {
+        setCloseModalTrade(null);
+        setCloseSuccess(null);
+      }, 1500);
+    } catch (err: any) {
+      setCloseError(err.message || 'Error closing trade');
+    } finally {
+      setCloseSubmitting(false);
+    }
+  };
+
 
   // Server-connected state containers
   const [serverBrokerConn, setServerBrokerConn] = useState<any>({
-    accountNumber: '5877246',
+    accountNumber: '',
     brokerName: 'Spotware cTrader Open API',
     platform: 'CTRADER',
-    serverHost: 'demo-uk-eqx-01.p.c-trader.com',
+    serverHost: '',
     environment: 'DEMO',
-    isConnected: true,
-    lastConnectedAt: Date.now(),
-    latencyMs: 8,
-    liveBalance: 1136.03,
-    liveEquity: 1136.03,
+    isConnected: false,
+    lastConnectedAt: null,
+    latencyMs: null,
+    liveBalance: 0,
+    liveEquity: 0,
     maxDailyLossDollars: 250.00,
     maxLotSizeCap: 0.5,
-    autoExecuteRealMoney: true
+    autoExecuteRealMoney: false
   });
 
-  const [serverTraderProfileData, setServerTraderProfileData] = useState<any>({
-    fullName: 'Sanil Bansal',
-    email: 'sanilbans88@gmail.com',
-    accountType: 'REAL_MONEY',
-    accountNumber: '5877246',
-    currency: 'EUR',
-    leverage: '1:500',
-    riskTolerance: 'MODERATE',
-    kycVerified: true
-  });
+  const [serverTraderProfileData, setServerTraderProfileData] = useState<any>(null);
 
   const [serverAutoTraderStateData, setServerAutoTraderStateData] = useState<any>({
-    balance: 1136.03,
-    initialCapital: 1136.03
+    balance: 0,
+    initialCapital: 0
   });
 
   // Auto-Trader Live Trades, Closed History & Logs from Server
   const [liveAutoTrades, setLiveAutoTrades] = useState<any[]>([]);
   const [closedAutoTrades, setClosedAutoTrades] = useState<any[]>([]);
-  const [autoTraderLogs, setAutoTraderLogs] = useState<any[]>([
-    { id: '1', timestamp: new Date().toLocaleTimeString(), text: 'ðŸ¤– Quantum AI Engine initialized in Autonomous Mode.', type: 'INFO' },
-    { id: '2', timestamp: new Date().toLocaleTimeString(), text: 'ðŸ”Œ Live cTrader Open API Bridge active (#5877246 - demo-uk-eqx-01.p.c-trader.com).', type: 'INFO' },
-    { id: '3', timestamp: new Date().toLocaleTimeString(), text: 'ðŸŽ¯ Active Strategy: Quantum SMC Liquidity Hunter (H1/H4 Order Block Confirmation).', type: 'INFO' },
-    { id: '4', timestamp: new Date().toLocaleTimeString(), text: 'ðŸ›¡ï¸ Capital Guard: Risk 1.0% per trade ($100), Hard Stop Daily $250.00.', type: 'INFO' }
-  ]);
+  const [autoTraderLogs, setAutoTraderLogs] = useState<any[]>([]);
   const [isDispatchingSignal, setIsDispatchingSignal] = useState<boolean>(false);
 
   // Safety & Readiness Banner State
@@ -134,7 +252,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
     environment: 'DEMO' as SystemEnvironment,
     marketDataLineage: 'LIVE' as MarketDataLineage,
     brokerConnected: true,
-    isArmed: true,
+    isArmed: false,
     killSwitchActive: false,
     readinessStatus: 'READY' as ReadinessStatus
   });
@@ -236,7 +354,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
         environment: env,
         marketDataLineage: lineage,
         brokerConnected: bConnected,
-        isArmed: armed,
+        isArmed: false,
         killSwitchActive: ksActive,
         readinessStatus: compStatus
       });
@@ -253,390 +371,6 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
     return () => clearInterval(interval);
   }, []);
 
-  // Trigger Live Test AI Trade Dispatch to Connected Broker Account
-  const [isManualSyncModalOpen, setIsManualSyncModalOpen] = useState<boolean>(false);
-  const [manualSyncForm, setManualSyncForm] = useState({
-    symbol: 'EUR/USD',
-    direction: 'BUY',
-    lotSize: '0.10',
-    entryPrice: '1.08520',
-    ticketId: '',
-    stopLoss: '1.08200',
-    takeProfit: '1.09100'
-  });
-  const [isSubmittingManualSync, setIsSubmittingManualSync] = useState<boolean>(false);
-
-  const handleSyncManualCtraderTrade = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setIsSubmittingManualSync(true);
-    try {
-      const ticket = manualSyncForm.ticketId || `ticket_${Date.now()}`;
-      const price = Number(manualSyncForm.entryPrice) || (manualSyncForm.symbol === 'XAU/USD' ? 2425.50 : 1.08520);
-      
-      const payload = {
-        accountNumber: serverBrokerConn?.accountNumber || '5877246',
-        manualPosition: {
-          ticketId: ticket,
-          pair: manualSyncForm.symbol,
-          direction: manualSyncForm.direction,
-          lotSize: Number(manualSyncForm.lotSize) || 0.10,
-          entryPrice: price,
-          stopLoss: Number(manualSyncForm.stopLoss) || 0,
-          takeProfit: Number(manualSyncForm.takeProfit) || 0,
-          pnl: 0
-        }
-      };
-
-      const res = await fetch('/api/broker/ctrader-webhook', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        setIsManualSyncModalOpen(false);
-        fetchAllServerStates();
-        alert(`âœ… Trade cTrader #${ticket} (${manualSyncForm.direction} ${manualSyncForm.symbol}) berjaya disinkronkan ke Web App!`);
-      }
-    } catch (err: any) {
-      console.error(err);
-      alert('Gagal menyelaraskan trade manual: ' + err.message);
-    } finally {
-      setIsSubmittingManualSync(false);
-    }
-  };
-
-  const handleTriggerTestAiTrade = async (direction: 'BUY' | 'SELL') => {
-    setIsDispatchingSignal(true);
-    try {
-      const pair = activePair;
-      const entry = currentPrice;
-      const isJPY = pair === 'USD/JPY';
-      const isXAU = pair === 'XAU/USD';
-      const pipMult = isJPY ? 0.01 : isXAU ? 0.10 : 0.0001;
-
-      const sl = direction === 'BUY' ? entry - (20 * pipMult) : entry + (20 * pipMult);
-      const tp = direction === 'BUY' ? entry + (60 * pipMult) : entry - (60 * pipMult);
-
-      const setupObj = {
-        id: `ai-setup-${Date.now()}`,
-        pair,
-        direction,
-        timeframe: 'H1',
-        entryZoneLow: entry - (5 * pipMult),
-        entryZoneHigh: entry + (5 * pipMult),
-        stopLoss: sl,
-        takeProfit1: tp,
-        takeProfit2: direction === 'BUY' ? entry + (100 * pipMult) : entry - (100 * pipMult),
-        reasoning: 'AI Autonomous SMC Engine: High-Probability H1 Order Block + Liquidity Sweep Confirmation.',
-        confidencePercent: 92,
-        rrRatio: 3.0,
-        lotSize: 0.10
-      };
-
-      const res = await fetch('/api/autotrader/open', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ setup: setupObj })
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        setAutoTraderLogs(prev => [
-          {
-            id: `dispatch-${Date.now()}`,
-            timestamp: new Date().toLocaleTimeString(),
-            text: `âš¡ [LIVE DISPATCH SUCCESS] AI Trade ${direction} ${pair} @ ${entry.toFixed(5)} dispatched directly to connected ${selectedBrokerAccount} account! Ticket #${data.mt5Ticket || 'FIX-8849201'}.`,
-            type: 'WIN'
-          },
-          ...prev
-        ]);
-        fetchAutoTraderState();
-      }
-    } catch (err: any) {
-      console.error(err);
-      alert('Error dispatching AI trade: ' + err.message);
-    } finally {
-      setIsDispatchingSignal(false);
-    }
-  };
-
-  // Close Specific Open AI Position and Sync with Server Bridge
-  const handleCloseLiveAutoTrade = async (tradeId: string) => {
-    try {
-      const tradeToClose = liveAutoTrades.find(t => t.id === tradeId);
-      const pair = tradeToClose?.pair || activePair;
-      const liveP = pair === activePair ? currentPrice : (tradeToClose?.entryPrice || 1.0);
-      const exitPrice = liveP;
-
-      const res = await fetch('/api/autotrader/trade/close', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tradeId,
-          exitPrice,
-          closeReason: 'MANUAL_CLOSE',
-          pair: tradeToClose?.pair,
-          direction: tradeToClose?.direction,
-          entryPrice: tradeToClose?.entryPrice,
-          lotSize: tradeToClose?.lotSize
-        })
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        setLiveAutoTrades(prev => prev.filter(t => t.id !== tradeId));
-        setAutoTraderLogs(prev => [
-          {
-            id: `close-log-${Date.now()}`,
-            timestamp: new Date().toLocaleTimeString(),
-            text: `ðŸ–ï¸ [MANUAL CLOSE SUCCESS] Posisi ${tradeToClose?.direction || ''} ${tradeToClose?.pair || ''} ditutup pada harga ${exitPrice.toFixed(5)}. Diselaras ke bridge broker!`,
-            type: 'INFO'
-          },
-          ...prev
-        ]);
-        fetchAutoTraderState();
-      }
-    } catch (err: any) {
-      console.error(err);
-      alert('Error closing position: ' + err.message);
-    }
-  };
-
-  // Close All Active Open AI Positions
-  const handleCloseAllLiveAutoTrades = async () => {
-    if (liveAutoTrades.length === 0) return;
-    if (!confirm('Adakah anda pasti mahu menutup SEMUA posisi AI yang sedang terbuka untuk Akaun Broker Sanil Bansal?')) return;
-
-    try {
-      const res = await fetch('/api/autotrader/trade/close-all', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      const data = await res.json();
-      if (data.success) {
-        setLiveAutoTrades([]);
-        setAutoTraderLogs(prev => [
-          {
-            id: `close-all-${Date.now()}`,
-            timestamp: new Date().toLocaleTimeString(),
-            text: `ðŸš¨ [CLOSE ALL SUCCESS] Semua posisi aktif telah ditutup dan diselaraskan ke cTrader bridge!`,
-            type: 'INFO'
-          },
-          ...prev
-        ]);
-        fetchAutoTraderState();
-      } else {
-        // Fallback individual close
-        for (const t of liveAutoTrades) {
-          await handleCloseLiveAutoTrade(t.id);
-        }
-      }
-    } catch (err: any) {
-      console.error(err);
-      for (const t of liveAutoTrades) {
-        await handleCloseLiveAutoTrade(t.id);
-      }
-    }
-  };
-
-  // Helper: Real-time Floating PnL calculation based on live currentPrice
-  const calculateFloatingPnl = (trade: any) => {
-    if (!trade) return 0;
-    // 1. If trade already carries synced PnL from cTrader / MT5 terminal, use it directly!
-    if (typeof trade.pnl === 'number' && !isNaN(trade.pnl)) {
-      return Number(trade.pnl.toFixed(2));
-    }
-
-    const isBUY = trade.direction === 'BUY';
-    const entry = Number(trade.entryPrice || 0);
-    if (!entry) return 0;
-
-    // 2. Only use currentPrice if trade.pair matches the active chart pair
-    const tradePair = String(trade.pair || activePair);
-    const isSamePair = tradePair === activePair;
-    const liveP = isSamePair && currentPrice > 0 ? currentPrice : entry;
-
-    const diff = isBUY ? (liveP - entry) : (entry - liveP);
-
-    let pnlMult = 100000; // Standard forex lot multiplier ($10 per pip on 1.0 lot)
-    if (tradePair.includes('JPY')) pnlMult = 1000;
-    if (tradePair.includes('XAU')) pnlMult = 100;
-    if (tradePair.includes('BTC') || tradePair.includes('NAS')) pnlMult = 1;
-
-    const lot = Number(trade.lotSize || 0.1);
-    const pnlVal = diff * lot * pnlMult;
-    return Number(pnlVal.toFixed(2));
-  };
-
-  // Practice Simulator State
-  const [simLot, setSimLot] = useState<number>(0.10);
-  const [simDirection, setSimDirection] = useState<'BUY' | 'SELL'>('BUY');
-  const [simSlPips, setSimSlPips] = useState<number>(20);
-  const [simTpPips, setSimTpPips] = useState<number>(40);
-  const [practiceTrades, setPracticeTrades] = useState<PracticeTrade[]>(() => {
-    try {
-      const saved = localStorage.getItem('practice_trades_history');
-      return saved ? JSON.parse(saved) : [
-        {
-          id: 'sim-101',
-          pair: 'EUR/USD',
-          direction: 'BUY',
-          lotSize: 0.10,
-          entryPrice: 1.08250,
-          closePrice: 1.08650,
-          stopLoss: 1.08050,
-          takeProfit: 1.08650,
-          openTime: Date.now() - 3600000 * 4,
-          closeTime: Date.now() - 3600000,
-          pnl: 40.00,
-          status: 'CLOSED',
-          aiFeedback: {
-            grade: 'A+',
-            liquidityScore: 96,
-            rrRatioScore: 92,
-            disciplineRating: 98,
-            summary: 'Tangkapan semula jadi Liquidity Sweep H1 yang sangat tepat. Entri berdisiplin tinggi mengikut SOP Smart Money Concepts!',
-            strengths: ['Tepat pada Zon Demand H1', 'Nisbah Risk-to-Reward 1:2 dipatuhi', 'Tiada Emosi FOMO'],
-            improvements: ['Boleh gunakan Trailing Stop untuk memaksimumkan profit gelombang swing.']
-          }
-        }
-      ];
-    } catch (e) {
-      return [];
-    }
-  });
-
-  const [activeFeedbackTrade, setActiveFeedbackTrade] = useState<PracticeTrade | null>(null);
-  const [isGeneratingFeedback, setIsGeneratingFeedback] = useState(false);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('practice_trades_history', JSON.stringify(practiceTrades));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [practiceTrades]);
-
-  // Handle Practice Entry Execution
-  const handleExecutePracticeTrade = () => {
-    const isJPY = activePair === 'USD/JPY';
-    const isXAU = activePair === 'XAU/USD';
-    const pipMult = isJPY ? 0.01 : isXAU ? 0.10 : 0.0001;
-
-    const entry = currentPrice;
-    const sl = simDirection === 'BUY' ? entry - (simSlPips * pipMult) : entry + (simSlPips * pipMult);
-    const tp = simDirection === 'BUY' ? entry + (simTpPips * pipMult) : entry - (simTpPips * pipMult);
-
-    const newTrade: PracticeTrade = {
-      id: `sim-${Date.now()}`,
-      pair: activePair,
-      direction: simDirection,
-      lotSize: simLot,
-      entryPrice: entry,
-      stopLoss: sl,
-      takeProfit: tp,
-      openTime: Date.now(),
-      pnl: 0,
-      status: 'OPEN'
-    };
-
-    setPracticeTrades(prev => [newTrade, ...prev]);
-  };
-
-  // Close Practice Trade and Trigger Gemini AI Feedback
-  const handleClosePracticeTrade = async (tradeId: string) => {
-    const trade = practiceTrades.find(t => t.id === tradeId);
-    if (!trade) return;
-
-    const closeP = currentPrice;
-    const diff = trade.direction === 'BUY' ? closeP - trade.entryPrice : trade.entryPrice - closeP;
-    const isJPY = trade.pair === 'USD/JPY';
-    const isXAU = trade.pair === 'XAU/USD';
-    const pipDiv = isJPY ? 0.01 : isXAU ? 0.10 : 0.0001;
-    const pipsWon = diff / pipDiv;
-    const calculatedPnl = Number((pipsWon * (trade.lotSize * 10)).toFixed(2));
-
-    setIsGeneratingFeedback(true);
-
-    try {
-      const res = await fetch('/api/ai-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: `Berikan maklum balas latihan (Post-Trade Feedback) untuk latihan dagangan ini:
-Pasangan: ${trade.pair}
-Arah: ${trade.direction}
-Harga Entri: ${trade.entryPrice}
-Harga Tutup: ${closeP}
-Stop Loss: ${trade.stopLoss}
-Take Profit: ${trade.takeProfit}
-PnL ($): ${calculatedPnl}
-Lot: ${trade.lotSize}
-
-Beri jawapan dalam format JSON sahaja seperti berikut:
-{
-  "grade": "A+",
-  "liquidityScore": 95,
-  "rrRatioScore": 90,
-  "disciplineRating": 98,
-  "summary": "Analisis ringkas dalam bahasa Melayu.",
-  "strengths": ["Kekuatan 1", "Kekuatan 2"],
-  "improvements": ["Langkah penambahbaikan 1"]
-}`
-        })
-      });
-
-      let aiResp;
-      if (res.ok) {
-        const data = await res.json();
-        const cleaned = (data.reply || '').replace(/```json|```/g, '').trim();
-        try {
-          aiResp = JSON.parse(cleaned);
-        } catch (e) {
-          aiResp = null;
-        }
-      }
-
-      if (!aiResp) {
-        const isProfit = calculatedPnl >= 0;
-        aiResp = {
-          grade: isProfit ? 'A' : 'B',
-          liquidityScore: isProfit ? 92 : 78,
-          rrRatioScore: 88,
-          disciplineRating: 95,
-          summary: isProfit 
-            ? 'Entri latihan yang cemerlang! Anda berjaya memanfaatkan struktur SMC dan nisbah Risk-to-Reward yang positif.'
-            : 'Latihan yang baik untuk pemahaman risiko. Pastikan entri sentiasa disokong oleh pengesahan zon Order Block atau Liquidity Sweep.',
-          strengths: [
-            'Disiplin penetapan Stop Loss awal dipatuhi',
-            'Pengurusan saiz lot bersesuaian dengan akaun'
-          ],
-          improvements: [
-            'Tunggu pengesahan Change of Character (CHoCH) di timeframe kecil M5 sebelum memasukkan pesanan.'
-          ]
-        };
-      }
-
-      const updatedTrade: PracticeTrade = {
-        ...trade,
-        closePrice: closeP,
-        closeTime: Date.now(),
-        pnl: calculatedPnl,
-        status: 'CLOSED',
-        aiFeedback: aiResp
-      };
-
-      setPracticeTrades(prev => prev.map(t => t.id === tradeId ? updatedTrade : t));
-      setActiveFeedbackTrade(updatedTrade);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsGeneratingFeedback(false);
-    }
-  };
-
   return (
     <div className="space-y-4 max-w-[1600px] mx-auto pb-12">
       {/* Consolidated System Safety & Readiness Banner */}
@@ -651,6 +385,310 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
         onToggleKillSwitch={handleToggleKillSwitch}
       />
 
+
+      {/* 1. PRIMARY QUANTUMAI STATUS BAR (Phase 5) */}
+      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl backdrop-blur-md">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-2.5 mb-3">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-200 font-mono">
+              QUANTUMAI SYSTEM STATUS TELEMETRY
+            </h3>
+          </div>
+          <span className="text-[10px] font-mono text-slate-400">
+            Fail-Closed Protected ? Read-Only Enforced
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 text-xs font-mono">
+          <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+            <span className="text-[9px] text-slate-400 block uppercase font-bold">? SYSTEM</span>
+            <span className="font-bold text-emerald-400">OPERATIONAL</span>
+          </div>
+
+          <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+            <span className="text-[9px] text-slate-400 block uppercase font-bold">? MARKET DATA</span>
+            <span className={`font-bold ${
+              candleSource === 'cTrader DEMO Open API (demo.ctraderapi.com)'
+                ? 'text-emerald-400'
+                : candleSource.includes('REST') || candleSource.includes('Yahoo')
+                ? 'text-amber-400 font-bold'
+                : 'text-rose-400 font-bold'
+            }`}>
+              {candleSource === 'cTrader DEMO Open API (demo.ctraderapi.com)'
+                ? 'LIVE cTRADER DATA'
+                : candleSource.includes('REST') || candleSource.includes('Yahoo')
+                ? 'HISTORICAL WARM-UP'
+                : 'WAITING FOR cTRADER HISTORY'}
+            </span>
+          </div>
+
+          <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+            <span className="text-[9px] text-slate-400 block uppercase font-bold">? AI ENGINE</span>
+            <span className={`font-bold ${aiLoading ? 'text-purple-400 animate-pulse' : (aiOpportunity ? 'text-cyan-400' : 'text-slate-300')}`}>
+              {aiLoading ? 'ANALYZING...' : (aiOpportunity ? 'OPP READY' : 'SCANNING')}
+            </span>
+          </div>
+
+          <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+            <span className="text-[9px] text-slate-400 block uppercase font-bold">? SHADOW MODE</span>
+            <span className="font-bold text-blue-400">READY (PAPER)</span>
+          </div>
+
+          <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+            <span className="text-[9px] text-slate-400 block uppercase font-bold">? DATABASE</span>
+            <span className="font-bold text-emerald-400">POSTGRESQL</span>
+          </div>
+
+          <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+            <span className="text-[9px] text-slate-400 block uppercase font-bold">? cTRADER</span>
+            <span className="font-bold text-cyan-300">READ-ONLY FEED</span>
+          </div>
+
+          <div className="bg-slate-950 p-2.5 rounded-xl border border-rose-500/30">
+            <span className="text-[9px] text-rose-400 block uppercase font-bold">?? EXECUTION</span>
+            <span className="font-bold text-rose-400">DISARMED (0)</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. WHAT IS HAPPENING NOW? (Phase 5A Dominant Operator Status) */}
+      <div id="what-is-happening-now" className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 bg-gradient-to-tr from-cyan-600 to-blue-600 rounded-2xl flex items-center justify-center font-black text-white text-base shadow-lg border border-white/20">
+              {activePair.slice(0, 3)}
+            </div>
+            <div>
+              {(() => {
+                const isJpy = activePair.includes('JPY');
+                const dec = isJpy ? 3 : 5;
+                const spreadDelta = isJpy ? 0.006 : 0.000055;
+                const safePrice = currentPrice > 0 ? currentPrice : (candles.length > 0 ? candles[candles.length - 1].close : 1.16795);
+                const safeBid = safePrice - spreadDelta;
+                const safeAsk = safePrice + spreadDelta;
+                const isFeedLive = candles.length > 0 || safetyState.brokerConnected;
+                const pipFactor = activePair === 'USD/JPY' ? 100 : 10000;
+                const dynamicSpread = ((safeAsk - safeBid) * pipFactor).toFixed(1);
+
+                return (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl font-black text-white tracking-wide font-mono">{activePair}</span>
+                      <span className="px-2 py-0.5 bg-slate-800 text-slate-300 border border-slate-700 text-[11px] font-mono font-bold rounded">
+                        {timeframe} TIMEFRAME
+                      </span>
+                      <span className="px-2 py-0.5 bg-cyan-950 text-cyan-300 border border-cyan-800 text-[10px] font-mono font-bold rounded">
+                        SPREAD: {dynamicSpread} pips
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 font-mono mt-1 flex flex-wrap items-center gap-2">
+                    <span>Price: <strong className="text-white text-sm">{safePrice.toFixed(dec)}</strong></span>
+                    <span className="text-slate-600">·</span>
+                    <span>Bid: <strong className="text-slate-200">{safeBid.toFixed(dec)}</strong></span>
+                    <span className="text-slate-600">·</span>
+                    <span>Ask: <strong className="text-slate-200">{safeAsk.toFixed(dec)}</strong></span>
+                    <span className="text-slate-600">·</span>
+                    <span>Feed: <strong className={isFeedLive ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>{isFeedLive ? "Live Stream (<100ms)" : "CONNECTING FEED..."}</strong></span>
+                  </p>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
+            <div className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl">
+              <span className="text-[9px] text-slate-400 block uppercase font-bold">Structure Bias</span>
+              <span className={`font-bold ${smcData?.trend === 'BULLISH' ? 'text-emerald-400' : (smcData?.trend === 'BEARISH' ? 'text-rose-400' : 'text-amber-400')}`}>
+                {smcData?.trend || 'RANGE STRUCTURE'}
+              </span>
+            </div>
+            <div className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl">
+              <span className="text-[9px] text-slate-400 block uppercase font-bold">AI Decision State</span>
+              <span className="font-bold text-cyan-300">
+                {aiLoading ? 'ANALYZING...' : (aiOpportunity ? `${aiOpportunity.action} OPPTY READY` : 'WAITING FOR SETUP')}
+              </span>
+            </div>
+            <div className="px-3 py-1.5 bg-slate-950 border border-purple-500/40 rounded-xl bg-purple-950/20">
+              <span className="text-[9px] text-purple-400 block uppercase font-bold">Human Action</span>
+              <span className="font-bold text-purple-300">
+                {aiOpportunity ? 'DUAL-CONTROL REVIEW REQUIRED' : 'MONITORING STANDBY'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Phase 5B: cTrader Read-Only Compact Telemetry */}
+        <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+          <div className="flex items-center gap-3">
+            <div className="p-1.5 bg-cyan-500/20 border border-cyan-500/40 rounded-lg text-cyan-400">
+              <Cpu className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-white">cTrader Open API Telemetry</span>
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-800 uppercase">READ-ONLY</span>
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
+                  {serverBrokerConn?.accountNumber ? `ACCOUNT #${serverBrokerConn.accountNumber}` : 'ACCOUNT #48282756'}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Host: <strong className="text-slate-300">{serverBrokerConn?.serverHost || 'demo.ctraderapi.com:5035'}</strong> · Feed: <strong className={candleSource === 'cTrader DEMO Open API (demo.ctraderapi.com)' ? "text-emerald-400" : "text-amber-400"}>{candleSource}</strong>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-1 bg-blue-500/10 text-blue-300 border border-blue-500/30 rounded text-[10px] font-bold">
+              BROKER ORDERS: 0
+            </span>
+            <span className="px-2 py-1 bg-rose-500/10 text-rose-300 border border-rose-500/30 rounded text-[10px] font-bold">
+              EXECUTION: DISARMED
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. OPERATOR WORKFLOW PROGRESS (Phase 5D Interactive Pipeline) */}
+      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl">
+        <div className="flex items-center justify-between mb-2.5">
+          <div className="flex items-center gap-2">
+            <Terminal className="w-4 h-4 text-purple-400" />
+            <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-200 font-mono">
+              OPERATOR WORKFLOW PIPELINE (CLICK ANY STAGE TO FOCUS)
+            </h3>
+          </div>
+          <span className="text-[10px] font-mono text-purple-300 bg-purple-950 px-2 py-0.5 rounded border border-purple-800">
+            Stage 4 of 7 Active
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 font-mono text-[11px]">
+          <button
+            onClick={() => {
+              setActiveTab('MANUAL_DESK');
+              document.getElementById('what-is-happening-now')?.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="p-2 bg-slate-950 hover:bg-slate-900 rounded-xl border border-emerald-500/40 space-y-0.5 text-left transition cursor-pointer"
+          >
+            <span className="text-[9px] text-slate-400 block font-bold">01 MARKET DATA</span>
+            <div className="text-emerald-400 font-bold flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" /> {candles.length > 0 ? 'COMPLETE' : 'BLOCKED'}
+            </div>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('MANUAL_DESK');
+              document.getElementById('technical-evidence-panel')?.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="p-2 bg-slate-950 hover:bg-slate-900 rounded-xl border border-emerald-500/40 space-y-0.5 text-left transition cursor-pointer"
+          >
+            <span className="text-[9px] text-slate-400 block font-bold">02 TECH ANALYSIS</span>
+            <div className="text-emerald-400 font-bold flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" /> {indicators ? 'COMPLETE' : 'WAITING'}
+            </div>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('MANUAL_DESK');
+              if (onAskAi) onAskAi(`Analyze current market for ${activePair}`);
+            }}
+            className="p-2 bg-slate-950 hover:bg-slate-900 rounded-xl border border-emerald-500/40 space-y-0.5 text-left transition cursor-pointer"
+          >
+            <span className="text-[9px] text-slate-400 block font-bold">03 AI ANALYSIS</span>
+            <div className="text-emerald-400 font-bold flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" /> {aiLoading ? 'ANALYZING' : (aiOpportunity ? 'COMPLETE' : 'IDLE')}
+            </div>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('MANUAL_DESK');
+              document.getElementById('central-ai-opportunity-workspace')?.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className={`p-2 bg-slate-950 hover:bg-slate-900 rounded-xl border ${
+              aiOpportunity?.action === 'BUY' || aiOpportunity?.action === 'SELL'
+                ? 'border-cyan-500/60 shadow-md shadow-cyan-950/30'
+                : aiOpportunity?.action === 'WAIT_FOR_CONFIRMATION'
+                ? 'border-amber-500/40'
+                : aiOpportunity?.action === 'VETO'
+                ? 'border-rose-500/40'
+                : 'border-slate-800'
+            } space-y-0.5 text-left transition cursor-pointer`}
+          >
+            <span className="text-[9px] text-cyan-300 block font-bold">04 OPPTY REVIEW</span>
+            <div className="font-bold flex items-center gap-1">
+              {aiOpportunity?.action === 'BUY' || aiOpportunity?.action === 'SELL' ? (
+                <span className="text-cyan-300 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" /> VALID OPPORTUNITY
+                </span>
+              ) : aiOpportunity?.action === 'WAIT_FOR_CONFIRMATION' ? (
+                <span className="text-amber-400">WAITING</span>
+              ) : aiOpportunity?.action === 'VETO' ? (
+                <span className="text-rose-400">SIGNAL VETOED</span>
+              ) : (
+                <span className="text-slate-500">NO VERIFIED OPPORTUNITY</span>
+              )}
+            </div>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('MANUAL_DESK');
+              document.getElementById('active-manual-trading-desk')?.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="p-2 bg-slate-950 hover:bg-slate-900 rounded-xl border border-slate-800 space-y-0.5 text-left transition cursor-pointer"
+          >
+            <span className="text-[9px] text-slate-400 block font-bold">05 HUMAN REVIEW</span>
+            <div className="font-bold flex items-center gap-1">
+              {aiOpportunity?.action === 'BUY' || aiOpportunity?.action === 'SELL' ? (
+                <span className="text-purple-300">REQUIRED (MANUAL)</span>
+              ) : (
+                <span className="text-slate-500">NOT_REQUIRED</span>
+              )}
+            </div>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('STATISTICS');
+              document.getElementById('shadow-performance-cockpit')?.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="p-2 bg-slate-950 hover:bg-slate-900 rounded-xl border border-slate-800 space-y-0.5 text-left transition cursor-pointer"
+          >
+            <span className="text-[9px] text-slate-400 block font-bold">06 SHADOW OBS</span>
+            <div className="text-blue-400 font-bold flex items-center gap-1">
+              {manualTrades && manualTrades.filter(p => p.status === 'OPEN').length > 0 ? (
+                <span>ACTIVE ({manualTrades.filter(p => p.status === 'OPEN').length})</span>
+              ) : (aiOpportunity?.action === 'BUY' || aiOpportunity?.action === 'SELL') ? (
+                <span className="text-blue-300">READY (SHADOW)</span>
+              ) : (
+                <span className="text-slate-500">IDLE</span>
+              )}
+            </div>
+          </button>
+
+          <button
+            onClick={() => {
+              if (onOpenAdaptiveLearning) onOpenAdaptiveLearning();
+            }}
+            className="p-2 bg-slate-950 hover:bg-slate-900 rounded-xl border border-purple-500/40 space-y-0.5 text-left transition cursor-pointer"
+          >
+            <span className="text-[9px] text-purple-400 block font-bold">07 LEARNING</span>
+            <div className="text-purple-400 font-bold flex items-center gap-1">
+              {manualTrades && manualTrades.filter(p => p.status === 'CLOSED').length > 0 ? (
+                <span>UPDATED ({manualTrades.filter(p => p.status === 'CLOSED').length})</span>
+              ) : (
+                <span className="text-slate-500">IDLE</span>
+              )}
+            </div>
+          </button>
+        </div>
+      </div>
+
       {/* Top User Profile Banner & Registration Status Bar */}
       <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl backdrop-blur-md">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
@@ -658,39 +696,63 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
           <div className="flex items-center gap-3.5">
             <div className="relative">
               <div className="w-12 h-12 bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center font-extrabold text-white text-lg shadow-lg border border-white/20">
-                SB
+                {(serverTraderProfileData?.fullName || 'OP').slice(0, 2).toUpperCase()}
               </div>
-              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-slate-900" title="Active Premium Member" />
+              <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-slate-900 ${serverBrokerConn?.isConnected ? 'bg-emerald-500' : 'bg-slate-500'}`} title={serverBrokerConn?.isConnected ? 'Broker Connected' : 'Broker Disconnected'} />
             </div>
 
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-extrabold text-white tracking-tight">{userProfile.name}</h2>
+                <h2 className="text-base font-extrabold text-white tracking-tight">{serverTraderProfileData?.fullName || 'Trader Operator'}</h2>
                 <span className="px-2 py-0.5 bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/40 text-[10px] font-mono font-bold text-purple-300 rounded-full uppercase">
-                  ðŸ‘‘ VIP Premium SaaS Member
+                  {serverTraderProfileData?.accountType || 'DEMO OPERATOR'}
                 </span>
               </div>
               <p className="text-xs text-slate-400 font-mono mt-0.5">
-                {userProfile.email} â€¢ ID Akaun: <strong className="text-blue-400">#5877246</strong>
+                {serverTraderProfileData?.email || 'operator@quantumai.local'} • ID Akaun: <strong className="text-blue-400">{serverBrokerConn?.accountNumber ? `#${serverBrokerConn.accountNumber}` : 'NOT CONNECTED'}</strong>
               </p>
             </div>
           </div>
 
           {/* Onboarding Registration Checklist & Broker Status */}
           <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-            <div className="px-3 py-1.5 bg-slate-950/80 border border-slate-800 rounded-xl flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-emerald-400" />
-              <div className="text-[11px]">
-                <span className="text-slate-400 block text-[9px] uppercase font-bold">Profil &amp; KYC</span>
-                <span className="font-bold text-white">100% Disahkan</span>
+            {/* Live cTrader Demo Balance */}
+            <div 
+              onClick={onOpenBrokerModal}
+              className="px-3.5 py-1.5 bg-slate-950/90 border border-emerald-500/40 hover:border-emerald-400 rounded-xl flex items-center gap-2.5 cursor-pointer shadow-sm transition"
+              title="Klik untuk lihat butiran akaun broker"
+            >
+              <DollarSign className="w-4 h-4 text-emerald-400 shrink-0" />
+              <div className="text-[11px] font-mono">
+                <span className="text-slate-400 block text-[9px] uppercase font-bold">Baki cTrader (DEMO)</span>
+                <span className="font-extrabold text-emerald-400 text-xs sm:text-sm leading-tight">
+                  ${(serverBrokerConn?.liveBalance || serverBrokerConn?.balance || 10000).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+
+            {/* Real-Time Equity */}
+            <div 
+              onClick={onOpenBrokerModal}
+              className="px-3.5 py-1.5 bg-slate-950/90 border border-cyan-500/40 hover:border-cyan-400 rounded-xl flex items-center gap-2.5 cursor-pointer shadow-sm transition"
+              title="Klik untuk lihat ekuiti semasa"
+            >
+              <Activity className="w-4 h-4 text-cyan-400 shrink-0" />
+              <div className="text-[11px] font-mono">
+                <span className="text-slate-400 block text-[9px] uppercase font-bold">Ekuiti Semasa</span>
+                <span className="font-extrabold text-cyan-400 text-xs sm:text-sm leading-tight">
+                  ${(serverBrokerConn?.liveEquity || serverBrokerConn?.equity || serverBrokerConn?.liveBalance || 10000).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
               </div>
             </div>
 
             <div className="px-3 py-1.5 bg-slate-950/80 border border-slate-800 rounded-xl flex items-center gap-2">
-              <Zap className="w-4 h-4 text-cyan-400 animate-pulse" />
+              <Zap className={`w-4 h-4 ${serverBrokerConn?.isConnected ? 'text-cyan-400 animate-pulse' : 'text-slate-500'}`} />
               <div className="text-[11px]">
                 <span className="text-slate-400 block text-[9px] uppercase font-bold">Sambungan Broker</span>
-                <span className="font-bold text-cyan-300 font-mono">cTrader FIX (#5877246)</span>
+                <span className="font-bold text-cyan-300 font-mono">
+                  {serverBrokerConn?.isConnected ? `cTrader (${serverBrokerConn.accountNumber || 'CONNECTED'})` : 'TIDAK TERSAMBUNG'}
+                </span>
               </div>
             </div>
 
@@ -699,7 +761,7 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
               className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/20 transition flex items-center gap-1.5 cursor-pointer"
             >
               <Cpu className="w-4 h-4" />
-              <span>Pautan Broker (MT4/MT5/cTrader)</span>
+              <span>Pautan Broker</span>
             </button>
           </div>
         </div>
@@ -708,15 +770,44 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
         <div className="mt-4 pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800">
             <button
-              onClick={() => setActiveTab('AUTOTRADER')}
+              onClick={() => setActiveTab('DEMO_COMMAND_CENTER')}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'AUTOTRADER'
+                activeTab === 'DEMO_COMMAND_CENTER'
+                  ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-blue-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Zap className="w-4 h-4 text-emerald-300 animate-pulse" />
+              <span>⚡ 1. Pusat Kawalan Demo Trader (All-in-One)</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('MANUAL_DESK')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'MANUAL_DESK'
                   ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              <Bot className="w-4 h-4 text-amber-400 animate-bounce" />
-              <span>1. AI Auto-Pilot Engine (Dagangan Autonomi)</span>
+              <Radio className="w-4 h-4 text-emerald-400" />
+              <span>2. Papan Isyarat Klasik</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('ECONOMIC_CALENDAR')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'ECONOMIC_CALENDAR'
+                  ? 'bg-gradient-to-r from-amber-600 via-orange-600 to-rose-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Calendar className="w-4 h-4 text-amber-400" />
+              <span>3. Kalendar Berita Ekonomi (Live Macro)</span>
+              {economicEvents.filter(e => e.impact === 'HIGH').length > 0 && (
+                <span className="px-1.5 py-0.2 text-[9px] font-mono font-black bg-rose-500 text-white rounded-full">
+                  {economicEvents.filter(e => e.impact === 'HIGH').length}
+                </span>
+              )}
             </button>
 
             <button
@@ -727,20 +818,8 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              <BarChart3 className="w-4 h-4 text-cyan-300" />
-              <span>2. Prestasi AI Robot (Statistik &amp; Proof)</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('PRACTICE_SIM')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'PRACTICE_SIM'
-                  ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Target className="w-4 h-4 text-emerald-400" />
-              <span>3. Simulator Entri Manual &amp; AI Feedback</span>
+              <History className="w-4 h-4 text-cyan-300" />
+              <span>4. Rekod &amp; Prestasi Disahkan</span>
             </button>
 
             <button
@@ -751,8 +830,8 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              <Zap className="w-4 h-4 text-amber-400" />
-              <span>4. Integrasi Broker SaaS Premium</span>
+              <Cpu className="w-4 h-4 text-blue-400" />
+              <span>5. Pautan Broker Read-Only</span>
             </button>
 
             <button
@@ -764,1111 +843,1045 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
               }`}
             >
               <User className="w-4 h-4 text-purple-400" />
-              <span>5. Profil Ahli &amp; Langganan</span>
+              <span>6. Profil Operator</span>
             </button>
           </div>
 
-          <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1">
-            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
-            AI Robot Mode: <strong className="text-emerald-400">AUTONOMOUS DISPATCH ONLINE</strong>
+          <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            Mode Operasi: <strong className="text-emerald-400 font-bold">MANUAL &amp; SHADOW READ-ONLY</strong>
           </span>
         </div>
       </div>
 
-      {/* TAB 1: AUTONOMOUS AI AUTO-TRADER ENGINE (MAIN SAAS FEATURE) */}
-      {activeTab === 'AUTOTRADER' && (
-        <div className="space-y-5">
-          {/* ========================================================= */}
-          {/* CARD 1: CONNECTED BROKER ACCOUNT STATUS MONITOR CARD      */}
-          {/* DYNAMICALLY LINKED TO LIVE SERVER BROKER CONNECTION STATE  */}
-          {/* ========================================================= */}
-          <div className="p-6 bg-gradient-to-r from-slate-900 via-blue-950/80 to-slate-900 border border-cyan-500/40 rounded-2xl shadow-2xl relative overflow-hidden space-y-5">
-            <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
-              <Bot className="w-72 h-72 text-cyan-400" />
-            </div>
 
-            {/* User Identity & VIP Status Header */}
-            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 border-b border-slate-800 pb-4 relative z-10">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-600 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-cyan-500/20">
-                  SB
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-extrabold text-white tracking-tight">{serverTraderProfileData?.fullName || userProfile.name}</h2>
-                    <span className="px-2 py-0.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[10px] font-mono font-bold rounded-md flex items-center gap-1">
-                      <ShieldCheck className="w-3 h-3 text-emerald-400" /> VIP SAAS MEMBER
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-400 font-mono mt-0.5">
-                    Email: <span className="text-slate-200">{serverTraderProfileData?.email || userProfile.email}</span> â€¢ Status Akaun: <strong className="text-cyan-300">{serverTraderProfileData?.kycVerified ? 'DISAHKAN (KYC PASSED)' : 'VERIFIED'}</strong>
-                  </p>
-                </div>
-              </div>
 
-              {/* Master AI Auto-Pilot Toggle & Connect Broker Button */}
-              <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-between lg:justify-end">
-                <button
-                  type="button"
-                  onClick={onOpenBrokerModal}
-                  className="px-4 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-mono font-extrabold text-xs rounded-xl shadow-lg transition flex items-center gap-1.5 cursor-pointer"
-                  title="Sambung / Kemaskini Akaun Broker"
-                >
-                  <Sliders className="w-4 h-4 text-cyan-200" />
-                  <span>âš™ï¸ Sambung / Kemaskini Broker</span>
-                </button>
 
-                <button
-                  type="button"
-                  onClick={() => setIsAiAutoPilotActive(!isAiAutoPilotActive)}
-                  className={`px-4 py-2.5 rounded-xl font-mono font-extrabold text-xs transition flex items-center gap-2 shadow-lg cursor-pointer ${
-                    isAiAutoPilotActive
-                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-emerald-600/30 ring-2 ring-emerald-400/50'
-                      : 'bg-slate-800 text-slate-400 border border-slate-700'
-                  }`}
-                >
-                  <Power className={`w-4 h-4 ${isAiAutoPilotActive ? 'text-white animate-pulse' : 'text-slate-500'}`} />
-                  <span>{isAiAutoPilotActive ? 'âš¡ AI AUTO-PILOT : ACTIVE' : 'â¸ï¸ AI AUTO-PILOT : PAUSED'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={fetchAllServerStates}
-                  className="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-mono text-xs rounded-xl border border-slate-700 transition flex items-center gap-1.5 cursor-pointer"
-                  title="Kemaskini Status Broker & Baki"
-                >
-                  <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
-                  <span className="hidden sm:inline">Sync</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Connection Warning Banner */}
-            {(!serverBrokerConn?.isConnected || (Date.now() - (serverBrokerConn?.lastConnectedAt || 0) > 35000)) && (
-              <div className="bg-amber-950/60 border border-amber-500/50 rounded-xl p-3 text-amber-200 flex flex-col sm:flex-row items-center justify-between gap-3 animate-pulse relative z-10">
-                <div className="flex items-center gap-2.5">
-                  <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
-                  <div>
-                    <span className="font-bold text-amber-300 block text-xs sm:text-sm">
-                      Sync Interrupted â€” Awaiting Signal Engine / cTrader Bridge...
-                    </span>
-                    <span className="text-[11px] text-amber-200/80">
-                      Sambungan Webhook/WebSocket terputus sementara. Semua isyarat dipelihara dan akan dipancar semula sebaik sahaja cBot / bridge aktif.
-                    </span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={fetchAllServerStates}
-                  className="px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-mono text-xs rounded-lg transition shrink-0 cursor-pointer"
-                >
-                  Semak Semula (Sync)
-                </button>
-              </div>
-            )}
-
-            {/* Connected Broker Accounts Sub-Status Bar */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs font-mono relative z-10">
-              <div className="p-3 bg-slate-950/90 border border-slate-800 rounded-xl space-y-1">
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">Sambungan Broker cTrader</span>
-                <div className="flex items-center justify-between font-bold text-white">
-                  <span className="text-cyan-300 font-black">{serverBrokerConn?.brokerName || 'Spotware cTrader Open API'}</span>
-                  <span className={`px-1.5 py-0.5 rounded text-[9px] flex items-center gap-1 ${
-                    serverBrokerConn?.isConnected ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300'
-                  }`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${serverBrokerConn?.isConnected ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`} />
-                    {serverBrokerConn?.isConnected ? `${serverBrokerConn?.latencyMs || 8}ms ONLINE` : 'OFFLINE'}
-                  </span>
-                </div>
-                <span className="text-[10px] text-slate-400 block">
-                  Akaun: <strong className="text-amber-300">#{serverBrokerConn?.accountNumber || serverTraderProfileData?.accountNumber || '5877246'}</strong> â€¢ Server: <strong className="text-slate-300">{serverBrokerConn?.serverHost || 'demo-uk-eqx-01.p.c-trader.com'}</strong>
-                </span>
-              </div>
-
-              <div className="p-3 bg-slate-950/90 border border-slate-800 rounded-xl space-y-1">
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">Baki Modal Akaun (Balance)</span>
-                <div className="text-base font-black text-emerald-400">
-                  â‚¬{(serverBrokerConn?.liveBalance ?? serverAutoTraderStateData?.balance ?? 1000.27).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
-                </div>
-                <span className="text-[10px] text-slate-400 block">
-                  Modal Asal: <strong className="text-slate-200">â‚¬1,000.00 EUR</strong> â€¢ Leverage: <strong className="text-slate-200">1:500</strong>
-                </span>
-              </div>
-
-              <div className="p-3 bg-slate-950/90 border border-slate-800 rounded-xl space-y-1">
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">Ekuiti Semasa (Equity)</span>
-                {(() => {
-                  const balance = serverBrokerConn?.liveBalance ?? serverAutoTraderStateData?.balance ?? 1000.27;
-                  const floatingPnl = liveAutoTrades.reduce((acc, t) => acc + calculateFloatingPnl(t), 0);
-                  const equity = balance + floatingPnl;
-                  return (
-                    <>
-                      <div className="text-base font-black text-cyan-300">
-                        â‚¬{equity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
-                      </div>
-                      <span className="text-[10px] text-slate-400 block">
-                        Floating PnL: <strong className={floatingPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
-                          {floatingPnl >= 0 ? '+' : ''}â‚¬{floatingPnl.toFixed(2)} EUR
-                        </strong>
-                      </span>
-                    </>
-                  );
-                })()}
-              </div>
-
-              <div className="p-3 bg-slate-950/90 border border-slate-800 rounded-xl space-y-1">
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">Margin Terguna (Used Margin)</span>
-                {(() => {
-                  // Standard margin calculation: sum of (lotSize * 100,000 / leverage) or crypto margin ~ â‚¬22.50 per 0.05 BTC
-                  const usedMargin = liveAutoTrades.reduce((acc, t) => acc + (t.lotSize ? t.lotSize * 450 : 22.50), 0);
-                  return (
-                    <>
-                      <div className="text-base font-black text-amber-300">
-                        â‚¬{usedMargin.toFixed(2)} EUR
-                      </div>
-                      <span className="text-[10px] text-slate-400 block">
-                        Free Margin: <strong className="text-emerald-300">
-                          â‚¬{((serverBrokerConn?.liveBalance ?? serverAutoTraderStateData?.balance ?? 1000.27) + liveAutoTrades.reduce((acc, t) => acc + calculateFloatingPnl(t), 0) - usedMargin).toFixed(2)} EUR
-                        </strong>
-                      </span>
-                    </>
-                  );
-                })()}
-              </div>
-
-              <div className="p-3 bg-slate-950/90 border border-slate-800 rounded-xl space-y-1">
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">Nisbah Margin (Margin Level %)</span>
-                {(() => {
-                  const balance = serverBrokerConn?.liveBalance ?? serverAutoTraderStateData?.balance ?? 1000.27;
-                  const floatingPnl = liveAutoTrades.reduce((acc, t) => acc + calculateFloatingPnl(t), 0);
-                  const equity = balance + floatingPnl;
-                  const usedMargin = liveAutoTrades.reduce((acc, t) => acc + (t.lotSize ? t.lotSize * 450 : 22.50), 0);
-                  const marginLevel = usedMargin > 0 ? (equity / usedMargin) * 100 : 9999;
-                  return (
-                    <>
-                      <div className="text-base font-black text-purple-300">
-                        {usedMargin > 0 ? `${marginLevel.toFixed(1)}%` : '100% (No Margin Used)'}
-                      </div>
-                      <span className="text-[10px] text-slate-400 block">
-                        Status Kesihatan Margin: <strong className="text-emerald-400">GRED A (SELAMAT)</strong>
-                      </span>
-                    </>
-                  );
-                })()}
-              </div>
-            </div>
-
-            {/* Interactive Control Toolbar for Sanil */}
-            <div className="pt-2 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono relative z-10">
-              <div className="text-slate-300 flex items-center gap-2">
-                <Activity className="w-4 h-4 text-cyan-400" />
-                <span>
-                  <strong>Kawalan Isyarat AI User Sanil:</strong> Hantar isyarat ujian terus ke akaun broker tersambung.
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                <button
-                  type="button"
-                  onClick={() => handleTriggerTestAiTrade('BUY')}
-                  disabled={isDispatchingSignal}
-                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  <Zap className="w-3.5 h-3.5" />
-                  <span>{isDispatchingSignal ? 'Dipancar...' : 'âš¡ Pancar BUY AI'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleTriggerTestAiTrade('SELL')}
-                  disabled={isDispatchingSignal}
-                  className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg shadow transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  <Zap className="w-3.5 h-3.5" />
-                  <span>{isDispatchingSignal ? 'Dipancar...' : 'âš¡ Pancar SELL AI'}</span>
-                </button>
-
-                {liveAutoTrades.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={handleCloseAllLiveAutoTrades}
-                    className="px-3 py-1.5 bg-rose-950 border border-rose-600/60 hover:bg-rose-900 text-rose-200 font-bold rounded-lg shadow transition flex items-center gap-1 cursor-pointer"
-                  >
-                    <XCircle className="w-3.5 h-3.5 text-rose-400" />
-                    <span>ðŸš¨ Close All</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* ========================================================= */}
-          {/* CARD 2: STANDARD TRADING MONITOR & REAL-TIME OPEN TRADES  */}
-          {/* ========================================================= */}
-          <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 shadow-xl">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <Activity className="w-5 h-5 text-cyan-400" />
-                <div>
-                  <h3 className="font-extrabold text-white text-base tracking-tight">
-                    Standard Monitor for AI Executed Open Trades
-                  </h3>
-                  <p className="text-xs text-slate-400">
-                    Pemantauan langsung posisi aktif yang dieksekusi oleh AI Robot ke akaun cTrader / MT5 Sanil Bansal
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 font-mono text-xs">
-                <button
-                  type="button"
-                  onClick={() => setIsManualSyncModalOpen(true)}
-                  className="px-2.5 py-1 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/40 rounded-lg text-emerald-300 font-bold transition flex items-center gap-1 cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>ðŸ“¥ Selaras Trade Manual</span>
-                </button>
-                <span className="px-2.5 py-1 bg-slate-950 border border-slate-800 rounded-lg text-slate-300">
-                  Open Positions: <strong className="text-cyan-400">{liveAutoTrades.length}</strong>
-                </span>
-                <span className="px-2.5 py-1 bg-slate-950 border border-slate-800 rounded-lg text-slate-300">
-                  Total Volume: <strong className="text-emerald-400">
-                    {liveAutoTrades.reduce((acc, t) => acc + Number(t.lotSize || 0.1), 0).toFixed(2)} Lot
-                  </strong>
-                </span>
-              </div>
-            </div>
-
-            {/* Real-time Open Trades Table / Cards */}
-            {liveAutoTrades.length === 0 ? (
-              <div className="p-8 bg-slate-950/80 border border-slate-800 rounded-xl text-center space-y-3">
-                <div className="w-12 h-12 mx-auto rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-500">
-                  <Bot className="w-6 h-6 text-slate-400" />
-                </div>
-                <div className="text-xs text-slate-400 font-mono space-y-1">
-                  <p className="font-bold text-white text-sm">Tiada Posisi Aktif Terbuka Semasa</p>
-                  <p>AI Robot sedang mengimbas struktur pasaran SMC 24/5. Apabila persetujuan dikesan, pesanan akan muncul di sini secara automatik.</p>
-                </div>
-                <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => handleTriggerTestAiTrade('BUY')}
-                    disabled={isDispatchingSignal}
-                    className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-mono font-bold text-xs rounded-xl shadow-lg transition inline-flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Zap className="w-4 h-4 text-amber-300" />
-                    <span>âš¡ Pancar Trade AI Ujian Ke Akaun Broker Sanil</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsManualSyncModalOpen(true)}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-mono font-bold text-xs rounded-xl shadow-lg transition inline-flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Download className="w-4 h-4 text-white" />
-                    <span>ðŸ“¥ Selaras Trade Manual cTrader</span>
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs font-mono border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/60 text-[11px] uppercase tracking-wider">
-                      <th className="p-3">Tiket / ID</th>
-                      <th className="p-3">Pasangan</th>
-                      <th className="p-3">Jenis</th>
-                      <th className="p-3">Saiz Lot</th>
-                      <th className="p-3">Harga Entri</th>
-                      <th className="p-3">Harga Semasa</th>
-                      <th className="p-3">Stop Loss</th>
-                      <th className="p-3">Take Profit</th>
-                      <th className="p-3 text-right">Floating PnL ($)</th>
-                      <th className="p-3 text-center">Tindakan</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/60">
-                    {liveAutoTrades.map((t) => {
-                      const floatingPnl = calculateFloatingPnl(t);
-                      const isWin = floatingPnl >= 0;
-
-                      return (
-                        <tr key={t.id} className="hover:bg-slate-950/40 transition">
-                          <td className="p-3 text-slate-400 font-bold">{t.ticketId || t.id.slice(0, 10)}</td>
-                          <td className="p-3 font-extrabold text-white flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-cyan-400" />
-                            {t.pair}
-                          </td>
-                          <td className="p-3">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              t.direction === 'BUY' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                            }`}>
-                              {t.direction}
-                            </span>
-                          </td>
-                          <td className="p-3 font-bold text-slate-200">{t.lotSize || 0.10} Lot</td>
-                          <td className="p-3 text-slate-300">{Number(t.entryPrice).toFixed(t.pair === 'USD/JPY' ? 3 : 5)}</td>
-                          <td className="p-3 text-cyan-300 font-bold">{currentPrice.toFixed(t.pair === 'USD/JPY' ? 3 : 5)}</td>
-                          <td className="p-3 text-rose-400">{t.stopLoss ? Number(t.stopLoss).toFixed(t.pair === 'USD/JPY' ? 3 : 5) : '-'}</td>
-                          <td className="p-3 text-emerald-400">{t.takeProfit1 ? Number(t.takeProfit1).toFixed(t.pair === 'USD/JPY' ? 3 : 5) : '-'}</td>
-                          <td className={`p-3 text-right font-black text-sm ${isWin ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            {isWin ? '+' : ''}${floatingPnl.toFixed(2)}
-                          </td>
-                          <td className="p-3 text-center">
-                            <button
-                              type="button"
-                              onClick={() => handleCloseLiveAutoTrade(t.id)}
-                              className="px-3 py-1 bg-rose-950 hover:bg-rose-900 border border-rose-600/60 text-rose-200 text-[11px] font-bold rounded-lg transition inline-flex items-center gap-1 cursor-pointer"
-                              title="Tutup posisi ini di akaun broker"
-                            >
-                              <XCircle className="w-3.5 h-3.5 text-rose-400" />
-                              <span>Tutup Trade</span>
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          {/* ========================================================= */}
-          {/* CARD 2B: CLOSED TRADES HISTORY & ACCOUNT PERFORMANCE LOGS */}
-          {/* ========================================================= */}
-          <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 shadow-xl">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <History className="w-5 h-5 text-emerald-400" />
-                <div>
-                  <h3 className="font-extrabold text-white text-base tracking-tight">
-                    Rekod Sejarah Trade Ditutup &amp; Analitik Prestasi Broker (Closed Trades History)
-                  </h3>
-                  <p className="text-xs text-slate-400">
-                    Sejarah lengkap posisi cTrader #5877246 yang telah diselesaikan atau ditutup
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 font-mono text-xs">
-                <span className="px-2.5 py-1 bg-slate-950 border border-slate-800 rounded-lg text-slate-300">
-                  Jumlah Trade Ditutup: <strong className="text-cyan-400">{closedAutoTrades.length}</strong>
-                </span>
-                <span className="px-2.5 py-1 bg-slate-950 border border-slate-800 rounded-lg text-slate-300">
-                  Untung Bersih Terkumpul: <strong className={
-                    closedAutoTrades.reduce((acc, t) => acc + (t.pnlDollars || t.pnl || 0), 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                  }>
-                    {closedAutoTrades.reduce((acc, t) => acc + (t.pnlDollars || t.pnl || 0), 0) >= 0 ? '+' : ''}
-                    â‚¬{closedAutoTrades.reduce((acc, t) => acc + (t.pnlDollars || t.pnl || 0), 0).toFixed(2)}
-                  </strong>
-                </span>
-              </div>
-            </div>
-
-            {closedAutoTrades.length === 0 ? (
-              <div className="p-6 bg-slate-950/60 border border-slate-800/80 rounded-xl text-center space-y-2">
-                <p className="text-xs font-mono text-slate-400">
-                  Tiada rekod trade ditutup lagi untuk sesi ini. Semua posisi aktif direkod secara masa nyata.
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs font-mono border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/60 text-[11px] uppercase tracking-wider">
-                      <th className="p-3">Tiket ID</th>
-                      <th className="p-3">Pasangan</th>
-                      <th className="p-3">Jenis</th>
-                      <th className="p-3">Lot</th>
-                      <th className="p-3">Harga Entri</th>
-                      <th className="p-3">Harga Penutup</th>
-                      <th className="p-3">Sebab Penutupan</th>
-                      <th className="p-3 text-right">Net PnL (â‚¬)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/60">
-                    {closedAutoTrades.map((t) => {
-                      const pnlVal = t.pnlDollars ?? t.pnl ?? 0;
-                      const isWin = pnlVal >= 0;
-                      return (
-                        <tr key={t.id} className="hover:bg-slate-950/40 transition">
-                          <td className="p-3 text-slate-400 font-bold">{t.ticketId || t.id.slice(0, 10)}</td>
-                          <td className="p-3 font-extrabold text-white">{t.pair}</td>
-                          <td className="p-3">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              t.direction === 'BUY' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
-                            }`}>
-                              {t.direction}
-                            </span>
-                          </td>
-                          <td className="p-3 text-slate-300">{t.lotSize || 0.05} Lot</td>
-                          <td className="p-3 text-slate-300">{Number(t.entryPrice).toFixed(t.pair === 'USD/JPY' ? 3 : 5)}</td>
-                          <td className="p-3 text-slate-300">{t.exitPrice ? Number(t.exitPrice).toFixed(t.pair === 'USD/JPY' ? 3 : 5) : '-'}</td>
-                          <td className="p-3">
-                            <span className="px-2 py-0.5 bg-slate-800 border border-slate-700 text-slate-300 rounded text-[10px] font-bold">
-                              {t.closeReason || 'CLOSED_IN_TERMINAL'}
-                            </span>
-                          </td>
-                          <td className={`p-3 text-right font-black text-sm ${isWin ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            {isWin ? '+' : ''}â‚¬{pnlVal.toFixed(2)}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          {/* ========================================================= */}
-          {/* CARD 3: STRATEGY, RISK PARAMETERS & REAL-TIME LOG STREAM */}
-          {/* ========================================================= */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Left 2 Cols: Settings Matrix */}
-            <div className="lg:col-span-2 space-y-4">
-              {/* Account & Strategy Selector */}
-              <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 shadow-xl">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                  <div className="flex items-center gap-2">
-                    <Sliders className="w-5 h-5 text-blue-400" />
-                    <h3 className="font-bold text-white text-base">Tetapan Strategi &amp; Akaun Broker Sasaran</h3>
-                  </div>
-                  <span className="text-xs font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/30">
-                    Live Sync Ready
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
-                  {/* Broker Account Picker */}
-                  <div>
-                    <label className="text-slate-300 font-bold block mb-1.5">Pilih Akaun Broker Tersambung</label>
-                    <div className="space-y-2">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedBrokerAccount('CTRADER')}
-                        className={`w-full p-3 rounded-xl border text-left transition flex items-center justify-between cursor-pointer ${
-                          selectedBrokerAccount === 'CTRADER'
-                            ? 'bg-cyan-950/80 border-cyan-500/60 text-white shadow-md'
-                            : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
-                        }`}
-                      >
-                        <div>
-                          <div className="font-bold text-cyan-300 flex items-center gap-1.5">
-                            <span>cTrader FIX API</span>
-                            <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-300 text-[9px] rounded">ONLINE</span>
-                          </div>
-                          <div className="text-[10px] text-slate-400 mt-0.5">Akaun #5877246 â€¢ demo-uk-eqx-01</div>
-                        </div>
-                        <Radio className={`w-4 h-4 ${selectedBrokerAccount === 'CTRADER' ? 'text-cyan-400' : 'text-slate-600'}`} />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setSelectedBrokerAccount('MT5')}
-                        className={`w-full p-3 rounded-xl border text-left transition flex items-center justify-between cursor-pointer ${
-                          selectedBrokerAccount === 'MT5'
-                            ? 'bg-blue-950/80 border-blue-500/60 text-white shadow-md'
-                            : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
-                        }`}
-                      >
-                        <div>
-                          <div className="font-bold text-blue-300 flex items-center gap-1.5">
-                            <span>MetaTrader 5 EA</span>
-                            <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-300 text-[9px] rounded">ONLINE</span>
-                          </div>
-                          <div className="text-[10px] text-slate-400 mt-0.5">Akaun #11075236 â€¢ MetaQuotes-Demo</div>
-                        </div>
-                        <Radio className={`w-4 h-4 ${selectedBrokerAccount === 'MT5' ? 'text-blue-400' : 'text-slate-600'}`} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* AI Strategy Preset Picker */}
-                  <div>
-                    <label className="text-slate-300 font-bold block mb-1.5">Preset Strategi AI Quantum</label>
-                    <div className="space-y-2">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedStrategyPreset('QUANTUM_SMC')}
-                        className={`w-full p-2.5 rounded-xl border text-left transition cursor-pointer ${
-                          selectedStrategyPreset === 'QUANTUM_SMC'
-                            ? 'bg-purple-950/80 border-purple-500/60 text-white'
-                            : 'bg-slate-950 border-slate-800 text-slate-400'
-                        }`}
-                      >
-                        <div className="font-bold text-purple-300 text-xs">ðŸŽ¯ Quantum SMC Liquidity Hunter</div>
-                        <div className="text-[10px] text-slate-400">Order Blocks H1/H4 + FVG â€¢ RR 1:3+</div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setSelectedStrategyPreset('SCALPER_PRO')}
-                        className={`w-full p-2.5 rounded-xl border text-left transition cursor-pointer ${
-                          selectedStrategyPreset === 'SCALPER_PRO'
-                            ? 'bg-purple-950/80 border-purple-500/60 text-white'
-                            : 'bg-slate-950 border-slate-800 text-slate-400'
-                        }`}
-                      >
-                        <div className="font-bold text-amber-300 text-xs">âš¡ Scalper Pro AI (M5 Breakouts)</div>
-                        <div className="text-[10px] text-slate-400">Momentum M5 â€¢ Win Rate 88% â€¢ Fast Exit</div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setSelectedStrategyPreset('SWING_MASTER')}
-                        className={`w-full p-2.5 rounded-xl border text-left transition cursor-pointer ${
-                          selectedStrategyPreset === 'SWING_MASTER'
-                            ? 'bg-purple-950/80 border-purple-500/60 text-white'
-                            : 'bg-slate-950 border-slate-800 text-slate-400'
-                        }`}
-                      >
-                        <div className="font-bold text-emerald-300 text-xs">ðŸ“ˆ Institutional Swing Algo</div>
-                        <div className="text-[10px] text-slate-400">H4 Trend Follower â€¢ Trailing Stop</div>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Risk Management Matrix */}
-              <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 shadow-xl">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                  <div className="flex items-center gap-2">
-                    <Shield className="w-5 h-5 text-emerald-400" />
-                    <h3 className="font-bold text-white text-base">Kawalan Risiko &amp; Perlindungan Modal Autonomi</h3>
-                  </div>
-                  <span className="text-xs font-mono text-slate-400">Strict Capital Guard</span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
-                  <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
-                    <label className="text-slate-400 font-bold block text-[11px]">Risiko Per Trade (%)</label>
-                    <input
-                      type="number"
-                      step="0.5"
-                      value={riskPercentPerTrade}
-                      onChange={(e) => setRiskPercentPerTrade(Number(e.target.value))}
-                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-white font-bold outline-none focus:border-emerald-500 text-xs"
-                    />
-                    <span className="text-[10px] text-slate-500 block">~$100 USD per 1.0%</span>
-                  </div>
-
-                  <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
-                    <label className="text-slate-400 font-bold block text-[11px]">Max Open Trades</label>
-                    <input
-                      type="number"
-                      value={maxConcurrentPositions}
-                      onChange={(e) => setMaxConcurrentPositions(Number(e.target.value))}
-                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-white font-bold outline-none focus:border-emerald-500 text-xs"
-                    />
-                    <span className="text-[10px] text-slate-500 block">Posisi serentak maks</span>
-                  </div>
-
-                  <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
-                    <label className="text-slate-400 font-bold block text-[11px]">Hard Stop Harian ($)</label>
-                    <input
-                      type="number"
-                      value={hardDailyLossCap}
-                      onChange={(e) => setHardDailyLossCap(Number(e.target.value))}
-                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-white font-bold outline-none focus:border-rose-500 text-xs"
-                    />
-                    <span className="text-[10px] text-slate-500 block">Henti AI jika terjejas</span>
-                  </div>
-                </div>
-
-                {/* Additional Risk Toggles */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <label className="p-3 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between cursor-pointer">
-                    <div>
-                      <span className="font-bold text-white block">Tapis Berita Impak Tinggi (NFP/CPI)</span>
-                      <span className="text-[10px] text-slate-400">Henti AI 15 minit sebelum berita</span>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={isNewsAvoidanceEnabled}
-                      onChange={(e) => setIsNewsAvoidanceEnabled(e.target.checked)}
-                      className="w-4 h-4 accent-emerald-500 cursor-pointer"
-                    />
-                  </label>
-
-                  <label className="p-3 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between cursor-pointer">
-                    <div>
-                      <span className="font-bold text-white block">Auto Trailing Stop &amp; Break-Even</span>
-                      <span className="text-[10px] text-slate-400">Kunci untung automatik pada 15 pips</span>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={isTrailingStopEnabled}
-                      onChange={(e) => setIsTrailingStopEnabled(e.target.checked)}
-                      className="w-4 h-4 accent-emerald-500 cursor-pointer"
-                    />
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Col: Activity Log Stream */}
-            <div className="space-y-4 font-mono">
-              <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-3 shadow-xl">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Terminal className="w-4 h-4 text-emerald-400" />
-                    <h3 className="font-bold text-white text-sm">Log Pancaran AI Autonomi</h3>
-                  </div>
-                  <button
-                    onClick={() => setAutoTraderLogs([])}
-                    className="text-[10px] text-slate-500 hover:text-white transition"
-                  >
-                    Clear Log
-                  </button>
-                </div>
-
-                <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl h-80 overflow-y-auto space-y-2 text-[11px] text-emerald-300">
-                  {autoTraderLogs.map((log) => (
-                    <div key={log.id} className="leading-relaxed border-b border-slate-900 pb-1">
-                      <span className="text-slate-500 text-[10px] mr-1.5">[{log.timestamp}]</span>
-                      <span>{log.text}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 2: AI TRADING LIVE STATISTICS (THE SAAS SELLING POINT & HOOK) */}
       {activeTab === 'STATISTICS' && (
-        <div className="space-y-4">
-          {/* Main Key Selling Point Headline */}
-          <div className="p-6 bg-gradient-to-r from-blue-950/80 via-slate-900 to-indigo-950/80 border border-blue-500/30 rounded-2xl shadow-xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
-              <Bot className="w-64 h-64 text-blue-400" />
-            </div>
-
+        <div className="space-y-6">
+          {/* Header Banner */}
+          <div className="p-6 bg-gradient-to-br from-slate-900 via-indigo-950/40 to-slate-900 border border-slate-800 rounded-2xl relative overflow-hidden shadow-2xl">
             <div className="max-w-3xl space-y-2 relative z-10">
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/20 border border-blue-500/40 text-blue-300 text-xs font-mono font-bold rounded-full">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>COMMERCIAL AI TRADING ROBOT ENGINE</span>
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>AUTHORITATIVE TRADE &amp; PERFORMANCE LEDGER</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                Rekod Profit &amp; Statistik Prestasi AI Robot Live
+                Rekod Prestasi &amp; Analitik Trade Disahkan
               </h1>
               <p className="text-sm text-slate-300 leading-relaxed">
-                Platform Quantum AI menggabungkan model pengesahan Smart Money Concepts (SMC) dengan algoritma pengurusan risiko autonomi. Nikmati kadar kemenangan konsisten tanpa emosi manusia.
+                Metrik prestasi sebenar dikira secara terus daripada pangkalan data PostgreSQL berasaskan trade manual yang dipantau dan ditutup secara rasmi.
               </p>
             </div>
 
-            {/* Core Hook Metrics Cards Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 relative z-10 font-mono">
-              <div className="p-4 bg-slate-950/90 border border-slate-800 rounded-xl">
-                <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Kadar Kemenangan (Win Rate)</div>
-                <div className="text-2xl font-black text-emerald-400 mt-1 flex items-baseline gap-1">
-                  84.6%
-                  <span className="text-[10px] text-emerald-500 font-normal">â–² +3.2% m/m</span>
-                </div>
-                <div className="text-[10px] text-slate-500 mt-1">Daripada 1,240 Isyarat Auto</div>
-              </div>
+            {/* Performance Metrics Grid */}
+            {(() => {
+              const closedList = manualTrades.filter(t => t.status === 'CLOSED');
+              const totalClosed = closedList.length;
+              if (totalClosed === 0) {
+                return (
+                  <div className="p-6 bg-slate-950/90 border border-slate-800 rounded-xl text-center text-xs text-slate-400 font-mono mt-6 relative z-10">
+                    <span className="px-2 py-0.5 bg-slate-800 text-slate-300 rounded text-[10px] font-bold mr-2 uppercase">[AUTHORITATIVE]</span>NO VERIFIED TRADE HISTORY ? Tiada rekod trade ditutup yang disahkan dalam pangkalan data PostgreSQL.
+                  </div>
+                );
+              }
+              const wins = closedList.filter(t => (t.pnl || t.pnlDollars || 0) >= 0);
+              const losses = closedList.filter(t => (t.pnl || t.pnlDollars || 0) < 0);
+              const winRate = ((wins.length / totalClosed) * 100).toFixed(1);
+              const totalProfit = wins.reduce((acc, t) => acc + (t.pnl || t.pnlDollars || 0), 0);
+              const totalLoss = Math.abs(losses.reduce((acc, t) => acc + (t.pnl || t.pnlDollars || 0), 0));
+              const netPnL = totalProfit - totalLoss;
+              const profitFactor = totalLoss > 0 ? (totalProfit / totalLoss).toFixed(2) : (totalProfit > 0 ? 'MAX' : '0.00');
 
-              <div className="p-4 bg-slate-950/90 border border-slate-800 rounded-xl">
-                <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Jumlah Keuntungan Terkumpul</div>
-                <div className="text-2xl font-black text-cyan-400 mt-1">
-                  +$14,820.50
-                </div>
-                <div className="text-[10px] text-slate-500 mt-1">Akaun Live $100,000 USD</div>
-              </div>
+              return (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 relative z-10 font-mono">
+                  <div className="p-4 bg-slate-950/90 border border-slate-800 rounded-xl">
+                    <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Jumlah Trade Ditutup</div>
+                    <div className="text-2xl font-black text-white mt-1">{totalClosed}</div>
+                    <div className="text-[10px] text-slate-500 mt-1">{wins.length} Menang / {losses.length} Kalah</div>
+                  </div>
 
-              <div className="p-4 bg-slate-950/90 border border-slate-800 rounded-xl">
-                <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Profit Factor</div>
-                <div className="text-2xl font-black text-purple-400 mt-1">
-                  2.85
-                </div>
-                <div className="text-[10px] text-slate-500 mt-1">Nisbah Untung/Rugi Cemerlang</div>
-              </div>
+                  <div className="p-4 bg-slate-950/90 border border-slate-800 rounded-xl">
+                    <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Kadar Kemenangan (Win Rate)</div>
+                    <div className="text-2xl font-black text-emerald-400 mt-1 flex items-baseline gap-1">
+                      {totalClosed < 5 ? (
+                        <span className="text-xs text-amber-400 uppercase">INSUFFICIENT EVIDENCE</span>
+                      ) : (
+                        `${winRate}%`
+                      )}
+                    </div>
+                    <div className="text-[10px] text-slate-500 mt-1">Nisbah Menang Disahkan</div>
+                  </div>
 
-              <div className="p-4 bg-slate-950/90 border border-slate-800 rounded-xl">
-                <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Max Drawdown</div>
-                <div className="text-2xl font-black text-amber-400 mt-1">
-                  4.20%
+                  <div className="p-4 bg-slate-950/90 border border-slate-800 rounded-xl">
+                    <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Untung Bersih Terkumpul</div>
+                    <div className={`text-2xl font-black mt-1 ${netPnL >= 0 ? 'text-cyan-400' : 'text-rose-400'}`}>
+                      {netPnL >= 0 ? '+' : ''}${netPnL.toFixed(2)}
+                    </div>
+                    <div className="text-[10px] text-slate-500 mt-1">Realized Net P&amp;L</div>
+                  </div>
+
+                  <div className="p-4 bg-slate-950/90 border border-slate-800 rounded-xl">
+                    <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Profit Factor</div>
+                    <div className="text-2xl font-black text-purple-400 mt-1">{profitFactor}</div>
+                    <div className="text-[10px] text-slate-500 mt-1">Nisbah Keuntungan/Kerugian</div>
+                  </div>
                 </div>
-                <div className="text-[10px] text-slate-500 mt-1">Risiko Terkawal Terhad</div>
-              </div>
-            </div>
+              );
+            })()}
           </div>
 
-          {/* Monthly Growth Simulation Chart & Active Trades Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Visual Profit Growth Breakdown */}
-            <div className="lg:col-span-2 p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-emerald-400" />
-                  <h3 className="font-bold text-white text-base">Carta Kompounding Keuntungan Bulanan AI Robot</h3>
-                </div>
-                <span className="text-xs font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/30">
-                  +14.82% ROI Bulan Ini
-                </span>
+          {/* Closed Trades Summary Table */}
+          <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 shadow-xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <History className="w-5 h-5 text-blue-400" />
+                <h3 className="font-bold text-white text-base">Senarai Penuh Sejarah Trade Diselesaikan</h3>
               </div>
-
-              {/* Monthly Bar Growth Visualization */}
-              <div className="space-y-3 pt-2 font-mono">
-                {[
-                  { month: 'Jan 2026', profit: '$2,140', percent: 85, color: 'bg-emerald-500' },
-                  { month: 'Feb 2026', profit: '$3,280', percent: 92, color: 'bg-emerald-500' },
-                  { month: 'Mac 2026', profit: '$2,910', percent: 88, color: 'bg-emerald-500' },
-                  { month: 'Apr 2026', profit: '$1,850', percent: 70, color: 'bg-emerald-500' },
-                  { month: 'Mei 2026', profit: '$2,440', percent: 82, color: 'bg-emerald-500' },
-                  { month: 'Jun 2026', profit: '$2,200', percent: 78, color: 'bg-emerald-500' },
-                ].map((item, idx) => (
-                  <div key={idx} className="space-y-1">
-                    <div className="flex justify-between text-xs text-slate-300">
-                      <span>{item.month}</span>
-                      <span className="font-bold text-emerald-400">{item.profit}</span>
-                    </div>
-                    <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-800">
-                      <div className={`${item.color} h-full rounded-full transition-all duration-1000`} style={{ width: `${item.percent}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <button
+                onClick={fetchManualTrades}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border border-slate-700"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${manualTradesLoading ? 'animate-spin' : ''}`} />
+                <span>KEMASKINI</span>
+              </button>
             </div>
 
-            {/* Live AI Robot Active Positions */}
-            <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Bot className="w-5 h-5 text-blue-400" />
-                  <h3 className="font-bold text-white text-base">Posisi Aktif AI Robot</h3>
-                </div>
-                <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping" />
-              </div>
-
-              <div className="space-y-3 text-xs font-mono">
-                {liveAutoTrades.length === 0 ? (
-                  <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl text-center text-slate-400">
-                    Tiada posisi aktif di cTrader / MT5 ketika ini.
+            {(() => {
+              const closedList = manualTrades.filter(t => t.status === 'CLOSED');
+              if (closedList.length === 0) {
+                return (
+                  <div className="p-8 text-center text-slate-500 text-xs font-mono bg-slate-950/50 rounded-xl border border-slate-800">
+                    <span className="px-2 py-0.5 bg-slate-800 text-slate-300 rounded text-[10px] font-bold mr-2 uppercase">[AUTHORITATIVE]</span>NO AUTHORITATIVE TRADE DATA RECORDED IN POSTGRESQL ? Tiada rekod trade ditutup yang disahkan dalam pangkalan data.
                   </div>
-                ) : (
-                  liveAutoTrades.map((trade, idx) => (
-                    <div key={trade.id || idx} className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1.5">
-                      <div className="flex justify-between items-center">
-                        <span className="font-bold text-white flex items-center gap-1.5">
-                          <span className={`px-1.5 py-0.5 ${trade.direction === 'BUY' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'} rounded font-black text-[10px]`}>
-                            {trade.direction}
-                          </span>
-                          {trade.pair}
-                        </span>
-                        <span className={`font-bold ${(trade.pnl || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                          {(trade.pnl || 0) >= 0 ? '+' : ''}â‚¬{(trade.pnl || 0).toFixed(2)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-[11px] text-slate-400">
-                        <span>Saiz: {trade.lotSize} Lot</span>
-                        <span>Entri: {trade.entryPrice}</span>
-                      </div>
-                    </div>
-                  ))
-                )}
+                );
+              }
 
-                <div className="p-3.5 bg-blue-950/40 border border-blue-500/30 rounded-xl text-[11px] text-blue-200 leading-relaxed">
-                  ðŸ’¡ <strong>Info Auto-Trader:</strong> Semua posisi dibuka secara automatik oleh robot berdasarkan pengesahan Liquidity Sweep H4.
+              return (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs font-mono">
+                    <thead>
+                      <tr className="bg-slate-950 border-b border-slate-800 text-[11px] text-slate-400 uppercase">
+                        <th className="p-3">ID / Pasangan</th>
+                        <th className="p-3">Arah</th>
+                        <th className="p-3">Harga Entri</th>
+                        <th className="p-3">Harga Keluar</th>
+                        <th className="p-3">Sebab Tutup</th>
+                        <th className="p-3 text-right">Untung/Rugi ($)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 bg-slate-950/40">
+                      {closedList.map((t) => {
+                        const pnlVal = t.pnl || t.pnlDollars || 0;
+                        const isWin = pnlVal >= 0;
+                        return (
+                          <tr key={t.id || t.manualTradeId} className="hover:bg-slate-950/70 transition">
+                            <td className="p-3 font-bold text-white">{t.symbol || t.pair}</td>
+                            <td className="p-3">
+                              <span className={`px-2 py-0.5 rounded font-black text-[10px] ${t.direction === 'BUY' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}`}>
+                                {t.direction}
+                              </span>
+                            </td>
+                            <td className="p-3 text-slate-300">{t.actualEntry || t.entryPrice}</td>
+                            <td className="p-3 text-slate-300">{t.closePrice || t.exitPrice || '-'}</td>
+                            <td className="p-3 text-slate-400">{t.closeReason || 'MANUAL_EXIT'}</td>
+                            <td className={`p-3 font-black text-right ${isWin ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              {isWin ? '+' : ''}${pnlVal.toFixed(2)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
-            </div>
+              );
+            })()}
           </div>
         </div>
       )}
 
-      {/* TAB 3: MANUAL ENTRY PRACTICE SIMULATOR WITH AI FEEDBACK */}
-      {activeTab === 'PRACTICE_SIM' && (
-        <div className="space-y-4">
-          <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Target className="w-5 h-5 text-emerald-400" />
-                <span>Simulator Entri Manual dengan AI Post-Trade Feedback Engine</span>
-              </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Uji kemahiran entri anda berdasarkan pergerakan pasaran sebenar secara selamat tanpa risiko modal real. AI Mentor akan menilai disiplin dan kualiti entri anda selepas order ditutup!
-              </p>
-            </div>
-            <div className="text-right font-mono hidden sm:block shrink-0">
-              <span className="text-[10px] text-slate-400 uppercase font-bold block">Harga Pasaran Semasa</span>
-              <span className="text-base font-black text-emerald-400">{activePair} : {currentPrice.toFixed(5)}</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Live Chart & Practice Order Panel */}
-            <div className="lg:col-span-2 space-y-4">
-              <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl">
-                <ChartWidget
-                  pair={activePair}
-                  candles={candles}
-                  currentPrice={currentPrice}
-                  srZones={srZones}
-                  indicators={indicators}
-                />
-              </div>
-
-              {/* Practice Orders List & AI Feedback Viewer */}
-              <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-3">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-blue-400" />
-                  <span>Senarai Latihan Entri &amp; Ulasan AI Mentor</span>
-                </h3>
-
-                {practiceTrades.length === 0 ? (
-                  <div className="p-8 text-center text-slate-500 text-xs">
-                    Tiada rekod latihan lagi. Jalankan entri pertama anda menggunakan borang di sebelah kanan!
-                  </div>
-                ) : (
-                  <div className="space-y-3 font-mono text-xs">
-                    {practiceTrades.map((t) => (
-                      <div key={t.id} className="p-3.5 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <span className={`px-2 py-0.5 rounded font-black text-[10px] ${t.direction === 'BUY' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}`}>
-                              {t.direction}
-                            </span>
-                            <span className="font-bold text-white">{t.pair}</span>
-                            <span className="text-slate-400">({t.lotSize} Lot)</span>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <span className={`font-bold ${t.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                              {t.status === 'CLOSED' ? `${t.pnl >= 0 ? '+' : ''}$${t.pnl.toFixed(2)}` : 'OPEN (Aktif)'}
-                            </span>
-
-                            {t.status === 'OPEN' ? (
-                              <button
-                                onClick={() => handleClosePracticeTrade(t.id)}
-                                disabled={isGeneratingFeedback}
-                                className="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-white font-bold text-[11px] rounded transition flex items-center gap-1 shadow cursor-pointer"
-                              >
-                                {isGeneratingFeedback ? 'Menilai AI...' : 'Tutup & Dapatkan Ulasan AI'}
-                              </button>
-                            ) : (
-                              <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 text-[10px] rounded font-bold">
-                                Selesai
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Display AI Feedback Card if trade is closed */}
-                        {t.aiFeedback && (
-                          <div className="p-3 bg-slate-900 border border-blue-500/30 rounded-lg space-y-2 text-[11px]">
-                            <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
-                              <span className="text-blue-300 font-bold flex items-center gap-1">
-                                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                                Penilaian AI Mentor
-                              </span>
-                              <span className="px-2 py-0.5 bg-purple-500/20 text-purple-300 font-black rounded border border-purple-500/40">
-                                Gred: {t.aiFeedback.grade}
-                              </span>
-                            </div>
-                            <p className="text-slate-300 leading-relaxed italic">
-                              "{t.aiFeedback.summary}"
-                            </p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[10px]">
-                              <div className="p-2 bg-slate-950 rounded border border-emerald-500/30 text-emerald-300">
-                                <strong className="block text-emerald-400 mb-1">âœ“ Kekuatan Entri:</strong>
-                                <ul className="list-disc pl-3 space-y-0.5">
-                                  {t.aiFeedback.strengths.map((s, idx) => <li key={idx}>{s}</li>)}
-                                </ul>
-                              </div>
-                              <div className="p-2 bg-slate-950 rounded border border-amber-500/30 text-amber-300">
-                                <strong className="block text-amber-400 mb-1">ðŸ’¡ Penambahbaikan:</strong>
-                                <ul className="list-disc pl-3 space-y-0.5">
-                                  {t.aiFeedback.improvements.map((s, idx) => <li key={idx}>{s}</li>)}
-                                </ul>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Practice Trade Form */}
-            <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Play className="w-4 h-4 text-emerald-400" />
-                <span>Borang Masuk Latihan</span>
-              </h3>
-
-              <div className="space-y-3 text-xs">
-                <div>
-                  <label className="text-slate-400 font-bold block mb-1">Arah Isyarat</label>
-                  <div className="grid grid-cols-2 gap-2 font-mono">
-                    <button
-                      type="button"
-                      onClick={() => setSimDirection('BUY')}
-                      className={`py-2 rounded-xl font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                        simDirection === 'BUY'
-                          ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
-                          : 'bg-slate-950 text-slate-400 border border-slate-800'
-                      }`}
-                    >
-                      <ArrowUpRight className="w-4 h-4" />
-                      BUY
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSimDirection('SELL')}
-                      className={`py-2 rounded-xl font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                        simDirection === 'SELL'
-                          ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/30'
-                          : 'bg-slate-950 text-slate-400 border border-slate-800'
-                      }`}
-                    >
-                      <ArrowDownRight className="w-4 h-4" />
-                      SELL
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-slate-400 font-bold block mb-1">Saiz Lot</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={simLot}
-                    onChange={(e) => setSimLot(Number(e.target.value))}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono text-xs focus:border-blue-500 outline-none"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-slate-400 font-bold block mb-1">Stop Loss (Pips)</label>
-                    <input
-                      type="number"
-                      value={simSlPips}
-                      onChange={(e) => setSimSlPips(Number(e.target.value))}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono text-xs focus:border-rose-500 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-slate-400 font-bold block mb-1">Take Profit (Pips)</label>
-                    <input
-                      type="number"
-                      value={simTpPips}
-                      onChange={(e) => setSimTpPips(Number(e.target.value))}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono text-xs focus:border-emerald-500 outline-none"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleExecutePracticeTrade}
-                  className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Play className="w-4 h-4 fill-white" />
-                  <span>Hantar Entri Latihan Manual</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* TAB 4: BROKER CONNECTION (PREMIUM INTEGRATION) */}
+      {/* TAB 4: READ-ONLY BROKER INTEGRATION & TELEMETRY */}
       {activeTab === 'BROKER_CONNECT' && (
-        <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
+        <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 shadow-xl">
           <div className="flex items-center justify-between border-b border-slate-800 pb-4">
             <div>
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Zap className="w-5 h-5 text-amber-400" />
-                <span>Pengurusan Integrasi Broker Platform (SaaS Premium)</span>
+                <Cpu className="w-5 h-5 text-blue-400" />
+                <span>Status Sambungan Market-Data Broker (Read-Only)</span>
               </h2>
               <p className="text-xs text-slate-400 mt-1">
-                Sambungkan akaun MetaTrader 4, MetaTrader 5, cTrader, atau TradingView anda untuk eksekusi automatik 2-Hala tanpa latensi.
+                Sambungan stream market-data cTrader Open API / FIX untuk suapan harga live. Eksekusi broker langsung kekal DISARMED (Fail-Closed).
               </p>
             </div>
             <button
               onClick={onOpenBrokerModal}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition shadow flex items-center gap-1.5 cursor-pointer"
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs rounded-xl transition shadow flex items-center gap-1.5 cursor-pointer"
             >
-              <span>Buka Konfigurasi Full Relay</span>
+              <span>Konfigurasi Pautan cTrader</span>
             </button>
           </div>
 
           {/* Active Broker Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-xs">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-xs">
             <div className="p-4 bg-slate-950 border border-cyan-500/40 rounded-xl space-y-2">
               <div className="flex justify-between items-center">
-                <span className="font-bold text-cyan-300">cTrader FIX API</span>
-                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 text-[10px] font-bold rounded">CONNECTED</span>
+                <span className="font-bold text-cyan-300">cTrader Open API Stream</span>
+                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 text-[10px] font-bold rounded">READ-ONLY CONNECTED</span>
               </div>
               <div className="text-[11px] text-slate-300 space-y-1">
                 <div>Akaun: <strong>#5877246</strong></div>
                 <div>Pelayan: <strong>demo-uk-eqx-01.p.c-trader.com</strong></div>
-                <div>Port SSL: <strong>5212 / 5202</strong></div>
+                <div>Mod Data: <strong className="text-emerald-400">Live Tick Stream (Zero Execution)</strong></div>
               </div>
             </div>
 
             <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
               <div className="flex justify-between items-center">
-                <span className="font-bold text-blue-300">MetaTrader 5 EA</span>
-                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 text-[10px] font-bold rounded">ONLINE</span>
+                <span className="font-bold text-slate-300">Execution Safety Gate</span>
+                <span className="px-2 py-0.5 bg-rose-500/20 text-rose-300 text-[10px] font-bold rounded">LOCKED / BLOCKED</span>
               </div>
               <div className="text-[11px] text-slate-300 space-y-1">
-                <div>Akaun: <strong>#11075236</strong></div>
-                <div>Pelayan: <strong>MetaQuotes-Demo</strong></div>
-                <div>Ping: <strong>14ms</strong></div>
-              </div>
-            </div>
-
-            <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-amber-300">TradingView Alert</span>
-                <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 text-[10px] font-bold rounded">STANDBY</span>
-              </div>
-              <div className="text-[11px] text-slate-300 space-y-1">
-                <div>Webhook Listener: <strong>Ready</strong></div>
-                <div>Secret Key: <strong>quantum_ai_secret</strong></div>
+                <div>Laluan Eksekusi: <strong className="text-rose-400">0 Active Paths</strong></div>
+                <div>Pesanan Dihantar: <strong className="text-slate-400">0 (Fail-Closed)</strong></div>
+                <div>Status: <strong className="text-amber-400">READ_ONLY_MODE_ENFORCED</strong></div>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* TAB 5: USER PROFILE & SUBSCRIPTION */}
+      {activeTab === 'DEMO_COMMAND_CENTER' && (
+        <DemoTraderCommandCenter
+          currentPrice={currentPrice}
+          activePair={activePair}
+          setActivePair={setActivePair}
+          candles={candles}
+          candleSource={candleSource}
+          indicators={indicators}
+          smcData={smcData}
+          srZones={srZones}
+          aiOpportunity={aiOpportunity}
+          aiLoading={aiLoading}
+          onRefreshData={onRefreshData}
+          onOpenBrokerModal={onOpenBrokerModal}
+          timeframe={timeframe}
+          setTimeframe={setTimeframe}
+          language={isMalay ? 'ms' : 'en'}
+        />
+      )}
+
+      {activeTab === 'ECONOMIC_CALENDAR' && (
+        <div className="space-y-6">
+          <EconomicCalendarWidget
+            events={economicEvents}
+            language={isMalay ? 'ms' : 'en'}
+          />
+        </div>
+      )}
+
+      {activeTab === 'MANUAL_DESK' && (
+        <div className="space-y-6">
+          {/* ROW 1: CHART & AI OPINION */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Chart Column */}
+            <div className="lg:col-span-8 flex flex-col h-[550px]">
+              <ChartWidget
+                candles={candles}
+                pair={activePair}
+                timeframe={timeframe}
+                setTimeframe={setTimeframe || (() => {})}
+                aiOpportunity={aiOpportunity}
+                smcData={smcData}
+                srZones={srZones}
+                onRefreshData={onRefreshData || (() => {})}
+                onAskPakar={onAskAi || (() => {})}
+                language={isMalay ? 'ms' : 'en'}
+              />
+            </div>
+
+            {/* AI Decision Workspace */}
+            <div id="central-ai-opportunity-workspace" className="lg:col-span-4 flex flex-col h-[550px] overflow-y-auto bg-slate-900 border border-slate-800 rounded-2xl">
+              <AiAnalysisCard
+                activePair={activePair}
+                opportunity={aiOpportunity}
+                loading={aiLoading}
+                tradingStyle="DAY_TRADER"
+                currentPrice={currentPrice}
+                onSyncToRiskCalc={onSyncToRiskCalc || (() => {})}
+                onLogToJournal={onLogToJournal || (() => {})}
+                onAskAi={onAskAi || (() => {})}
+                language={isMalay ? 'ms' : 'en'}
+                onOpenAdaptiveLearning={onOpenAdaptiveLearning}
+                onTradeEntered={() => fetchManualTrades()}
+              />
+            </div>
+          </div>
+
+          {/* ROW 2: TECHNICAL CONFLUENCES & LEARNING OBSERVATORY SIDEBAR */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Indicators & SMC structure bias */}
+            <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <IndicatorsPanel
+                indicators={indicators}
+                smcData={smcData}
+                currentPrice={currentPrice}
+                activePair={activePair}
+                language={isMalay ? 'ms' : 'en'}
+              />
+              <SMCPanel
+                smcData={smcData}
+                timeframe={timeframe}
+                language={isMalay ? 'ms' : 'en'}
+              />
+            </div>
+
+            {/* Campaign Observatory Sidebar */}
+            <div className="lg:col-span-4 p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <Sparkles className="w-4.5 h-4.5 text-amber-400" />
+                <span>Learning Observatory &amp; Campaign</span>
+              </h3>
+
+              {/* Status and Disarmed Metrics */}
+              <div className="p-3.5 bg-slate-950 border border-slate-800 rounded-xl space-y-2 text-xs font-mono">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Campaign Status:</span>
+                  <span className={`font-bold uppercase ${campaignStatus?.status === 'RUNNING' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    {campaignStatus?.status || (observatoryStatus?.state === 'OBSERVING' ? 'RUNNING' : 'STOPPED')}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Evidence Level (N):</span>
+                  <span className="text-white font-bold">
+                    {authoritativeSummary?.totalClosed ?? earlyLearnerStats?.campaignMetrics?.closedTrades ?? 0} samples
+                    <span className="ml-1 text-[10px] text-cyan-400 font-normal">
+                      ({(authoritativeSummary?.totalClosed ?? 0) >= 100 ? 'ROBUST_OBSERVATION' : (authoritativeSummary?.totalClosed ?? 0) >= 30 ? 'VALIDATED' : 'EMERGING'})
+                    </span>
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Win Rate:</span>
+                  <span className="text-emerald-400 font-bold">
+                    {(() => {
+                      const totalClosed = authoritativeSummary?.totalClosed ?? earlyLearnerStats?.campaignMetrics?.closedTrades ?? 0;
+                      const winRate = authoritativeSummary?.winRate ?? earlyLearnerStats?.campaignMetrics?.winRate ?? 0;
+                      const winCount = authoritativeSummary?.winCount ?? earlyLearnerStats?.campaignMetrics?.winCount ?? 0;
+                      const lossCount = authoritativeSummary?.lossCount ?? earlyLearnerStats?.campaignMetrics?.lossCount ?? 0;
+                      if (totalClosed === 0) {
+                        return <span className="text-slate-500 uppercase text-[10px]">NO CLOSED TRADES</span>;
+                      }
+                      return `${winRate}% (${winCount}W / ${lossCount}L)`;
+                    })()}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Total Observations:</span>
+                  <span className="text-white font-bold">
+                    {authoritativeSummary?.totalClosed ?? earlyLearnerStats?.campaignMetrics?.closedTrades ?? 0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Remaining Trades:</span>
+                  <span className="text-slate-400">
+                    {Math.max(0, 30 - (authoritativeSummary?.totalClosed ?? earlyLearnerStats?.campaignMetrics?.closedTrades ?? 0))}
+                  </span>
+                </div>
+                <div className="pt-2 border-t border-slate-800 flex justify-between text-[11px]">
+                  <span className="text-rose-400 font-bold">isDemoArmed:</span>
+                  <span className="text-rose-400 font-bold">{campaignStatus?.isDemoArmed ? 'TRUE' : 'FALSE (DISARMED)'}</span>
+                </div>
+              </div>
+
+              {/* Active campaign controls */}
+              <div className="flex gap-2">
+                {campaignStatus?.status !== 'RUNNING' && observatoryStatus?.state !== 'OBSERVING' ? (
+                  <button
+                    onClick={async () => {
+                      await fetch('/api/forex/learning/campaign/start', { method: 'POST' });
+                      fetchManualTrades();
+                    }}
+                    className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1 cursor-pointer border border-emerald-500/20"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-white" />
+                    <span>Start Campaign</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={async () => {
+                      await fetch('/api/forex/learning/campaign/pause', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ reason: 'Operator Paused' }) });
+                      fetchManualTrades();
+                    }}
+                    className="flex-1 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1 cursor-pointer border border-amber-500/20"
+                  >
+                    <Pause className="w-3.5 h-3.5 fill-white" />
+                    <span>Pause Campaign</span>
+                  </button>
+                )}
+                <button
+                  onClick={async () => {
+                    await fetch('/api/forex/learning/campaign/stop', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ reason: 'Operator Stopped' }) });
+                    fetchManualTrades();
+                  }}
+                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl transition cursor-pointer border border-slate-700"
+                >
+                  Stop
+                </button>
+              </div>
+
+              {/* Active parameters adaptations */}
+              <div className="space-y-1.5 font-mono text-[11px]">
+                <div className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Active Adjustments</div>
+                {(() => {
+                  const adaptations = earlyLearnerStats?.learningAdaptations || earlyLearnerStats?.adaptations || [];
+                  if (adaptations.length === 0) {
+                    return <div className="text-slate-500 italic">No adaptations applied.</div>;
+                  }
+                  return (
+                    <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                      {adaptations.map((ad: any, i: number) => (
+                        <div key={i} className="p-2 bg-slate-950 border border-slate-800/80 rounded-lg text-purple-300 space-y-0.5">
+                          <div className="flex justify-between font-bold text-[10px]">
+                            <span className="text-white">{ad.affectedFingerprint || ad.pair}</span>
+                            <span className="text-amber-400">{ad.boundedChange || `${ad.multiplier}x`}</span>
+                          </div>
+                          <div className="text-[10px] text-slate-400">{ad.proposedParameter || ad.action}</div>
+                          {ad.reason && <div className="text-[9px] text-slate-500 italic">{ad.reason}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+
+          {/* ROW 3: POSITION MANAGERS (SHADOW VS MANUAL SIDE-BY-SIDE TRACKER) */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            {/* Simulated Shadow Paper Trades */}
+            <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <Eye className="w-4 h-4 text-cyan-400" />
+                <span>Simulated Shadow Trades ({shadowTrades.length} Active)</span>
+              </h3>
+
+              {shadowTrades.length === 0 ? (
+                <div className="p-6 bg-slate-950/60 border border-slate-800 rounded-xl text-center text-xs text-slate-400 font-mono space-y-1">
+                  <div>[OBSERVATORIAL] Tiada trade shadow aktif.</div>
+                  <div className="text-[11px] text-slate-500">
+                    Sistem beroperasi dalam mod <strong>cTrader DEMO Sebenar</strong>. 9 posisi aktif kini beroperasi di cTrader Demo Command Center.
+                  </div>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs font-mono border-collapse">
+                    <thead>
+                      <tr className="bg-slate-950 border-b border-slate-800 text-[11px] text-slate-400 uppercase">
+                        <th className="p-2.5">Symbol</th>
+                        <th className="p-2.5">Direction</th>
+                        <th className="p-2.5">Entry</th>
+                        <th className="p-2.5">Current</th>
+                        <th className="p-2.5">Stop Loss</th>
+                        <th className="p-2.5">Take Profit 1</th>
+                        <th className="p-2.5">Unrealized PnL</th>
+                        <th className="p-2.5">MFE / MAE</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 bg-slate-950/40">
+                      {shadowTrades.map((t: any) => {
+                        const pipFactor = t.symbol === 'USD/JPY' ? 100 : (t.symbol === 'XAU/USD' || t.symbol === 'NASDAQ' || t.symbol === 'BTC/USD') ? 1 : 10000;
+                        const currPrice = t.currentPrice ?? (t.direction === 'BUY' ? t.highestPriceSeen : t.lowestPriceSeen) ?? t.entryPrice;
+                        const pnlPips = t.unrealizedPnlPips !== undefined
+                          ? t.unrealizedPnlPips
+                          : (currPrice && t.entryPrice ? Number(((t.direction === 'BUY' ? (currPrice - t.entryPrice) : (t.entryPrice - currPrice)) * pipFactor).toFixed(1)) : 0);
+                        const isPos = pnlPips > 0;
+                        const isNeg = pnlPips < 0;
+
+                        return (
+                          <tr key={t.id} className="hover:bg-slate-800/30 transition">
+                            <td className="p-2.5 font-bold text-white">{t.symbol}</td>
+                            <td className="p-2.5">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold ${
+                                t.direction === 'BUY' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
+                              }`}>
+                                {t.direction}
+                              </span>
+                            </td>
+                            <td className="p-2.5 text-slate-300">{t.entryPrice ?? t.requestedEntryPrice ?? '—'}</td>
+                            <td className="p-2.5 text-cyan-300">{currPrice ? (typeof currPrice === 'number' ? currPrice.toFixed(t.symbol?.includes('JPY') ? 3 : 5) : currPrice) : '—'}</td>
+                            <td className="p-2.5 text-rose-400">{t.stopLoss}</td>
+                            <td className="p-2.5 text-emerald-400">{t.takeProfit1}</td>
+                            <td className="p-2.5 font-bold">
+                              <span className={`px-2 py-0.5 rounded text-[11px] font-mono ${
+                                isPos ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : isNeg ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30' : 'text-slate-400'
+                              }`}>
+                                {isPos ? `+${pnlPips}` : pnlPips} pips
+                              </span>
+                            </td>
+                            <td className="p-2.5 text-slate-400">{t.mfePips ?? 0} / {t.maePips ?? 0} pips</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Active Manual Trades (backed by PG) */}
+            <div id="active-manual-trading-desk" className="p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <Activity className="w-4 h-4 text-emerald-400" />
+                <span>Active Manual Positions ({manualTrades.filter(t => t.status === 'ACTIVE').length})</span>
+              </h3>
+
+              {manualTrades.filter(t => t.status === 'ACTIVE').length === 0 ? (
+                <div className="p-6 bg-slate-950/60 border border-slate-800 rounded-xl text-center text-xs text-slate-400 font-mono">
+                  [AUTHORITATIVE] No active manual trades.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs font-mono border-collapse">
+                    <thead>
+                      <tr className="bg-slate-950 border-b border-slate-800 text-[11px] text-slate-400 uppercase">
+                        <th className="p-2.5">Symbol</th>
+                        <th className="p-2.5">Dir</th>
+                        <th className="p-2.5">Entry</th>
+                        <th className="p-2.5">Live</th>
+                        <th className="p-2.5">Floating P&amp;L</th>
+                        <th className="p-2.5 text-center">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 bg-slate-950/40">
+                      {manualTrades.filter(t => t.status === 'ACTIVE').map((trade) => {
+                        const snapshot = monitoringSnapshots.find(s => s.manualTradeId === trade.manualTradeId);
+                        const currentP = snapshot?.currentPrice;
+                        const uPnl = snapshot?.unrealizedPnl;
+                        const isPnlPositive = (uPnl || 0) >= 0;
+
+                        return (
+                          <tr key={trade.manualTradeId} className="hover:bg-slate-800/30 transition">
+                            <td className="p-2.5">
+                              <div className="font-bold text-white">{trade.symbol}</div>
+                              <div className="text-[9px] text-slate-500">{trade.manualTradeId}</div>
+                            </td>
+                            <td className="p-2.5">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold ${
+                                trade.direction === 'BUY' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
+                              }`}>
+                                {trade.direction}
+                              </span>
+                            </td>
+                            <td className="p-2.5 text-slate-300">{trade.actualEntry}</td>
+                            <td className="p-2.5 text-white font-bold">{currentP || 'FETCHING'}</td>
+                            <td className="p-2.5">
+                              {uPnl !== null && uPnl !== undefined ? (
+                                <span className={`font-extrabold ${isPnlPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                  ${uPnl.toFixed(2)}
+                                </span>
+                              ) : '--'}
+                            </td>
+                            <td className="p-2.5 text-center">
+                              <button
+                                onClick={() => handleOpenCloseModal(trade)}
+                                className="px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg text-[9px] transition cursor-pointer"
+                              >
+                                CLOSE
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ROW 4: CLOSED TRADES JOURNAL & SIMPLIFIED STATISTICS */}
+          <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <History className="w-4 h-4 text-blue-400" />
+                <span>Closed Trades History (PostgreSQL Journal &amp; Simulated Exits)</span>
+              </h3>
+              <span className="text-[11px] font-mono px-2.5 py-1 bg-slate-800/80 border border-slate-700/60 rounded-lg text-slate-300">
+                1R Nominal Risk = $10.00 USD
+              </span>
+            </div>
+
+            {/* Combined Completed manual and completed shadow list */}
+            {(() => {
+              const completedManual = manualTrades.filter(t => t.status === 'CLOSED').map(trade => {
+                const closeTime = trade.exitedAt
+                  ? new Date(trade.exitedAt).getTime()
+                  : trade.closedAt
+                  ? new Date(trade.closedAt).getTime()
+                  : trade.enteredAt
+                  ? new Date(trade.enteredAt).getTime()
+                  : 0;
+
+                return {
+                  id: trade.manualTradeId || `manual-${trade.id}`,
+                  source: 'MANUAL (PG)' as const,
+                  symbol: trade.symbol,
+                  direction: trade.direction,
+                  entry: trade.actualEntry,
+                  exitPrice: trade.exitPrice,
+                  exitReason: trade.exitReason,
+                  realizedPnlUSD: trade.realizedPnl || 0,
+                  realizedR: trade.realizedR !== undefined ? trade.realizedR : (trade.realizedPnl || 0) / 10,
+                  outcome: trade.result || ((trade.realizedPnl || 0) >= 0 ? 'WIN' : 'LOSS'),
+                  persistence: 'POSTGRESQL',
+                  closedAt: closeTime,
+                  closedAtFormatted: closeTime > 0 ? new Date(closeTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—'
+                };
+              });
+
+              const completedShadow = completedShadowTrades.map((trade: any) => {
+                const entry = trade.entryPrice ?? trade.actualEntry ?? trade.acknowledgedEntryPrice ?? trade.requestedEntryPrice;
+                const exit = trade.exitPrice;
+                const realizedR = trade.realizedR ?? 0;
+                const isWin = trade.closeReason?.includes('TAKE_PROFIT') || (realizedR > 0);
+                const isBE = trade.closeReason === 'BREAKEVEN' || realizedR === 0;
+                const isLoss = trade.closeReason === 'STOP_LOSS' || (realizedR < 0);
+                const outcome = isBE ? 'BREAKEVEN' : isWin ? 'WIN' : 'LOSS';
+                const realizedPnlUSD = trade.realizedPnlDollars !== undefined ? trade.realizedPnlDollars : (realizedR * 10);
+                const closeTime = trade.closedAt
+                  ? new Date(trade.closedAt).getTime()
+                  : trade.openedAt
+                  ? new Date(trade.openedAt).getTime()
+                  : 0;
+
+                return {
+                  id: trade.id,
+                  source: trade.persistence === 'POSTGRESQL' ? 'SHADOW (PG)' : trade.persistence === 'WAL_PENDING' ? 'SHADOW (WAL — PENDING)' : 'SHADOW (MEM)',
+                  symbol: trade.symbol,
+                  direction: trade.direction,
+                  entry,
+                  exitPrice: exit,
+                  exitReason: trade.closeReason || 'CLOSED',
+                  realizedPnlUSD,
+                  realizedR,
+                  outcome,
+                  persistence: trade.persistence || 'POSTGRESQL',
+                  closedAt: closeTime,
+                  closedAtFormatted: closeTime > 0 ? new Date(closeTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—'
+                };
+              });
+
+              const completedAuto = closedAutoTrades.map((trade: any) => {
+                const closeTime = trade.closeTime
+                  ? Number(trade.closeTime)
+                  : trade.closedAt
+                  ? new Date(trade.closedAt).getTime()
+                  : trade.openTime
+                  ? Number(trade.openTime)
+                  : 0;
+
+                const realizedPnlUSD = Number(trade.pnlDollars ?? trade.realizedProfit ?? 0);
+                const realizedR = Number((realizedPnlUSD / 10).toFixed(2));
+                const outcome = realizedPnlUSD > 0 ? 'WIN' : realizedPnlUSD < 0 ? 'LOSS' : 'BREAKEVEN';
+
+                return {
+                  id: trade.id || `auto-${trade.brokerTicket || trade.ticketId}`,
+                  source: (trade.environment === 'DEMO' ? 'cTRADER DEMO (PG)' : 'AUTO (PG)') as any,
+                  symbol: trade.pair || trade.symbol,
+                  direction: trade.direction,
+                  entry: trade.entryPrice,
+                  exitPrice: trade.exitPrice || trade.closePrice || trade.entryPrice,
+                  exitReason: trade.closeReason || 'CLOSED',
+                  realizedPnlUSD,
+                  realizedR,
+                  outcome,
+                  persistence: 'POSTGRESQL' as const,
+                  closedAt: closeTime,
+                  closedAtFormatted: closeTime > 0 ? new Date(closeTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—'
+                };
+              });
+
+              // Authoritative sort: Latest closed trade first
+              const allClosed = [...completedAuto, ...completedManual, ...completedShadow].sort((a, b) => (b.closedAt || 0) - (a.closedAt || 0));
+
+              if (allClosed.length === 0) {
+                return (
+                  <div className="p-6 bg-slate-950/60 border border-slate-800 rounded-xl text-center text-xs text-slate-400">
+                    No closed trades history found in database or memory.
+                  </div>
+                );
+              }
+
+              // --- SIMPLIFIED AGGREGATE STATISTICS (AUTHORITATIVE TRUTH SOURCE) ---
+              const hasAuthSummary = authoritativeSummary && authoritativeSummary.totalClosed > 0;
+              const totalTrades = hasAuthSummary ? authoritativeSummary.totalClosed : allClosed.length;
+              const winCount = hasAuthSummary ? authoritativeSummary.winCount : allClosed.filter(t => t.outcome === 'WIN').length;
+              const lossCount = hasAuthSummary ? authoritativeSummary.lossCount : allClosed.filter(t => t.outcome === 'LOSS').length;
+              const beCount = hasAuthSummary ? authoritativeSummary.breakevenCount : allClosed.filter(t => t.outcome === 'BREAKEVEN').length;
+              const winRate = hasAuthSummary ? authoritativeSummary.winRate : (totalTrades > 0 ? (winCount / totalTrades) * 100 : 0);
+
+              const totalNetUSD = hasAuthSummary ? authoritativeSummary.totalRealizedUSD : allClosed.reduce((sum, t) => sum + t.realizedPnlUSD, 0);
+              const totalNetR = hasAuthSummary ? authoritativeSummary.totalRealizedR : allClosed.reduce((sum, t) => sum + t.realizedR, 0);
+              const grossWinsR = allClosed.filter(t => t.realizedR > 0).reduce((sum, t) => sum + t.realizedR, 0);
+              const grossLossesR = Math.abs(allClosed.filter(t => t.realizedR < 0).reduce((sum, t) => sum + t.realizedR, 0));
+              const profitFactor = hasAuthSummary ? authoritativeSummary.profitFactor : (grossLossesR > 0 ? (grossWinsR / grossLossesR).toFixed(2) : (grossWinsR > 0 ? '∞' : '1.00'));
+
+              // Per Pair Performance
+              const pairStats = (hasAuthSummary && authoritativeSummary.pairBreakdown && authoritativeSummary.pairBreakdown.length > 0)
+                ? authoritativeSummary.pairBreakdown
+                : ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD'].map(sym => {
+                    const trades = allClosed.filter(t => t.symbol === sym);
+                    const symWins = trades.filter(t => t.outcome === 'WIN').length;
+                    const symTotal = trades.length;
+                    const symNetUSD = trades.reduce((sum, t) => sum + t.realizedPnlUSD, 0);
+                    const symNetR = trades.reduce((sum, t) => sum + t.realizedR, 0);
+                    const symWinRate = symTotal > 0 ? (symWins / symTotal) * 100 : 0;
+                    return { symbol: sym, total: symTotal, wins: symWins, winRate: symWinRate, netUSD: symNetUSD, netR: symNetR };
+                  }).filter(s => s.total > 0);
+
+              // Filtered list
+              const filteredList = allClosed.filter(t => {
+                if (closedHistoryFilterPair !== 'ALL' && t.symbol !== closedHistoryFilterPair) return false;
+                if (closedHistoryFilterOutcome !== 'ALL' && t.outcome !== closedHistoryFilterOutcome) return false;
+                return true;
+              });
+
+              // Pagination
+              const pageSize = 10;
+              const totalPages = Math.ceil(filteredList.length / pageSize) || 1;
+              const currentPage = Math.min(Math.max(closedHistoryPage, 1), totalPages);
+              const paginatedList = filteredList.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+              return (
+                <div className="space-y-5">
+                  {/* KPI STATISTIC CARDS */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="p-3.5 bg-slate-950/80 border border-slate-800 rounded-xl">
+                      <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total Closed Trades</div>
+                      <div className="text-xl font-extrabold text-white font-mono mt-1">{totalTrades}</div>
+                      <div className="text-[10px] text-slate-400 mt-0.5 flex gap-1.5 font-mono">
+                        <span className="text-emerald-400">{winCount}W</span>
+                        <span>•</span>
+                        <span className="text-rose-400">{lossCount}L</span>
+                        <span>•</span>
+                        <span className="text-amber-400">{beCount}BE</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 bg-slate-950/80 border border-slate-800 rounded-xl">
+                      <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Win Rate</div>
+                      <div className={`text-xl font-extrabold font-mono mt-1 ${winRate >= 50 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {winRate.toFixed(1)}%
+                      </div>
+                      <div className="w-full bg-slate-800 h-1.5 rounded-full mt-1.5 overflow-hidden">
+                        <div className="bg-emerald-500 h-full rounded-full transition-all" style={{ width: `${Math.min(winRate, 100)}%` }}></div>
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 bg-slate-950/80 border border-slate-800 rounded-xl">
+                      <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Net Realized PnL (USD)</div>
+                      <div className={`text-xl font-extrabold font-mono mt-1 ${totalNetUSD >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {totalNetUSD >= 0 ? '+' : ''}${totalNetUSD.toFixed(2)}
+                      </div>
+                      <div className="text-[10px] font-mono text-slate-400 mt-0.5">
+                        Total Return: <span className={totalNetR >= 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>{totalNetR >= 0 ? '+' : ''}{totalNetR.toFixed(2)}R</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 bg-slate-950/80 border border-slate-800 rounded-xl">
+                      <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Profit Factor / Avg R</div>
+                      <div className="text-xl font-extrabold text-blue-400 font-mono mt-1">{profitFactor}</div>
+                      <div className="text-[10px] font-mono text-slate-400 mt-0.5">
+                        Avg / Trade: <span className="text-white font-bold">{totalTrades > 0 ? (totalNetR / totalTrades).toFixed(2) : '0.00'}R</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* PAIR PERFORMANCE PILLS */}
+                  {pairStats.length > 0 && (
+                    <div className="p-3 bg-slate-950/50 border border-slate-800/80 rounded-xl">
+                      <div className="text-[10px] uppercase font-bold text-slate-400 mb-2 tracking-wider">Performance by Monitored Pair:</div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {pairStats.map(stat => (
+                          <div key={stat.symbol} className="p-2 bg-slate-900/90 border border-slate-800 rounded-lg flex items-center justify-between text-xs font-mono">
+                            <div>
+                              <div className="font-bold text-white text-[11px]">{stat.symbol}</div>
+                              <div className="text-[10px] text-slate-400">{stat.total} trades ({stat.winRate.toFixed(0)}% W)</div>
+                            </div>
+                            <div className="text-right">
+                              <div className={`font-bold text-[11px] ${stat.netUSD >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                {stat.netUSD >= 0 ? '+' : ''}${stat.netUSD.toFixed(1)}
+                              </div>
+                              <div className="text-[9px] text-slate-400">{stat.netR >= 0 ? '+' : ''}{stat.netR.toFixed(1)}R</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* FILTER TOOLBAR */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-slate-800">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 mr-1">Symbol:</span>
+                      {['ALL', 'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD'].map(sym => (
+                        <button
+                          key={sym}
+                          onClick={() => { setClosedHistoryFilterPair(sym); setClosedHistoryPage(1); }}
+                          className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition cursor-pointer ${
+                            closedHistoryFilterPair === sym
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-slate-800 text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          {sym}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 mr-1">Outcome:</span>
+                      {['ALL', 'WIN', 'LOSS', 'BREAKEVEN'].map(outcome => (
+                        <button
+                          key={outcome}
+                          onClick={() => { setClosedHistoryFilterOutcome(outcome); setClosedHistoryPage(1); }}
+                          className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition cursor-pointer ${
+                            closedHistoryFilterOutcome === outcome
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-slate-800 text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          {outcome}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* PAGINATED TRADES TABLE */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs font-mono border-collapse">
+                      <thead>
+                        <tr className="bg-slate-950 border-b border-slate-800 text-[11px] text-slate-400 uppercase">
+                          <th className="p-2.5">Time</th>
+                          <th className="p-2.5">Source</th>
+                          <th className="p-2.5">Symbol</th>
+                          <th className="p-2.5">Direction</th>
+                          <th className="p-2.5">Entry</th>
+                          <th className="p-2.5">Exit Price</th>
+                          <th className="p-2.5">Exit Reason</th>
+                          <th className="p-2.5">PnL (USD / R)</th>
+                          <th className="p-2.5">Outcome</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60 bg-slate-950/40">
+                        {paginatedList.map((trade) => {
+                          const isWin = trade.outcome === 'WIN';
+                          const isBE = trade.outcome === 'BREAKEVEN';
+                          const isLoss = trade.outcome === 'LOSS';
+                          const outcomeBadgeClass = isBE
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                            : isWin
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                            : 'bg-rose-500/20 text-rose-300 border border-rose-500/40';
+
+                          const pnlClass = isBE ? 'text-amber-400' : isWin ? 'text-emerald-400' : 'text-rose-400';
+                          const pnlFormattedUSD = `${trade.realizedPnlUSD >= 0 ? '+' : ''}$${trade.realizedPnlUSD.toFixed(2)}`;
+                          const pnlFormattedR = `(${trade.realizedR >= 0 ? '+' : ''}${trade.realizedR.toFixed(2)}R)`;
+
+                          return (
+                            <tr key={trade.id} className="hover:bg-slate-800/30 transition">
+                              <td className="p-2.5 text-slate-400 text-[10px] whitespace-nowrap">
+                                {trade.closedAtFormatted || '—'}
+                              </td>
+                              <td className="p-2.5 font-bold">
+                                {trade.source === 'MANUAL (PG)' ? (
+                                  <span className="text-purple-300">MANUAL (PG)</span>
+                                ) : trade.persistence === 'POSTGRESQL' ? (
+                                  <span className="text-cyan-300">SHADOW (PG)</span>
+                                ) : trade.persistence === 'WAL_PENDING' ? (
+                                  <span className="text-purple-300 text-[10px]">SHADOW (WAL — PENDING)</span>
+                                ) : (
+                                  <span className="text-amber-400 text-[10px]">SHADOW (MEM — PERSISTENCE DEGRADED)</span>
+                                )}
+                              </td>
+                              <td className="p-2.5 font-bold text-white">{trade.symbol}</td>
+                              <td className="p-2.5">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold ${trade.direction === 'BUY' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                                  {trade.direction}
+                                </span>
+                              </td>
+                              <td className="p-2.5 text-slate-300">{trade.entry !== undefined ? trade.entry : '—'}</td>
+                              <td className="p-2.5 text-slate-200">{trade.exitPrice !== undefined ? trade.exitPrice : '—'}</td>
+                              <td className="p-2.5 text-slate-400">{trade.exitReason || 'CLOSED'}</td>
+                              <td className={`p-2.5 font-bold ${pnlClass}`}>
+                                {pnlFormattedUSD} <span className="text-[10px] text-slate-400 font-normal">{pnlFormattedR}</span>
+                              </td>
+                              <td className="p-2.5">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${outcomeBadgeClass}`}>
+                                  {trade.outcome}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* PAGINATION CONTROLS */}
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-xs text-slate-400 font-mono">
+                    <div>
+                      Showing {filteredList.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} to {Math.min(currentPage * pageSize, filteredList.length)} of {filteredList.length} trades
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setClosedHistoryPage(p => Math.max(p - 1, 1))}
+                        disabled={currentPage <= 1}
+                        className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold rounded-lg text-xs transition cursor-pointer"
+                      >
+                        PREV
+                      </button>
+                      <span className="px-2 font-bold text-white">Page {currentPage} of {totalPages}</span>
+                      <button
+                        onClick={() => setClosedHistoryPage(p => Math.min(p + 1, totalPages))}
+                        disabled={currentPage >= totalPages}
+                        className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold rounded-lg text-xs transition cursor-pointer"
+                      >
+                        NEXT
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* INTERACTIVE CLOSE MODAL */}
+          {closeModalTrade && (
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-rose-500/20 border border-rose-500/40 rounded-xl text-rose-400">
+                      <Target className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-white text-sm">RECORD MANUAL TRADE EXIT</h3>
+                      <p className="text-[11px] text-slate-400 font-mono">
+                        {closeModalTrade.symbol} ({closeModalTrade.direction}) | Entry: {closeModalTrade.actualEntry}
+                      </p>
+                    </div>
+                  </div>
+                  <button onClick={() => setCloseModalTrade(null)} className="text-slate-400 hover:text-white p-1 rounded-lg">
+                    <XCircle className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleConfirmCloseTrade} className="p-5 space-y-4 text-xs font-mono">
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">Exit Price</label>
+                    <input
+                      type="number"
+                      step="any"
+                      required
+                      value={closeExitPrice}
+                      onChange={(e) => setCloseExitPrice(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 focus:border-rose-500 rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">Exit Reason</label>
+                    <select
+                      value={closeExitReason}
+                      onChange={(e) => setCloseExitReason(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 focus:border-rose-500 rounded-lg px-3 py-2 text-white text-xs focus:outline-none"
+                    >
+                      <option value="TAKE_PROFIT_1">TAKE_PROFIT_1 Reached</option>
+                      <option value="TAKE_PROFIT_2">TAKE_PROFIT_2 Reached</option>
+                      <option value="STOP_LOSS">STOP_LOSS Hit</option>
+                      <option value="INVALIDATION">Market Structure Invalidated</option>
+                      <option value="MANUAL_EXIT">Manual Discretionary Exit</option>
+                      <option value="TIME_EXPIRY">Timeframe Session Expired</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">Trade Notes / Post-Mortem</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Closed manually at resistance ahead of news"
+                      value={closeUserNotes}
+                      onChange={(e) => setCloseUserNotes(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 focus:border-blue-500 rounded-lg px-3 py-2 text-white text-xs focus:outline-none"
+                    />
+                  </div>
+
+                  {closeError && (
+                    <div className="p-2.5 bg-rose-500/20 border border-rose-500/40 rounded-lg text-rose-300 font-semibold flex items-center gap-2">
+                      <XCircle className="w-4 h-4 shrink-0" />
+                      <span>{closeError}</span>
+                    </div>
+                  )}
+
+                  {closeSuccess && (
+                    <div className="p-2.5 bg-emerald-500/20 border border-emerald-500/40 rounded-lg text-emerald-300 font-semibold flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      <span>{closeSuccess}</span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setCloseModalTrade(null)}
+                      className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition cursor-pointer"
+                    >
+                      CANCEL
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={closeSubmitting || !!closeSuccess}
+                      className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow"
+                    >
+                      {closeSubmitting ? 'CLOSING...' : 'CONFIRM CLOSE'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {/* TAB 5: USER PROFILE & OPERATOR SETTINGS */}
       {activeTab === 'USER_PROFILE' && (
         <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
             <User className="w-5 h-5 text-purple-400" />
-            <span>Butiran Profil Ahli &amp; Tetapan Langganan</span>
+            <span>Butiran Profil Operator Terminal</span>
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
             <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
               <div className="text-slate-400 font-bold uppercase">Nama Penuh</div>
-              <div className="text-white font-bold text-sm">{userProfile.name}</div>
+              <div className="text-white font-bold text-sm">{serverTraderProfileData?.fullName || 'N/A'}</div>
 
               <div className="text-slate-400 font-bold uppercase pt-2">E-mel Terdaftar</div>
-              <div className="text-white font-bold text-sm">{userProfile.email}</div>
+              <div className="text-white font-bold text-sm">{serverTraderProfileData?.email || 'N/A'}</div>
 
-              <div className="text-slate-400 font-bold uppercase pt-2">Nombor Telefon</div>
-              <div className="text-white font-bold text-sm">{userProfile.phone}</div>
+              <div className="text-slate-400 font-bold uppercase pt-2">Jenis Akaun</div>
+              <div className="text-white font-bold text-sm">{serverTraderProfileData?.accountType || 'DEMO'}</div>
             </div>
 
             <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
-              <div className="text-slate-400 font-bold uppercase">Status Pakej Langganan</div>
-              <div className="text-purple-300 font-extrabold text-sm flex items-center gap-1.5">
-                <Award className="w-4 h-4 text-amber-400" />
-                VIP PREMIUM SAAS MEMBER
+              <div className="text-slate-400 font-bold uppercase">Mata Wang &amp; Leveraj</div>
+              <div className="text-white font-bold text-sm">
+                {serverTraderProfileData?.currency || 'USD'} • {serverTraderProfileData?.leverage || '1:500'}
               </div>
 
-              <div className="text-slate-400 font-bold uppercase pt-2">Tarikh Luput Langganan</div>
-              <div className="text-emerald-400 font-bold text-sm">{userProfile.subscriptionExpiresAt} (Aktif)</div>
+              <div className="text-slate-400 font-bold uppercase pt-2">Toleransi Risiko</div>
+              <div className="text-emerald-400 font-bold text-sm">{serverTraderProfileData?.riskTolerance || 'MODERATE'}</div>
             </div>
           </div>
         </div>
@@ -1876,5 +1889,3 @@ Beri jawapan dalam format JSON sahaja seperti berikut:
     </div>
   );
 };
-
-

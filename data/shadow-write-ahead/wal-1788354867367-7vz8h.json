@@ -1,0 +1,21 @@
+{
+  "id": "wal-1788354867367-7vz8h",
+  "operationType": "SAVE_JOURNAL_EVENT",
+  "entityType": "JOURNAL_EVENT",
+  "entityId": "lje-1788354866512-58oxn",
+  "payload": {
+    "id": "lje-1788354866512-58oxn",
+    "timestamp": 1788354866512,
+    "eventType": "PARAMETER_ADAPTED",
+    "setupFingerprint": "EUR/USD_BUY_ORDER_BLOCK_RETEST",
+    "evidenceTier": "NO_EVIDENCE",
+    "sampleCount": 0,
+    "previousParameter": "SL: 1.0822",
+    "proposedParameter": "SL: 1.0846 (Breakeven)",
+    "boundedAdjustment": "SL moved to Breakeven on TP1 hit",
+    "reason": "Shadow shadow-1788354866511-u96og reached TP1 (1.089). Continuing toward TP2 (1.093)."
+  },
+  "createdTimestamp": 1788354867367,
+  "retryCount": 0,
+  "version": 1
+}

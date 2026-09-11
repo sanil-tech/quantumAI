@@ -3,7 +3,8 @@ import {
   Database, Server, ShieldCheck, Activity, RefreshCw, Download, Filter,
   Search, CheckCircle, AlertTriangle, XCircle, ArrowUpRight, ArrowDownRight,
   Clock, Eye, Layers, DollarSign, BarChart3, Bot, ChevronLeft, ChevronRight,
-  TrendingUp, TrendingDown, Award, BookOpen, Lock, Cpu, Zap, Target
+  TrendingUp, TrendingDown, Award, BookOpen, Lock, Cpu, Zap, Target,
+  Sparkles, Brain, ShieldAlert, Lightbulb
 } from 'lucide-react';
 
 export interface AdminTradingCenterProps {
@@ -49,11 +50,40 @@ export const AdminTradingCenter: React.FC<AdminTradingCenterProps> = ({ isMalay 
   const [learningData, setLearningData] = useState<{ records: any[]; total: number }>({ records: [], total: 0 });
   const [isLoadingLearning, setIsLoadingLearning] = useState(false);
 
+  // Gemini AI Strategic Analysis state
+  const [geminiAnalysis, setGeminiAnalysis] = useState<any>(null);
+  const [isLoadingGemini, setIsLoadingGemini] = useState(false);
+
+  const fetchGeminiAnalysis = async () => {
+    setIsLoadingGemini(true);
+    try {
+      const res = await fetch(`/api/admin/gemini-analysis?accountId=${encodeURIComponent(selectedAccount || 'ALL')}`, {
+        headers: getAdminHeaders()
+      });
+      const data = await res.json();
+      if (data.success) {
+        setGeminiAnalysis(data);
+      }
+    } catch (e: any) {
+      console.error('Failed to fetch Gemini strategic analysis:', e);
+    } finally {
+      setIsLoadingGemini(false);
+    }
+  };
+
   // Data Health state
   const [healthData, setHealthData] = useState<any>(null);
   const [isLoadingHealth, setIsLoadingHealth] = useState(false);
   const [isReconciling, setIsReconciling] = useState(false);
   const [reconcileResult, setReconcileResult] = useState<any>(null);
+
+  const getAdminHeaders = (): Record<string, string> => {
+    const key = typeof window !== 'undefined' ? (localStorage.getItem('admin_api_key') || 'admin_demo_key_88') : 'admin_demo_key_88';
+    return {
+      'x-admin-key': key,
+      'Content-Type': 'application/json'
+    };
+  };
 
   // Fetch Trades
   const fetchTrades = async () => {
@@ -74,7 +104,9 @@ export const AdminTradingCenter: React.FC<AdminTradingCenterProps> = ({ isMalay 
       params.append('page', page.toString());
       params.append('limit', limit.toString());
 
-      const res = await fetch(`/api/admin/trades?${params.toString()}`);
+      const res = await fetch(`/api/admin/trades?${params.toString()}`, {
+        headers: getAdminHeaders()
+      });
       const data = await res.json();
       if (data.success) {
         setTradesData({
@@ -95,7 +127,9 @@ export const AdminTradingCenter: React.FC<AdminTradingCenterProps> = ({ isMalay 
     setSelectedTradeId(tradeId);
     setIsLoadingDetail(true);
     try {
-      const res = await fetch(`/api/admin/trades/${tradeId}`);
+      const res = await fetch(`/api/admin/trades/${tradeId}`, {
+        headers: getAdminHeaders()
+      });
       const data = await res.json();
       if (data.success) {
         setTradeDetail({
@@ -115,7 +149,10 @@ export const AdminTradingCenter: React.FC<AdminTradingCenterProps> = ({ isMalay 
   const fetchPerformance = async () => {
     setIsLoadingPerf(true);
     try {
-      const res = await fetch('/api/admin/performance');
+      const selectedAccount = accountId || 'ALL';
+      const res = await fetch(`/api/admin/performance?accountId=${encodeURIComponent(selectedAccount)}`, {
+        headers: getAdminHeaders()
+      });
       const data = await res.json();
       if (data.success) {
         setPerfData(data);
@@ -131,7 +168,9 @@ export const AdminTradingCenter: React.FC<AdminTradingCenterProps> = ({ isMalay 
   const fetchLearning = async () => {
     setIsLoadingLearning(true);
     try {
-      const res = await fetch('/api/admin/learning');
+      const res = await fetch('/api/admin/learning', {
+        headers: getAdminHeaders()
+      });
       const data = await res.json();
       if (data.success) {
         setLearningData({
@@ -150,7 +189,9 @@ export const AdminTradingCenter: React.FC<AdminTradingCenterProps> = ({ isMalay 
   const fetchHealth = async () => {
     setIsLoadingHealth(true);
     try {
-      const res = await fetch('/api/admin/health');
+      const res = await fetch('/api/admin/health', {
+        headers: getAdminHeaders()
+      });
       const data = await res.json();
       if (data.success) {
         setHealthData(data);
@@ -205,7 +246,7 @@ export const AdminTradingCenter: React.FC<AdminTradingCenterProps> = ({ isMalay 
     if (activeTab === 'PERFORMANCE') fetchPerformance();
     if (activeTab === 'LEARNING') fetchLearning();
     if (activeTab === 'HEALTH') fetchHealth();
-  }, [activeTab, page, limit]);
+  }, [activeTab, page, limit, accountId]);
 
   return (
     <div className="space-y-6 text-slate-100 font-sans">
@@ -299,7 +340,7 @@ export const AdminTradingCenter: React.FC<AdminTradingCenterProps> = ({ isMalay 
               </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-2 text-xs">
               {/* Search */}
               <div className="col-span-2 sm:col-span-2">
                 <label className="text-[10px] text-slate-400 font-mono uppercase">Carian Penuh (ID, Simbol, Broker, Strategi)</label>
@@ -598,6 +639,36 @@ export const AdminTradingCenter: React.FC<AdminTradingCenterProps> = ({ isMalay 
       {/* TAB 2: PERFORMANCES */}
       {activeTab === 'PERFORMANCE' && (
         <div className="space-y-4">
+          {/* Account Filter & Refresh Bar */}
+          <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-300">
+                <Filter className="w-4 h-4 text-purple-400" />
+                <span>Tapisan Akaun (Account Scope):</span>
+              </div>
+              <select
+                value={accountId}
+                onChange={(e) => setAccountId(e.target.value)}
+                className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-cyan-300 font-mono font-bold focus:border-purple-500 focus:outline-none"
+              >
+                <option value="">Semua Akaun (Semua 295+ Rekod Trade)</option>
+                <option value="48282756">cTrader Live/Demo (48282756)</option>
+                <option value="5877246_DEMO">Demo Simulator (5877246_DEMO)</option>
+                <option value="5881460">Akaun 5881460</option>
+                <option value="DEFAULT">Akaun Ujian (DEFAULT)</option>
+              </select>
+            </div>
+
+            <button
+              onClick={fetchPerformance}
+              disabled={isLoadingPerf}
+              className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold rounded-lg transition flex items-center gap-1.5"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-cyan-400 ${isLoadingPerf ? 'animate-spin' : ''}`} />
+              <span>Muat Semula Metrik</span>
+            </button>
+          </div>
+
           {isLoadingPerf ? (
             <div className="p-12 text-center text-xs font-mono text-slate-400 space-y-2">
               <RefreshCw className="w-6 h-6 animate-spin text-purple-400 mx-auto" />
@@ -675,9 +746,128 @@ export const AdminTradingCenter: React.FC<AdminTradingCenterProps> = ({ isMalay 
         </div>
       )}
 
-      {/* TAB 3: ADAPTIVE LEARNING */}
+      {/* TAB 3: ADAPTIVE LEARNING & GEMINI DEEP ANALYSIS */}
       {activeTab === 'LEARNING' && (
-        <div className="space-y-4">
+        <div className="space-y-5">
+          {/* Gemini AI Strategic Portfolio Copilot Card */}
+          <div className="p-5 bg-gradient-to-r from-purple-950/40 via-slate-900 to-indigo-950/40 border border-purple-500/40 rounded-2xl shadow-2xl relative overflow-hidden backdrop-blur-md">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
+            
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-purple-500/20 pb-4 relative z-10">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 bg-gradient-to-r from-purple-500 to-cyan-500 text-white font-mono text-[10px] font-extrabold rounded-full uppercase shadow">
+                    Gemini AI Model: gemini-3.6-flash
+                  </span>
+                  <span className="px-2 py-0.5 bg-purple-500/20 text-purple-300 font-mono text-[10px] rounded border border-purple-500/30">
+                    Deep Learning &amp; Post-Mortem Reasoner
+                  </span>
+                </div>
+                <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-purple-400 animate-pulse" />
+                  <span>Analisis Strategik Portfolio &amp; Corak Kegagalan (Gemini AI)</span>
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Kaji corak kerugian daripada 295+ trade PostgreSQL dan peroleh syor pelarasan parameter algoritma secara pintar.
+                </p>
+              </div>
+
+              <button
+                onClick={fetchGeminiAnalysis}
+                disabled={isLoadingGemini}
+                className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 text-white font-extrabold text-xs rounded-xl shadow-lg transition flex items-center gap-2 w-fit relative z-10"
+              >
+                {isLoadingGemini ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin text-cyan-300" />
+                    <span>Gemini Sedang Menganalisis...</span>
+                  </>
+                ) : (
+                  <>
+                    <Brain className="w-4 h-4 text-cyan-300" />
+                    <span>{geminiAnalysis ? 'Jana Semula Analisis Gemini' : 'Jana Analisis Strategik Gemini AI'}</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Gemini Analysis Output */}
+            {geminiAnalysis && (
+              <div className="mt-4 space-y-4 relative z-10 animate-fade-in">
+                {/* Grade & Executive Summary */}
+                <div className="p-4 bg-slate-950/80 border border-purple-500/30 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Gred Kesihatan Portfolio:</span>
+                      <span className="px-3 py-1 bg-gradient-to-r from-emerald-500 to-cyan-500 text-slate-950 font-black text-sm rounded-lg shadow">
+                        GRED {geminiAnalysis.portfolioGrade || 'A-'}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono text-purple-300">
+                      Disahkan oleh {geminiAnalysis.source === 'GEMINI_AI_LIVE' ? 'Gemini 3.6 Flash (Live Engine)' : 'Quantitative Learning Engine'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-200 leading-relaxed font-sans pt-1">
+                    {isMalay ? geminiAnalysis.executiveSummaryMs : (geminiAnalysis.executiveSummaryEn || geminiAnalysis.executiveSummaryMs)}
+                  </p>
+                </div>
+
+                {/* 2-Column Grid: Failure Patterns & Action Plan */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Failure Patterns */}
+                  <div className="p-4 bg-rose-950/20 border border-rose-500/30 rounded-xl space-y-2.5">
+                    <h4 className="text-xs font-extrabold text-rose-400 flex items-center gap-1.5 uppercase tracking-wide">
+                      <ShieldAlert className="w-4 h-4 text-rose-400" />
+                      <span>Corak Kegagalan Utama (Failure Leakages)</span>
+                    </h4>
+                    <ul className="space-y-2">
+                      {(isMalay ? geminiAnalysis.failurePatternsMs : (geminiAnalysis.failurePatternsEn || geminiAnalysis.failurePatternsMs))?.map((f: string, i: number) => (
+                        <li key={i} className="text-xs text-slate-300 flex items-start gap-2 bg-slate-950/60 p-2 rounded border border-rose-500/20">
+                          <span className="text-rose-400 font-bold font-mono">#{i + 1}</span>
+                          <span className="leading-snug">{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Action Plan & Rule Adjustments */}
+                  <div className="p-4 bg-cyan-950/20 border border-cyan-500/30 rounded-xl space-y-2.5">
+                    <h4 className="text-xs font-extrabold text-cyan-400 flex items-center gap-1.5 uppercase tracking-wide">
+                      <Lightbulb className="w-4 h-4 text-cyan-400" />
+                      <span>Pelan Tindakan Adaptif Algoritma</span>
+                    </h4>
+                    <ul className="space-y-2">
+                      {(isMalay ? geminiAnalysis.actionPlanMs : (geminiAnalysis.actionPlanEn || geminiAnalysis.actionPlanMs))?.map((a: string, i: number) => (
+                        <li key={i} className="text-xs text-slate-300 flex items-start gap-2 bg-slate-950/60 p-2 rounded border border-cyan-500/20">
+                          <span className="text-cyan-400 font-bold font-mono">#{i + 1}</span>
+                          <span className="leading-snug">{a}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Footer recommendations */}
+                <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-slate-400">Pasangan Keutamaan Seterusnya:</span>
+                    {geminiAnalysis.recommendedPairs?.map((p: string) => (
+                      <span key={p} className="px-2 py-0.5 bg-purple-500/20 border border-purple-500/40 text-cyan-300 font-mono font-bold rounded text-[11px]">
+                        {p}
+                      </span>
+                    ))}
+                  </div>
+                  {geminiAnalysis.riskWarningMs && (
+                    <span className="text-[11px] text-amber-300 font-medium">
+                      âš ï¸ {geminiAnalysis.riskWarningMs}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Regular Database Learning Records List */}
           <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl shadow-xl space-y-3">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="font-extrabold text-white text-sm flex items-center gap-2">
@@ -698,22 +888,57 @@ export const AdminTradingCenter: React.FC<AdminTradingCenterProps> = ({ isMalay 
               </div>
             ) : (
               <div className="space-y-3">
-                {learningData.records.map((r: any) => (
-                  <div key={r.id} className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-purple-300 font-mono">Trade: {r.tradeId}</span>
-                      <span className="text-[10px] text-slate-500 font-mono">
-                        {r.createdAt ? new Date(r.createdAt).toLocaleString('ms-MY') : ''}
-                      </span>
+                {learningData.records.map((r: any) => {
+                  const rootCause = r.rootCauseMs || r.rootCause || r.rootCauseEn || r.review?.rootCauseMs || r.review?.rootCause || r.review?.rootCauseEn || 'Analisis struktur pasaran direkodkan.';
+                  const lessonLearned = r.lessonLearnedMs || r.lessonLearnedEn || r.review?.lessonLearnedMs || r.review?.lessonLearnedEn;
+                  const adaptiveRule = r.adaptiveRuleMs || r.adaptiveActionRecommended || r.adaptiveRuleCreated || r.adaptiveRuleEn || r.review?.adaptiveRuleMs || r.review?.adaptiveRuleEn || r.review?.adaptiveActionRecommended || 'Kekalkan pengesahan trend dan pengurusan risiko berdisiplin.';
+                  const isWin = (r.outcome === 'WIN') || ((r.pnlDollars ?? r.review?.pnlDollars ?? 0) >= 0);
+                  const pairName = r.pair || r.review?.pair || 'ALL';
+                  const pnl = r.pnlDollars ?? r.review?.pnlDollars;
+
+                  return (
+                    <div key={r.id} className="p-4 bg-slate-950/80 border border-slate-800 hover:border-purple-500/40 rounded-xl space-y-2.5 transition">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-purple-300 font-mono">Trade: {r.tradeId}</span>
+                          {pairName && (
+                            <span className="px-2 py-0.5 bg-slate-800 text-cyan-300 rounded text-[11px] font-bold">
+                              {pairName}
+                            </span>
+                          )}
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${isWin ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
+                            {r.outcome || (isWin ? 'WIN' : 'LOSS')}
+                          </span>
+                          {pnl !== undefined && pnl !== null && (
+                            <span className={`text-xs font-mono font-bold ${pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              {pnl >= 0 ? '+' : ''}${Number(pnl).toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-slate-500 font-mono">
+                          {r.createdAt ? new Date(r.createdAt).toLocaleString('ms-MY') : ''}
+                        </span>
+                      </div>
+
+                      <div className="text-xs text-slate-200 font-sans leading-relaxed bg-slate-900/60 p-2.5 rounded-lg border border-slate-800/80">
+                        <strong className="text-rose-400 font-bold block mb-0.5">Punca Utama (Root Cause):</strong> 
+                        <span className="text-slate-300">{rootCause}</span>
+                      </div>
+
+                      {lessonLearned && (
+                        <div className="text-xs text-slate-200 font-sans leading-relaxed bg-slate-900/60 p-2.5 rounded-lg border border-slate-800/80">
+                          <strong className="text-amber-300 font-bold block mb-0.5">Pengajaran Utama (Lesson Learned):</strong> 
+                          <span className="text-slate-300">{lessonLearned}</span>
+                        </div>
+                      )}
+
+                      <div className="text-xs text-slate-200 font-sans leading-relaxed bg-cyan-950/20 p-2.5 rounded-lg border border-cyan-500/30">
+                        <strong className="text-cyan-300 font-bold block mb-0.5">Syor Adaptasi Rule (AI Memory):</strong> 
+                        <span className="text-cyan-100">{adaptiveRule}</span>
+                      </div>
                     </div>
-                    <div className="text-xs text-slate-200 font-mono">
-                      <strong className="text-rose-400">Punca Utama (Root Cause):</strong> {r.rootCause}
-                    </div>
-                    <div className="text-xs text-slate-300 font-mono">
-                      <strong className="text-cyan-300">Syor Adaptasi Rule:</strong> {r.adaptiveActionRecommended || r.adaptiveRuleCreated}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -789,7 +1014,7 @@ export const AdminTradingCenter: React.FC<AdminTradingCenterProps> = ({ isMalay 
                     <AlertTriangle className="w-4 h-4" />
                     <span>Laporan Semakan Anomali Data (Data Health Anomalies)</span>
                   </h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-xs">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-2 text-xs">
                     <div className="p-2.5 bg-slate-900 rounded-lg border border-slate-800">
                       <div className="text-[10px] text-slate-400">Trade Duplikat</div>
                       <div className={`text-base font-bold ${healthData.anomalies?.duplicateTradesCount > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
@@ -854,22 +1079,22 @@ export const AdminTradingCenter: React.FC<AdminTradingCenterProps> = ({ isMalay 
               <div className="space-y-4 font-mono text-xs">
                 {/* Grid 30+ Fields */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-950 p-4 rounded-xl border border-slate-800">
-                  <div><span className="text-slate-500 text-[10px]">Trade / Pos ID:</span> <div className="font-bold text-purple-300 truncate">{tradeDetail.position.positionId}</div></div>
-                  <div><span className="text-slate-500 text-[10px]">Account ID:</span> <div className="font-bold text-white">{tradeDetail.position.accountId}</div></div>
-                  <div><span className="text-slate-500 text-[10px]">Broker / Env:</span> <div className="font-bold text-cyan-300">{tradeDetail.position.broker} ({tradeDetail.position.environment})</div></div>
-                  <div><span className="text-slate-500 text-[10px]">Simbol / TF:</span> <div className="font-bold text-white">{tradeDetail.position.symbol} ({tradeDetail.position.timeframe || 'M15'})</div></div>
-                  <div><span className="text-slate-500 text-[10px]">Arah / Volume:</span> <div className="font-bold text-white">{tradeDetail.position.direction} ({tradeDetail.position.quantity} Lot)</div></div>
-                  <div><span className="text-slate-500 text-[10px]">Harga Entry:</span> <div className="font-bold text-white">{tradeDetail.position.entryPrice}</div></div>
-                  <div><span className="text-slate-500 text-[10px]">Harga Exit / Current:</span> <div className="font-bold text-white">{tradeDetail.position.closePrice || tradeDetail.position.currentPrice}</div></div>
-                  <div><span className="text-slate-500 text-[10px]">SL / TP1 / TP2:</span> <div className="font-bold text-amber-300">{tradeDetail.position.stopLoss || '-'} / {tradeDetail.position.takeProfit || '-'} / {tradeDetail.position.takeProfit2 || '-'}</div></div>
-                  <div><span className="text-slate-500 text-[10px]">Realized PnL:</span> <div className="font-bold text-emerald-400">${tradeDetail.position.realizedProfit} ({tradeDetail.position.pnlPips} pips)</div></div>
-                  <div><span className="text-slate-500 text-[10px]">Commission / Swap:</span> <div className="font-bold text-slate-300">${tradeDetail.position.commission || 0} / ${tradeDetail.position.swap || 0}</div></div>
-                  <div><span className="text-slate-500 text-[10px]">Status / Cause:</span> <div className="font-bold text-white">{tradeDetail.position.status} ({tradeDetail.position.closeReason || '-'})</div></div>
-                  <div><span className="text-slate-500 text-[10px]">Reconciliation:</span> <div className="font-bold text-emerald-300">{tradeDetail.position.reconciliationStatus || 'MATCHED'}</div></div>
-                  <div><span className="text-slate-500 text-[10px]">Broker Order ID:</span> <div className="font-bold text-slate-300 truncate">{tradeDetail.position.brokerOrderId || '-'}</div></div>
-                  <div><span className="text-slate-500 text-[10px]">Broker Pos ID:</span> <div className="font-bold text-slate-300 truncate">{tradeDetail.position.brokerPositionId || '-'}</div></div>
-                  <div><span className="text-slate-500 text-[10px]">Broker Deal ID:</span> <div className="font-bold text-slate-300 truncate">{tradeDetail.position.brokerDealId || '-'}</div></div>
-                  <div><span className="text-slate-500 text-[10px]">Idempotency Key:</span> <div className="font-bold text-slate-400 truncate">{tradeDetail.position.idempotencyKey || '-'}</div></div>
+                  <div><span className="text-slate-400 text-[10px]">Trade / Pos ID:</span> <div className="font-bold text-purple-300 truncate">{tradeDetail.position.positionId}</div></div>
+                  <div><span className="text-slate-400 text-[10px]">Account ID:</span> <div className="font-bold text-white">{tradeDetail.position.accountId}</div></div>
+                  <div><span className="text-slate-400 text-[10px]">Broker / Env:</span> <div className="font-bold text-cyan-300">{tradeDetail.position.broker} ({tradeDetail.position.environment})</div></div>
+                  <div><span className="text-slate-400 text-[10px]">Simbol / TF:</span> <div className="font-bold text-white">{tradeDetail.position.symbol} ({tradeDetail.position.timeframe || 'M15'})</div></div>
+                  <div><span className="text-slate-400 text-[10px]">Arah / Volume:</span> <div className="font-bold text-white">{tradeDetail.position.direction} ({tradeDetail.position.quantity} Lot)</div></div>
+                  <div><span className="text-slate-400 text-[10px]">Harga Entry:</span> <div className="font-bold text-white">{tradeDetail.position.entryPrice}</div></div>
+                  <div><span className="text-slate-400 text-[10px]">Harga Exit / Current:</span> <div className="font-bold text-white">{tradeDetail.position.closePrice || tradeDetail.position.currentPrice}</div></div>
+                  <div><span className="text-slate-400 text-[10px]">SL / TP1 / TP2:</span> <div className="font-bold text-amber-300">{tradeDetail.position.stopLoss || '-'} / {tradeDetail.position.takeProfit || '-'} / {tradeDetail.position.takeProfit2 || '-'}</div></div>
+                  <div><span className="text-slate-400 text-[10px]">Realized PnL:</span> <div className="font-bold text-emerald-400">${tradeDetail.position.realizedProfit} ({tradeDetail.position.pnlPips} pips)</div></div>
+                  <div><span className="text-slate-400 text-[10px]">Commission / Swap:</span> <div className="font-bold text-slate-300">${tradeDetail.position.commission || 0} / ${tradeDetail.position.swap || 0}</div></div>
+                  <div><span className="text-slate-400 text-[10px]">Status / Cause:</span> <div className="font-bold text-white">{tradeDetail.position.status} ({tradeDetail.position.closeReason || '-'})</div></div>
+                  <div><span className="text-slate-400 text-[10px]">Reconciliation:</span> <div className="font-bold text-emerald-300">{tradeDetail.position.reconciliationStatus || 'MATCHED'}</div></div>
+                  <div><span className="text-slate-400 text-[10px]">Broker Order ID:</span> <div className="font-bold text-slate-300 truncate">{tradeDetail.position.brokerOrderId || '-'}</div></div>
+                  <div><span className="text-slate-400 text-[10px]">Broker Pos ID:</span> <div className="font-bold text-slate-300 truncate">{tradeDetail.position.brokerPositionId || '-'}</div></div>
+                  <div><span className="text-slate-400 text-[10px]">Broker Deal ID:</span> <div className="font-bold text-slate-300 truncate">{tradeDetail.position.brokerDealId || '-'}</div></div>
+                  <div><span className="text-slate-400 text-[10px]">Idempotency Key:</span> <div className="font-bold text-slate-400 truncate">{tradeDetail.position.idempotencyKey || '-'}</div></div>
                 </div>
 
                 {/* Event Lifecycle Timeline */}
@@ -887,7 +1112,7 @@ export const AdminTradingCenter: React.FC<AdminTradingCenterProps> = ({ isMalay 
                           <div className="flex items-center gap-2">
                             <span className="px-1.5 py-0.5 bg-purple-500/20 text-purple-300 font-bold rounded text-[9px]">{e.eventType}</span>
                             <span className="text-slate-400 text-[10px]">{e.timestamp ? new Date(e.timestamp).toLocaleString('ms-MY') : ''}</span>
-                            <span className="text-slate-500 text-[10px]">Actor: {e.actor}</span>
+                            <span className="text-slate-400 text-[10px]">Actor: {e.actor}</span>
                           </div>
                           {e.details && (
                             <pre className="text-[9px] bg-slate-900 p-1.5 rounded text-slate-300 overflow-x-auto">

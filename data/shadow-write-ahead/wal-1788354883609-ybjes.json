@@ -1,0 +1,47 @@
+{
+  "id": "wal-1788354883609-ybjes",
+  "operationType": "SAVE_OBSERVATION",
+  "entityType": "SHADOW_OBSERVATION",
+  "entityId": "shadow-1788354883076-jrjun",
+  "symbol": "GBP/USD",
+  "payload": {
+    "id": "shadow-1788354883076-jrjun",
+    "signalId": "sig-1788354883076-e36ek5p",
+    "symbol": "GBP/USD",
+    "direction": "SELL",
+    "setupType": "ORDER_BLOCK_RETEST",
+    "setupFingerprint": "GBP/USD_SELL_ORDER_BLOCK_RETEST",
+    "session": "LONDON",
+    "marketRegime": "UNKNOWN",
+    "entryPrice": 1.364,
+    "stopLoss": 1.366,
+    "initialStopLoss": 1.366,
+    "takeProfit1": 1.36,
+    "isMultiTarget": false,
+    "tp1Hit": false,
+    "status": "ACTIVE",
+    "mfePips": 0,
+    "maePips": 0,
+    "highestPriceSeen": 1.364,
+    "lowestPriceSeen": 1.364,
+    "openedAt": 1788354883076,
+    "observationType": "SHADOW_OBSERVATION",
+    "executionQualityAssumptions": {
+      "spreadPips": 0.8,
+      "slippagePips": 0.2,
+      "latencyMs": 18.5
+    },
+    "immutableSignalSnapshot": {
+      "pair": "GBP/USD",
+      "action": "SELL",
+      "entryPrice": 1.364,
+      "stopLoss": 1.366,
+      "takeProfit1": 1.36,
+      "decisionProvider": "DETERMINISTIC",
+      "snapshotTimestamp": 1788354883076
+    }
+  },
+  "createdTimestamp": 1788354883609,
+  "retryCount": 0,
+  "version": 1
+}

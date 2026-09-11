@@ -1,0 +1,728 @@
+[
+  {
+    "pair": "EUR/USD",
+    "tf": "M15",
+    "action": "SELL",
+    "bias": "BEARISH",
+    "confidence": 80,
+    "isGradeA": true,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 1.15833,
+      "max": 1.1584
+    },
+    "sl": 1.15867,
+    "tp1": 1.15787,
+    "reasons": [
+      "EUR/USD live price (1.15835) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 45.8 with ADX (26.1) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.00023.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "EUR/USD",
+    "tf": "H1",
+    "action": "SELL",
+    "bias": "BEARISH",
+    "confidence": 79,
+    "isGradeA": true,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 1.15829,
+      "max": 1.15847
+    },
+    "sl": 1.15919,
+    "tp1": 1.15709,
+    "reasons": [
+      "EUR/USD live price (1.15835) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 37.5 with ADX (19.8) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.00060.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "EUR/USD",
+    "tf": "H4",
+    "action": "SELL",
+    "bias": "BEARISH",
+    "confidence": 84,
+    "isGradeA": true,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 1.15821,
+      "max": 1.15862
+    },
+    "sl": 1.16025,
+    "tp1": 1.15549,
+    "reasons": [
+      "EUR/USD live price (1.15835) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 34.9 with ADX (23.8) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.00136.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "GBP/USD",
+    "tf": "M15",
+    "action": "SELL",
+    "bias": "BEARISH",
+    "confidence": 80,
+    "isGradeA": true,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 1.3503,
+      "max": 1.35039
+    },
+    "sl": 1.35072,
+    "tp1": 1.34974,
+    "reasons": [
+      "GBP/USD live price (1.35033) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 44.8 with ADX (51.1) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.00028.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "GBP/USD",
+    "tf": "H1",
+    "action": "SELL",
+    "bias": "BEARISH",
+    "confidence": 88,
+    "isGradeA": true,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 1.35025,
+      "max": 1.35048
+    },
+    "sl": 1.35139,
+    "tp1": 1.34873,
+    "reasons": [
+      "GBP/USD live price (1.35033) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 34.5 with ADX (32.6) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.00076.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "GBP/USD",
+    "tf": "H4",
+    "action": "SELL",
+    "bias": "BEARISH",
+    "confidence": 72,
+    "isGradeA": true,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 1.35016,
+      "max": 1.35066
+    },
+    "sl": 1.35265,
+    "tp1": 1.34684,
+    "reasons": [
+      "GBP/USD live price (1.35033) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 26.7 with ADX (27.9) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.00166.",
+      "SMC Structure detected: MOMENTUM CONTINUATION with MARKET ENTRY execution."
+    ]
+  },
+  {
+    "pair": "USD/JPY",
+    "tf": "M15",
+    "action": "SELL",
+    "bias": "BEARISH",
+    "confidence": 88,
+    "isGradeA": true,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 159.985,
+      "max": 160.005
+    },
+    "sl": 160.084,
+    "tp1": 159.854,
+    "reasons": [
+      "USD/JPY live price (159.992) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 27.5 with ADX (31.5) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.065.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "USD/JPY",
+    "tf": "H1",
+    "action": "BUY",
+    "bias": "BULLISH",
+    "confidence": 71,
+    "isGradeA": true,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 159.973,
+      "max": 160.009
+    },
+    "sl": 159.826,
+    "tp1": 160.254,
+    "reasons": [
+      "USD/JPY live price (159.997) is holding above 50 EMA trend filter.",
+      "RSI (14) sitting at 44.6 with ADX (25.1) confirming trending bullish.",
+      "SuperTrend filter is BULLISH and ATR volatility is 0.122.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "USD/JPY",
+    "tf": "H4",
+    "action": "BUY",
+    "bias": "BULLISH",
+    "confidence": 64,
+    "isGradeA": false,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 159.938,
+      "max": 160.016
+    },
+    "sl": 159.629,
+    "tp1": 160.531,
+    "reasons": [
+      "USD/JPY live price (159.990) is holding above 50 EMA trend filter.",
+      "RSI (14) sitting at 56.9 with ADX (16.8) confirming ranging choppy.",
+      "SuperTrend filter is BULLISH and ATR volatility is 0.258.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "AUD/USD",
+    "tf": "M15",
+    "action": "SELL",
+    "bias": "BEARISH",
+    "confidence": 55,
+    "isGradeA": false,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 0.71441,
+      "max": 0.7145
+    },
+    "sl": 0.71483,
+    "tp1": 0.71385,
+    "reasons": [
+      "AUD/USD live price (0.71444) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 51.4 with ADX (16.9) confirming ranging choppy.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.00028.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "AUD/USD",
+    "tf": "H1",
+    "action": "SELL",
+    "bias": "BEARISH",
+    "confidence": 55,
+    "isGradeA": false,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 0.71438,
+      "max": 0.71457
+    },
+    "sl": 0.71532,
+    "tp1": 0.71312,
+    "reasons": [
+      "AUD/USD live price (0.71444) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 43.0 with ADX (14.8) confirming ranging choppy.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.00063.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "AUD/USD",
+    "tf": "H4",
+    "action": "SELL",
+    "bias": "BEARISH",
+    "confidence": 61,
+    "isGradeA": false,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 0.71432,
+      "max": 0.71468
+    },
+    "sl": 0.71613,
+    "tp1": 0.7119,
+    "reasons": [
+      "AUD/USD live price (0.71444) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 38.1 with ADX (15.8) confirming ranging choppy.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.00121.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "USD/CHF",
+    "tf": "M15",
+    "action": "BUY",
+    "bias": "BULLISH",
+    "confidence": 75,
+    "isGradeA": true,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 0.81249,
+      "max": 0.81259
+    },
+    "sl": 0.8121,
+    "tp1": 0.81325,
+    "reasons": [
+      "USD/CHF live price (0.81256) is holding above 50 EMA trend filter.",
+      "RSI (14) sitting at 49.4 with ADX (31.6) confirming trending bullish.",
+      "SuperTrend filter is BULLISH and ATR volatility is 0.00033.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "USD/CHF",
+    "tf": "H1",
+    "action": "BUY",
+    "bias": "BULLISH",
+    "confidence": 69,
+    "isGradeA": false,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 0.81241,
+      "max": 0.81264
+    },
+    "sl": 0.8115,
+    "tp1": 0.81416,
+    "reasons": [
+      "USD/CHF live price (0.81256) is holding above 50 EMA trend filter.",
+      "RSI (14) sitting at 62.2 with ADX (25.9) confirming trending bullish.",
+      "SuperTrend filter is BULLISH and ATR volatility is 0.00076.",
+      "SMC Structure detected: MOMENTUM CONTINUATION with MARKET ENTRY execution."
+    ]
+  },
+  {
+    "pair": "USD/CHF",
+    "tf": "H4",
+    "action": "BUY",
+    "bias": "BULLISH",
+    "confidence": 84,
+    "isGradeA": true,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 0.81223,
+      "max": 0.81273
+    },
+    "sl": 0.81024,
+    "tp1": 0.81605,
+    "reasons": [
+      "USD/CHF live price (0.81256) is holding above 50 EMA trend filter.",
+      "RSI (14) sitting at 69.4 with ADX (20.4) confirming trending bullish.",
+      "SuperTrend filter is BULLISH and ATR volatility is 0.00166.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "NZD/USD",
+    "tf": "M15",
+    "action": "SELL",
+    "bias": "BEARISH",
+    "confidence": 85,
+    "isGradeA": true,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 0.58403,
+      "max": 0.58418
+    },
+    "sl": 0.58478,
+    "tp1": 0.58303,
+    "reasons": [
+      "NZD/USD live price (0.58408) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 30.7 with ADX (71.6) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.00050.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "NZD/USD",
+    "tf": "H1",
+    "action": "SELL",
+    "bias": "BEARISH",
+    "confidence": 88,
+    "isGradeA": true,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 0.58399,
+      "max": 0.58426
+    },
+    "sl": 0.58533,
+    "tp1": 0.58221,
+    "reasons": [
+      "NZD/USD live price (0.58408) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 21.6 with ADX (40.3) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.00089.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "NZD/USD",
+    "tf": "H4",
+    "action": "SELL",
+    "bias": "BEARISH",
+    "confidence": 88,
+    "isGradeA": true,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 0.58392,
+      "max": 0.5844
+    },
+    "sl": 0.58635,
+    "tp1": 0.58068,
+    "reasons": [
+      "NZD/USD live price (0.58408) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 23.7 with ADX (33.3) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.00162.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "USD/CAD",
+    "tf": "M15",
+    "action": "BUY",
+    "bias": "BULLISH",
+    "confidence": 64,
+    "isGradeA": false,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 1.39124,
+      "max": 1.39146
+    },
+    "sl": 1.39034,
+    "tp1": 1.39297,
+    "reasons": [
+      "USD/CAD live price (1.39139) is holding above 50 EMA trend filter.",
+      "RSI (14) sitting at 57.1 with ADX (46.1) confirming trending bullish.",
+      "SuperTrend filter is BULLISH and ATR volatility is 0.00075.",
+      "SMC Structure detected: MOMENTUM CONTINUATION with MARKET ENTRY execution."
+    ]
+  },
+  {
+    "pair": "USD/CAD",
+    "tf": "H1",
+    "action": "BUY",
+    "bias": "BULLISH",
+    "confidence": 72,
+    "isGradeA": true,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 1.39119,
+      "max": 1.39155
+    },
+    "sl": 1.38978,
+    "tp1": 1.39391,
+    "reasons": [
+      "USD/CAD live price (1.39143) is holding above 50 EMA trend filter.",
+      "RSI (14) sitting at 65.9 with ADX (38.4) confirming trending bullish.",
+      "SuperTrend filter is BULLISH and ATR volatility is 0.00118.",
+      "SMC Structure detected: MOMENTUM CONTINUATION with MARKET ENTRY execution."
+    ]
+  },
+  {
+    "pair": "USD/CAD",
+    "tf": "H4",
+    "action": "BUY",
+    "bias": "BULLISH",
+    "confidence": 69,
+    "isGradeA": false,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 1.39099,
+      "max": 1.39165
+    },
+    "sl": 1.38832,
+    "tp1": 1.39609,
+    "reasons": [
+      "USD/CAD live price (1.39143) is holding above 50 EMA trend filter.",
+      "RSI (14) sitting at 63.7 with ADX (16.5) confirming ranging choppy.",
+      "SuperTrend filter is BULLISH and ATR volatility is 0.00222.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "EUR/JPY",
+    "tf": "M15",
+    "action": "SELL",
+    "bias": "BEARISH",
+    "confidence": 88,
+    "isGradeA": true,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 185.26926,
+      "max": 185.28949
+    },
+    "sl": 185.37043,
+    "tp1": 185.13435,
+    "reasons": [
+      "EUR/JPY live price (185.27600) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 23.4 with ADX (59.1) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.06745.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "EUR/JPY",
+    "tf": "H1",
+    "action": "SELL",
+    "bias": "BEARISH",
+    "confidence": 79,
+    "isGradeA": true,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 185.26396,
+      "max": 185.30007
+    },
+    "sl": 185.4445,
+    "tp1": 185.02324,
+    "reasons": [
+      "EUR/JPY live price (185.27600) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 32.4 with ADX (19.8) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.12036.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "EUR/JPY",
+    "tf": "H4",
+    "action": "SELL",
+    "bias": "BEARISH",
+    "confidence": 65,
+    "isGradeA": false,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 185.24765,
+      "max": 185.32071
+    },
+    "sl": 185.61294,
+    "tp1": 184.76059,
+    "reasons": [
+      "EUR/JPY live price (185.27200) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 40.3 with ADX (21.1) confirming trending bearish.",
+      "SuperTrend filter is BULLISH and ATR volatility is 0.24353.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "GBP/JPY",
+    "tf": "M15",
+    "action": "SELL",
+    "bias": "BEARISH",
+    "confidence": 88,
+    "isGradeA": true,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 216.0204,
+      "max": 216.04619
+    },
+    "sl": 216.14934,
+    "tp1": 215.84848,
+    "reasons": [
+      "GBP/JPY live price (216.02900) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 23.0 with ADX (58.1) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.08596.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "GBP/JPY",
+    "tf": "H1",
+    "action": "SELL",
+    "bias": "BEARISH",
+    "confidence": 88,
+    "isGradeA": true,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 216.01293,
+      "max": 216.06114
+    },
+    "sl": 216.25399,
+    "tp1": 215.69151,
+    "reasons": [
+      "GBP/JPY live price (216.02900) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 31.7 with ADX (41.0) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.16071.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "GBP/JPY",
+    "tf": "H4",
+    "action": "SELL",
+    "bias": "BEARISH",
+    "confidence": 65,
+    "isGradeA": false,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 215.99441,
+      "max": 216.09818
+    },
+    "sl": 216.51329,
+    "tp1": 215.30257,
+    "reasons": [
+      "GBP/JPY live price (216.02900) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 34.8 with ADX (30.9) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.34592.",
+      "SMC Structure detected: MOMENTUM CONTINUATION with MARKET ENTRY execution."
+    ]
+  },
+  {
+    "pair": "XAU/USD",
+    "tf": "M15",
+    "action": "SELL",
+    "bias": "BEARISH",
+    "confidence": 80,
+    "isGradeA": true,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 4354.83,
+      "max": 4357.45
+    },
+    "sl": 4367.93,
+    "tp1": 4337.35,
+    "reasons": [
+      "XAU/USD live price (4355.70) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 47.5 with ADX (30.1) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 8.74.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "XAU/USD",
+    "tf": "H1",
+    "action": "SELL",
+    "bias": "BEARISH",
+    "confidence": 85,
+    "isGradeA": true,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 4353.93,
+      "max": 4359.24
+    },
+    "sl": 4380.49,
+    "tp1": 4318.52,
+    "reasons": [
+      "XAU/USD live price (4355.70) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 30.6 with ADX (62.4) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 17.71.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "XAU/USD",
+    "tf": "H4",
+    "action": "SELL",
+    "bias": "BEARISH",
+    "confidence": 88,
+    "isGradeA": true,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 4351.66,
+      "max": 4363.77
+    },
+    "sl": 4412.2,
+    "tp1": 4270.95,
+    "reasons": [
+      "XAU/USD live price (4355.70) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 20.5 with ADX (50.0) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 40.36.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "NASDAQ",
+    "tf": "M15",
+    "status": "ERROR",
+    "error": "LIVE_MARKET_DATA_UNAVAILABLE: MARKET_DATA_STALE (ageMs: 34523027ms > max: 2700000ms)"
+  },
+  {
+    "pair": "NASDAQ",
+    "tf": "H1",
+    "status": "ERROR",
+    "error": "LIVE_MARKET_DATA_UNAVAILABLE: MARKET_DATA_STALE (ageMs: 34523211ms > max: 10800000ms)"
+  },
+  {
+    "pair": "NASDAQ",
+    "tf": "H4",
+    "action": "SELL",
+    "bias": "BEARISH",
+    "confidence": 52,
+    "isGradeA": false,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 26078.67,
+      "max": 26141.97
+    },
+    "sl": 26395.16,
+    "tp1": 25656.69,
+    "reasons": [
+      "NASDAQ live price (26099.77) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 44.9 with ADX (13.1) confirming ranging choppy.",
+      "SuperTrend filter is BEARISH and ATR volatility is 210.99.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "BTC/USD",
+    "tf": "M15",
+    "action": "BUY",
+    "bias": "BULLISH",
+    "confidence": 56,
+    "isGradeA": false,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 77623.38,
+      "max": 77675.89
+    },
+    "sl": 77413.34,
+    "tp1": 78025.97,
+    "reasons": [
+      "BTC/USD live price (77658.39) is holding above 50 EMA trend filter.",
+      "RSI (14) sitting at 58.9 with ADX (13.0) confirming ranging choppy.",
+      "SuperTrend filter is BULLISH and ATR volatility is 175.04.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "BTC/USD",
+    "tf": "H1",
+    "action": "SELL",
+    "bias": "BEARISH",
+    "confidence": 80,
+    "isGradeA": true,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 77616.89,
+      "max": 77741.39
+    },
+    "sl": 78239.36,
+    "tp1": 76786.93,
+    "reasons": [
+      "BTC/USD live price (77658.39) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 49.5 with ADX (38.7) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 414.98.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  },
+  {
+    "pair": "BTC/USD",
+    "tf": "H4",
+    "action": "BUY",
+    "bias": "BULLISH",
+    "confidence": 46,
+    "isGradeA": false,
+    "status": "VALID_PROPOSAL",
+    "entryZone": {
+      "min": 77484.52,
+      "max": 77745.32
+    },
+    "sl": 76441.33,
+    "tp1": 79483.98,
+    "reasons": [
+      "BTC/USD live price (77658.39) is holding above 50 EMA trend filter.",
+      "RSI (14) sitting at 45.9 with ADX (13.9) confirming ranging choppy.",
+      "SuperTrend filter is BULLISH and ATR volatility is 869.33.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ]
+  }
+]

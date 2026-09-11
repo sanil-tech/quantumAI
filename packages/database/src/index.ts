@@ -9,7 +9,8 @@ let dbInstance: NodePgDatabase<typeof schema> | null = null;
 
 export const getDbPool = (): Pool => {
   if (!pool) {
-    if (!config.DATABASE_URL) {
+    const dbUrl = process.env.DATABASE_URL || config.DATABASE_URL;
+    if (!dbUrl) {
       logger.warn('DATABASE_URL is not set. Using fallback PostgreSQL pool configuration.');
       pool = new Pool({
         host: process.env.PGHOST || 'localhost',
@@ -21,7 +22,7 @@ export const getDbPool = (): Pool => {
       });
     } else {
       pool = new Pool({
-        connectionString: config.DATABASE_URL,
+        connectionString: dbUrl,
         max: 20,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 2000,
@@ -56,3 +57,5 @@ export const checkDbConnection = async (): Promise<boolean> => {
 
 export * from './schema';
 export * from './repository';
+export * from './shadowRepository';
+export * from './shadowWal';

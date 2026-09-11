@@ -1,0 +1,21 @@
+{
+  "id": "wal-1788354892807-2m66r",
+  "operationType": "UPDATE_OBSERVATION",
+  "entityType": "SHADOW_OBSERVATION",
+  "entityId": "test-shadow-sell-sl",
+  "payload": {
+    "id": "test-shadow-sell-sl",
+    "status": "CLOSED",
+    "closeReason": "STOP_LOSS",
+    "exitPrice": 101,
+    "realizedR": -1,
+    "mfePips": 0,
+    "maePips": 100,
+    "highestPriceSeen": 101,
+    "lowestPriceSeen": 100,
+    "closedAt": 1788354892676
+  },
+  "createdTimestamp": 1788354892807,
+  "retryCount": 0,
+  "version": 1
+}

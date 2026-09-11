@@ -14,6 +14,7 @@ export interface GeminiErrorAnalysis {
   providerErrorCode: string | undefined;
   providerMessage: string;
   isRetryable: boolean;
+  retryDelaySeconds?: number;
 }
 
 /**
@@ -36,6 +37,13 @@ export function classifyGeminiError(err: any): GeminiErrorAnalysis {
     if (codeMatch) providerErrorCode = codeMatch[1];
   }
 
+  // Extract retry delay if provided by Google API
+  let retryDelaySeconds: number | undefined;
+  const retryMatch = message.match(/retry in ([\d\.]+)s/i) || message.match(/"retryDelay":\s*"(\d+)s"/i);
+  if (retryMatch) {
+    retryDelaySeconds = Math.ceil(parseFloat(retryMatch[1]));
+  }
+
   const msgLower = message.toLowerCase();
 
   // 1. Model Not Found / Deprecated (HTTP 404)
@@ -50,7 +58,7 @@ export function classifyGeminiError(err: any): GeminiErrorAnalysis {
       httpStatus: 404,
       providerErrorCode: providerErrorCode || 'NOT_FOUND',
       providerMessage: message,
-      isRetryable: true, // Retryable across models (attempt fallback model)
+      isRetryable: true,
     };
   }
 
@@ -68,6 +76,7 @@ export function classifyGeminiError(err: any): GeminiErrorAnalysis {
       providerErrorCode: providerErrorCode || 'RESOURCE_EXHAUSTED',
       providerMessage: message,
       isRetryable: true,
+      retryDelaySeconds: retryDelaySeconds || 55
     };
   }
 
@@ -153,11 +162,59 @@ export const getGeminiClient = (): GoogleGenAI => {
 export const PRIMARY_GEMINI_MODEL = "gemini-3.6-flash";
 export const FALLBACK_GEMINI_MODEL = "gemini-3.5-flash";
 
+// Global In-Memory Circuit Breaker to prevent API spamming when quota is reached
+let geminiCircuitOpenUntil = 0;
+
+export const isGeminiCircuitOpen = (): boolean => {
+  return Date.now() < geminiCircuitOpenUntil;
+};
+
+export const setGeminiCooldown = (seconds: number = 60) => {
+  geminiCircuitOpenUntil = Date.now() + seconds * 1000;
+};
+
+export const getRemainingCooldownSeconds = (): number => {
+  return Math.max(0, Math.ceil((geminiCircuitOpenUntil - Date.now()) / 1000));
+};
+
+// =========================================================================
+// 20 RPM TOKEN-BUCKET RATE LIMITER & PACING ENGINE
+// =========================================================================
+// 20 Requests Per Minute = 1 request every 3,000ms minimum.
+// We pace calls with a 3,100ms throttle to strictly guarantee <= 19.3 RPM.
+const MIN_REQUEST_INTERVAL_MS = 3100;
+let lastRequestTimestamp = 0;
+const requestQueue: Array<() => void> = [];
+let isProcessingQueue = false;
+
+async function waitForRateLimitSlot(): Promise<void> {
+  const now = Date.now();
+  const timeSinceLast = now - lastRequestTimestamp;
+  
+  if (timeSinceLast < MIN_REQUEST_INTERVAL_MS) {
+    const delayNeeded = MIN_REQUEST_INTERVAL_MS - timeSinceLast;
+    await new Promise(resolve => setTimeout(resolve, delayNeeded));
+  }
+  
+  lastRequestTimestamp = Date.now();
+}
+
 /**
  * Safely calls Gemini API trying primary model (gemini-3.6-flash) then fallback (gemini-3.5-flash)
- * upon retryable errors, with precise error classification and structured logging.
+ * upon retryable errors, with rate limiting (<=20 RPM), precise error classification, and fallback logic.
  */
 export const callGeminiSafe = async (ai: GoogleGenAI, requestOptions: any) => {
+  if (isGeminiCircuitOpen()) {
+    const remainingSec = getRemainingCooldownSeconds();
+    const err = new Error(`Gemini API in cooldown (${remainingSec}s remaining). Delegating to local Signal Intelligence.`);
+    (err as any).category = 'RATE_LIMITED';
+    (err as any).httpStatus = 429;
+    throw err;
+  }
+
+  // Enforce the 20 RPM pacing slot before dispatching to Google servers
+  await waitForRateLimitSlot();
+
   const modelsToTry = [PRIMARY_GEMINI_MODEL, FALLBACK_GEMINI_MODEL];
   const attemptedErrors: Array<{ model: string; analysis: GeminiErrorAnalysis }> = [];
 
@@ -174,21 +231,22 @@ export const callGeminiSafe = async (ai: GoogleGenAI, requestOptions: any) => {
       const analysis = classifyGeminiError(err);
       attemptedErrors.push({ model: modelName, analysis });
 
-      const willAttemptFallback = hasNextModel && analysis.isRetryable;
+      if (analysis.category === 'RATE_LIMITED') {
+        const cooldown = analysis.retryDelaySeconds || 55;
+        console.warn(`⏳ [Gemini 20 RPM Guard] Rate limit reached. Backing off for ${cooldown}s.`);
+        setGeminiCooldown(cooldown);
+      }
+
+      const willAttemptFallback = hasNextModel && analysis.isRetryable && analysis.category !== 'RATE_LIMITED';
       const finalOutcome = willAttemptFallback
         ? `Attempting fallback model: ${nextModelName}`
-        : `Execution failed on ${modelName}. No further fallbacks.`;
-
-      const sanitizedMessage = analysis.providerMessage.replace(/[\r\n]+/g, ' ');
+        : `Execution halted on ${modelName}.`;
 
       console.warn(
-        `[Gemini API Failure] ` +
+        `[Gemini API Status] ` +
         `model="${modelName}" ` +
-        `httpStatus=${analysis.httpStatus ?? 'N/A'} ` +
         `category="${analysis.category}" ` +
         `errorCode="${analysis.providerErrorCode ?? 'N/A'}" ` +
-        `errorMessage="${sanitizedMessage}" ` +
-        `fallbackAttempted=${willAttemptFallback} ` +
         `outcome="${finalOutcome}"`
       );
 
@@ -202,13 +260,13 @@ export const callGeminiSafe = async (ai: GoogleGenAI, requestOptions: any) => {
   const primaryAnalysis = attemptedErrors[0]?.analysis;
   const categories = Array.from(new Set(attemptedErrors.map(e => e.analysis.category))).join(', ');
   const details = attemptedErrors
-    .map(e => `[Model: ${e.model} | Category: ${e.analysis.category} | HTTP ${e.analysis.httpStatus ?? 'N/A'}: ${e.analysis.providerMessage}]`)
+    .map(e => `[Model: ${e.model} | Category: ${e.analysis.category} | HTTP ${e.analysis.httpStatus ?? 'N/A'}]`)
     .join('; ');
 
   const hasQuotaError = attemptedErrors.some(e => e.analysis.category === 'RATE_LIMITED');
   let errorMessage: string;
   if (hasQuotaError) {
-    errorMessage = `Gemini API rate limiting or quota exceeded (429): ${details}`;
+    errorMessage = `Gemini API rate limiting or quota reached (429): ${details}`;
   } else {
     errorMessage = `Gemini API call failed (${categories}): ${details}`;
   }
@@ -220,4 +278,3 @@ export const callGeminiSafe = async (ai: GoogleGenAI, requestOptions: any) => {
 
   throw errorObj;
 };
-

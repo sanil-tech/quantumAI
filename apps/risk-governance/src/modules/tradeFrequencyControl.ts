@@ -12,10 +12,10 @@ export class TradeFrequencyControl {
     }
   }
 
-  checkFrequency(proposal: TradeProposal, profile: RiskProfile): FrequencyCheck {
+  checkFrequency(proposal: TradeProposal, profile: RiskProfile, isManualDemo?: boolean): FrequencyCheck {
     const now = Date.now();
     const oneDayMs = 24 * 60 * 60 * 1000;
-    const tenMinMs = 10 * 60 * 1000;
+    const cooldownMs = isManualDemo ? 1000 : 10 * 60 * 1000;
 
     // Filter trades in last 24h
     const recent24h = this.proposalTimestamps.filter(t => now - t.timestamp < oneDayMs);
@@ -23,9 +23,9 @@ export class TradeFrequencyControl {
 
     const isOvertrading = recentTradeCount >= profile.max_frequency;
 
-    // Check duplicate entry: same symbol and direction within last 10 minutes
+    // Check duplicate entry: same symbol and direction within cooldown window
     const isDuplicate = this.proposalTimestamps.some(
-      t => t.symbol === proposal.symbol && t.direction === proposal.direction && (now - t.timestamp < tenMinMs)
+      t => t.symbol === proposal.symbol && t.direction === proposal.direction && (now - t.timestamp < cooldownMs)
     );
 
     // Check revenge trading pattern: > 3 opposing trades on same symbol within 30 minutes

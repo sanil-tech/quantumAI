@@ -1,9 +1,9 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Zap, ShieldCheck, AlertTriangle, Activity, Bot, Cpu, Key, UserCheck, 
   BarChart3, RefreshCw, Layers, CheckCircle, XCircle, Terminal, Play, Pause,
   DollarSign, Sliders, Server, Lock, TrendingUp, TrendingDown, History,
-  Flame, Target, Award, BookOpen, Cloud, ArrowUpRight, ArrowDownRight, PieChart, Database
+  Flame, Target, Award, BookOpen, Cloud, ArrowUpRight, ArrowDownRight, PieChart, Database, Filter
 } from 'lucide-react';
 import { AdminTradingCenter } from './AdminTradingCenter';
 
@@ -28,6 +28,7 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
   const [isTestingHandshake, setIsTestingHandshake] = useState(false);
 
   // Real Cloud AI Monitoring State
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [aiMonitoringData, setAiMonitoringData] = useState<any>(null);
   const [isFetchingAiData, setIsFetchingAiData] = useState(false);
   const [activeHistoryTab, setActiveHistoryTab] = useState<'open' | 'closed' | 'postmortem'>('open');
@@ -53,7 +54,11 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
   const fetchAiMonitoringData = async () => {
     setIsFetchingAiData(true);
     try {
-      const res = await fetch('/api/admin/ai-monitoring');
+      const adminKey = typeof window !== 'undefined' ? (localStorage.getItem('admin_api_key') || 'admin_demo_key_88') : 'admin_demo_key_88';
+      const accountParam = selectedAccountId || 'ALL';
+      const res = await fetch(`/api/admin/ai-monitoring?accountId=${encodeURIComponent(accountParam)}`, {
+        headers: { 'x-admin-key': adminKey }
+      });
       const data = await res.json();
       if (data.success) {
         setAiMonitoringData(data);
@@ -75,7 +80,7 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
     }, 5000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedAccountId]);
 
   const handleRunHandshake = async () => {
     setIsTestingHandshake(true);
@@ -116,9 +121,9 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
     totalLosses: 0,
     overallWinRate: 0,
     totalPnlDollars: 0,
-    profitFactor: 2.35,
-    bestPair: { pair: 'N/A', winRatePercent: 0, netPnlDollars: 0 },
-    worstPair: { pair: 'N/A', winRatePercent: 0, netPnlDollars: 0 }
+    profitFactor: null,
+    bestPair: null,
+    worstPair: null
   };
 
   const pairPerformance = aiMonitoringData?.pairPerformance || [];
@@ -210,43 +215,64 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
           {/* ========================================================================= */}
           {/* SECTION 1: REAL CLOUD AI MONITORING STATS (WIN/LOSS, PNL, BEST PAIRS) */}
           {/* ========================================================================= */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Bot className="w-5 h-5 text-cyan-400" />
-            <h2 className="text-base font-extrabold text-white tracking-tight">
-              Statistik Prestasi AI &amp; Keputusan Sebenar (Cloud Figures)
-            </h2>
-          </div>
-          <span className="text-xs font-mono text-slate-400">
-            Sumber Data: Cloud Server Memory &amp; Database
-          </span>
-        </div>
+          <div className="space-y-3">
+            {/* Account Scope Filter Bar */}
+            <div className="p-3.5 bg-slate-900/90 border border-slate-800 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-lg">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-300 font-mono">
+                  <Filter className="w-4 h-4 text-purple-400" />
+                  <span>Tapisan Skop Akaun AI:</span>
+                </div>
+                <select
+                  value={selectedAccountId}
+                  onChange={(e) => setSelectedAccountId(e.target.value)}
+                  className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-cyan-300 font-mono font-bold focus:border-purple-500 focus:outline-none"
+                >
+                  <option value="">Semua Akaun (Semua 295+ Rekod Trade)</option>
+                  <option value="48282756">cTrader Live/Demo (48282756)</option>
+                  <option value="5877246_DEMO">Demo Simulator (5877246_DEMO)</option>
+                  <option value="5881460">Akaun 5881460</option>
+                  <option value="DEFAULT">Akaun Ujian (DEFAULT)</option>
+                </select>
+              </div>
+              <span className="text-xs font-mono text-slate-400">
+                Sumber Data: Cloud Server Memory &amp; Database
+              </span>
+            </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-mono">
-          {/* Card 1: Total Wins & Losses */}
-          <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl relative overflow-hidden shadow-lg">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/10 rounded-full blur-xl pointer-events-none" />
-            <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
-              <span>Jumlah Win / Loss AI</span>
-              <PieChart className="w-4 h-4 text-cyan-400" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bot className="w-5 h-5 text-cyan-400" />
+                <h2 className="text-base font-extrabold text-white tracking-tight">
+                  Statistik Prestasi AI &amp; Keputusan Sebenar (Cloud Figures)
+                </h2>
+              </div>
             </div>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-2xl font-black text-white">{real.totalTrades}</span>
-              <span className="text-xs text-slate-400">Jumlah Trade</span>
-            </div>
-            <div className="mt-2 flex items-center gap-2 text-xs font-bold">
-              <span className="px-2 py-0.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 rounded">
-                {real.totalWins} WIN
-              </span>
-              <span className="px-2 py-0.5 bg-rose-500/20 border border-rose-500/30 text-rose-300 rounded">
-                {real.totalLosses} LOSS
-              </span>
-            </div>
-            <div className="mt-2 text-[11px] text-slate-400">
-              Kadar Kejayaan: <strong className="text-cyan-300 font-bold">{real.overallWinRate}%</strong>
-            </div>
-          </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-mono">
+              {/* Card 1: Total Wins & Losses */}
+              <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl relative overflow-hidden shadow-lg">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/10 rounded-full blur-xl pointer-events-none" />
+                <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
+                  <span>Jumlah Win / Loss AI</span>
+                  <PieChart className="w-4 h-4 text-cyan-400" />
+                </div>
+                <div className="mt-2 flex items-baseline gap-2">
+                  <span className="text-2xl font-black text-white">{real.totalTrades}</span>
+                  <span className="text-xs text-slate-400">Jumlah Trade</span>
+                </div>
+                <div className="mt-2 flex items-center gap-2 text-xs font-bold">
+                  <span className="px-2 py-0.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 rounded">
+                    {real.totalWins} WIN
+                  </span>
+                  <span className="px-2 py-0.5 bg-rose-500/20 border border-rose-500/30 text-rose-300 rounded">
+                    {real.totalLosses} LOSS
+                  </span>
+                </div>
+                <div className="mt-2 text-[11px] text-slate-400">
+                  Kadar Kejayaan: <strong className="text-cyan-300 font-bold">{real.overallWinRate}%</strong>
+                </div>
+              </div>
 
           {/* Card 2: Realized Cloud PnL & Profit Factor */}
           <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl relative overflow-hidden shadow-lg">
@@ -260,10 +286,12 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
             </div>
             <div className="mt-2 text-xs text-slate-400 flex items-center justify-between">
               <span>Faktor Keuntungan:</span>
-              <span className="text-amber-300 font-bold">{real.profitFactor}x</span>
+              <span className="text-amber-300 font-bold">
+                {real.profitFactor !== null && real.profitFactor !== undefined ? `${real.profitFactor}x` : 'NOT AVAILABLE'}
+              </span>
             </div>
             <div className="mt-1 text-[10px] text-slate-500">
-              Dikira daripada semua sesi ujian dan eksekusi live
+              Dikira secara terus daripada rekod trade sebenar
             </div>
           </div>
 
@@ -274,14 +302,18 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
               <Flame className="w-4 h-4 text-amber-400" />
             </div>
             <div className="text-2xl font-black text-amber-300 mt-2 flex items-center gap-2">
-              <span>{real.bestPair?.pair || 'BTC/USD'}</span>
+              <span>{real.bestPair?.pair && real.bestPair.pair !== 'N/A' ? real.bestPair.pair : 'NOT AVAILABLE'}</span>
             </div>
             <div className="mt-2 text-xs text-slate-300 flex items-center justify-between">
               <span>Kadar Win Rate:</span>
-              <span className="text-emerald-400 font-bold">{real.bestPair?.winRatePercent || 0}%</span>
+              <span className="text-emerald-400 font-bold">
+                {real.bestPair?.pair && real.bestPair.pair !== 'N/A' ? `${real.bestPair.winRatePercent}%` : 'N/A'}
+              </span>
             </div>
             <div className="mt-1 text-[10px] text-slate-400">
-              Net PnL: <strong className="text-emerald-300">+${(real.bestPair?.netPnlDollars || 0).toFixed(2)}</strong>
+              Net PnL: <strong className="text-emerald-300">
+                {real.bestPair?.pair && real.bestPair.pair !== 'N/A' ? `+$${(real.bestPair.netPnlDollars || 0).toFixed(2)}` : 'N/A'}
+              </strong>
             </div>
           </div>
 
@@ -292,14 +324,16 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
               <Target className="w-4 h-4 text-purple-400" />
             </div>
             <div className="text-2xl font-black text-purple-300 mt-2">
-              {real.worstPair?.pair || 'NASDAQ'}
+              {real.worstPair?.pair && real.worstPair.pair !== 'N/A' ? real.worstPair.pair : 'NOT AVAILABLE'}
             </div>
             <div className="mt-2 text-xs text-slate-400 flex items-center justify-between">
               <span>Kadar Win Rate:</span>
-              <span className="text-amber-300 font-bold">{real.worstPair?.winRatePercent || 0}%</span>
+              <span className="text-amber-300 font-bold">
+                {real.worstPair?.pair && real.worstPair.pair !== 'N/A' ? `${real.worstPair.winRatePercent}%` : 'N/A'}
+              </span>
             </div>
             <div className="mt-1 text-[10px] text-slate-500">
-              Diselaras automatik oleh AI Adaptive Rule
+              {real.worstPair?.pair && real.worstPair.pair !== 'N/A' ? 'Diselaras automatik oleh AI Adaptive Rule' : 'Tiada data anomali'}
             </div>
           </div>
         </div>
@@ -348,35 +382,42 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
               </thead>
               <tbody className="divide-y divide-slate-800/60">
                 {pairPerformance.map((p: any) => {
-                  const isTop = p.winRatePercent >= 55;
-                  const isMedium = p.winRatePercent >= 48 && p.winRatePercent < 55;
+                  const pairName = p.pair || p.symbol || 'UNKNOWN';
+                  const totalTrades = p.totalTradesExecuted ?? p.totalTrades ?? 0;
+                  const winCount = p.winCount ?? 0;
+                  const lossCount = p.lossCount ?? Math.max(0, totalTrades - winCount);
+                  const winRate = p.winRatePercent ?? (totalTrades > 0 ? parseFloat(((winCount / totalTrades) * 100).toFixed(2)) : 0);
+                  const pnl = p.netPnlDollars ?? 0;
+                  const pf = p.profitFactor ?? 1.0;
+                  const isTop = winRate >= 55;
+                  const isMedium = winRate >= 48 && winRate < 55;
                   return (
-                    <tr key={p.pair} className="hover:bg-slate-950/40 transition">
+                    <tr key={pairName} className="hover:bg-slate-950/40 transition">
                       <td className="p-3 font-extrabold text-white text-sm flex items-center gap-1.5">
-                        <span className="text-cyan-400">{p.pair}</span>
+                        <span className="text-cyan-400">{pairName}</span>
                       </td>
-                      <td className="p-3 text-slate-300 font-bold">{p.totalTradesExecuted}</td>
+                      <td className="p-3 text-slate-300 font-bold">{totalTrades}</td>
                       <td className="p-3">
-                        <span className="text-emerald-400 font-bold">{p.winCount}W</span>
+                        <span className="text-emerald-400 font-bold">{winCount}W</span>
                         <span className="text-slate-500 mx-1">/</span>
-                        <span className="text-rose-400 font-bold">{p.lossCount}L</span>
+                        <span className="text-rose-400 font-bold">{lossCount}L</span>
                       </td>
                       <td className="p-3">
                         <div className="flex items-center gap-2">
                           <div className="w-16 bg-slate-800 h-2 rounded-full overflow-hidden">
                             <div 
                               className={`h-full rounded-full ${isTop ? 'bg-emerald-400' : isMedium ? 'bg-amber-400' : 'bg-purple-400'}`} 
-                              style={{ width: `${Math.min(100, p.winRatePercent)}%` }}
+                              style={{ width: `${Math.min(100, winRate)}%` }}
                             />
                           </div>
                           <span className={`font-extrabold ${isTop ? 'text-emerald-400' : isMedium ? 'text-amber-300' : 'text-slate-300'}`}>
-                            {p.winRatePercent}%
+                            {winRate}%
                           </span>
                         </div>
                       </td>
-                      <td className="p-3 text-amber-300 font-bold">{p.profitFactor || '2.1'}x</td>
-                      <td className={`p-3 font-extrabold ${p.netPnlDollars >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {p.netPnlDollars >= 0 ? '+' : ''}${p.netPnlDollars.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      <td className="p-3 text-amber-300 font-bold">{pf}x</td>
+                      <td className={`p-3 font-extrabold ${pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {pnl >= 0 ? '+' : ''}${pnl.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </td>
                       <td className="p-3">
                         {isTop ? (
@@ -636,42 +677,42 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
       </div>
 
       {/* ========================================================================= */}
-      {/* SECTION 4: SAAS FINANCIALS & OPERATIONAL METRICS */}
+      {/* SECTION 4: SYSTEM & OPERATIONAL METRICS */}
       {/* ========================================================================= */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-mono">
         <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl">
-          <div className="text-xs text-slate-400 uppercase font-bold tracking-wider">MRR Revenue SaaS</div>
-          <div className="text-2xl font-black text-emerald-400 mt-1">$48,500.00 /bln</div>
-          <div className="text-[10px] text-slate-500 mt-1">342 Langganan Aktif</div>
+          <div className="text-xs text-slate-400 uppercase font-bold tracking-wider">Rekod Posisi PostgreSQL</div>
+          <div className="text-2xl font-black text-emerald-400 mt-1">{real.totalTrades} Rekod</div>
+          <div className="text-[10px] text-slate-500 mt-1">Authoritative Source of Truth</div>
         </div>
 
         <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl">
-          <div className="text-xs text-slate-400 uppercase font-bold tracking-wider">Sambungan EA MQL/cBot Live</div>
-          <div className="text-2xl font-black text-cyan-400 mt-1">218 Terminal Active</div>
-          <div className="text-[10px] text-slate-500 mt-1">MetaTrader 4/5 + cTrader</div>
+          <div className="text-xs text-slate-400 uppercase font-bold tracking-wider">Status Mod Broker</div>
+          <div className="text-2xl font-black text-cyan-400 mt-1">READ-ONLY FEED</div>
+          <div className="text-[10px] text-slate-500 mt-1">Zero Automated Order Execution</div>
         </div>
 
         <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl">
           <div className="text-xs text-slate-400 uppercase font-bold tracking-wider">Purata Latensi Bridge</div>
           <div className="text-2xl font-black text-purple-400 mt-1">
-            {bridgeStatus?.heartbeat?.latencyMs || 14} ms
+            {bridgeStatus?.heartbeat?.latencyMs ? `${bridgeStatus.heartbeat.latencyMs} ms` : 'NOT AVAILABLE'}
           </div>
-          <div className="text-[10px] text-slate-500 mt-1">Super Low Latency Relay</div>
+          <div className="text-[10px] text-slate-500 mt-1">Runtime Ping Measurement</div>
         </div>
 
         <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl">
           <div className="text-xs text-slate-400 uppercase font-bold tracking-wider">Queue Pending Server</div>
           <div className="text-2xl font-black text-amber-400 mt-1 flex items-center justify-between">
-            <span>{bridgeStatus?.pendingQueueCount || 0} Commands</span>
+            <span>{bridgeStatus?.pendingQueueCount ?? 0} Commands</span>
             <button
               onClick={handleClearQueue}
               disabled={isClearingQueue}
-              className="text-[10px] bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 px-2 py-1 rounded font-bold transition"
+              className="text-[10px] bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 px-2 py-1 rounded font-bold transition cursor-pointer"
             >
               Clear
             </button>
           </div>
-          <div className="text-[10px] text-slate-500 mt-1">Menunggu Tarikan WebRequest EA</div>
+          <div className="text-[10px] text-slate-500 mt-1">Bridge Execution Queue Buffer</div>
         </div>
       </div>
 

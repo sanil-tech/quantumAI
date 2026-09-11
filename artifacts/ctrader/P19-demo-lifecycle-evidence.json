@@ -1,0 +1,92 @@
+{
+  "testId": "p19_1788354877667_hrrpa",
+  "timestamp": "2026-09-02T13:14:37.667Z",
+  "environment": "DEMO",
+  "accountIdRedacted": "58***34",
+  "brokerHost": "demo.ctraderapi.com",
+  "brokerPort": 5035,
+  "endpointValidation": {
+    "host": "demo.ctraderapi.com",
+    "port": 5035,
+    "approvedHost": "demo.ctraderapi.com",
+    "approvedPort": 5035,
+    "valid": true
+  },
+  "symbol": "EURUSD",
+  "requestedQuantity": 0.01,
+  "inputType": "LOTS",
+  "preFlightChecks": {
+    "environmentIsDemo": true,
+    "explicitConfirmationPresent": true,
+    "credentialsPresent": true,
+    "accountPresent": true,
+    "symbolSpecified": true,
+    "volumeSpecified": true,
+    "endpointValidated": true,
+    "passed": true
+  },
+  "finalLifecycleStatus": "DEMO_CLOSE_UNVERIFIED",
+  "symbolId": 1,
+  "symbolMetadata": {
+    "symbolId": 1,
+    "symbolName": "EURUSD",
+    "digits": 5,
+    "pipPosition": 4,
+    "minVolume": 100000,
+    "maxVolume": 1000000000,
+    "stepVolume": 100000,
+    "lotSize": 10000000
+  },
+  "normalizationResult": {
+    "isValid": true,
+    "requestedQuantity": 0.01,
+    "inputType": "LOTS",
+    "normalizedVolumeCents": 100000,
+    "normalizedLots": 0.01,
+    "symbolId": 1,
+    "symbolName": "EURUSD",
+    "conversionBasis": "LOTS_BASED",
+    "spec": {
+      "minVolume": 100000,
+      "maxVolume": 1000000000,
+      "stepVolume": 100000,
+      "lotSize": 10000000,
+      "digits": 5,
+      "pipPosition": 4
+    }
+  },
+  "normalizedVolumeCents": 100000,
+  "clientMsgId": "p19_msg_p19_1788354877667_hrrpa",
+  "clientOrderId": "p19_ord_p19_1788354877667_hrrpa",
+  "requestPayloadSummary": {
+    "payloadType": 2106,
+    "symbolId": 1,
+    "tradeSide": "BUY",
+    "volumeCents": 100000,
+    "clientOrderId": "p19_ord_p19_1788354877667_hrrpa"
+  },
+  "orderExecutionEvent": {
+    "executionType": 3,
+    "order": {
+      "orderId": 9001,
+      "clientOrderId": "p19_ord_p19_1788354877667_hrrpa"
+    },
+    "position": {
+      "positionId": 7001
+    },
+    "deal": {
+      "dealId": 4001
+    }
+  },
+  "brokerOrderId": 9001,
+  "brokerDealId": 4001,
+  "brokerPositionId": 7001,
+  "reconciliationResult": {
+    "reconciled": true,
+    "positionFound": true,
+    "matchedSymbolId": true,
+    "matchedVolume": true,
+    "openPositionsCount": 1
+  },
+  "errorMessage": "DEMO_CLOSE_UNVERIFIED: Broker did not return an execution event for close request."
+}

@@ -57,8 +57,12 @@ export const AiAnalysisCard: React.FC<AiAnalysisCardProps> = ({
   const isNoSetup = !opportunity || opportunity?.action === 'NO_SETUP' || opportunity?.action === 'WAIT / NO SETUP';
 
   const plannedEntry = React.useMemo(() => {
-    if (!opportunity?.entryZone?.min || !opportunity?.entryZone?.max) return (opportunity as any)?.entryPrice || currentPrice || 0;
-    return (opportunity.entryZone.min + opportunity.entryZone.max) / 2;
+    const min = opportunity?.entryZone?.min;
+    const max = opportunity?.entryZone?.max;
+    if (typeof min !== 'number' || typeof max !== 'number') {
+      return (opportunity as any)?.entryPrice || currentPrice || 0;
+    }
+    return (min + max) / 2;
   }, [opportunity, currentPrice]);
 
   const proposalId = React.useMemo(() => {
@@ -388,7 +392,7 @@ Confidence: ${opportunity.confidence}%`;
         <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-2.5 space-y-0.5">
           <div className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">WHERE: ENTRY ZONE</div>
           <div className="font-bold text-slate-100 text-sm">
-            {opportunity.entryZone?.min} - {opportunity.entryZone?.max}
+            {opportunity.entryZone?.min ?? '---'} - {opportunity.entryZone?.max ?? '---'}
           </div>
           <div className="text-[10px] text-slate-500">Mid: {plannedEntry.toFixed(5)}</div>
         </div>

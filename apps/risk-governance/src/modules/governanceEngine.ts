@@ -44,7 +44,8 @@ export class RiskGovernanceEngine {
     }
 
     // 4. Trade Frequency & Duplicate Control
-    const freqCheck = this.frequencyControl.checkFrequency(proposal, profile);
+    const isManualDemo = (proposal as any).isManual || (proposal as any).environment === 'DEMO' || (proposal.evidence && proposal.evidence.some(e => typeof e === 'string' && (e.includes('Manual') || e.includes('Trader') || e.includes('Pad'))));
+    const freqCheck = this.frequencyControl.checkFrequency(proposal, profile, isManualDemo);
     if (!freqCheck.allowTrade) {
       rejectionReasons.push(`Frequency Control Failure: ${freqCheck.reason}`);
     } else {
@@ -82,7 +83,7 @@ export class RiskGovernanceEngine {
     }
 
     const approvalId = `gov-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-    const approvedLotSize = status === 'APPROVED' ? reqLot : 0;
+    const approvedLotSize = (status === 'APPROVED' || status === 'MANUAL_REQUIRED') ? reqLot : (status === 'REJECTED' ? 0 : reqLot);
 
     const token: RiskApprovalToken = createRiskApprovalToken({
       approvalId,

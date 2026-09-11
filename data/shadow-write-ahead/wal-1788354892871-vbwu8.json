@@ -1,0 +1,19 @@
+{
+  "id": "wal-1788354892871-vbwu8",
+  "operationType": "SAVE_JOURNAL_EVENT",
+  "entityType": "JOURNAL_EVENT",
+  "entityId": "lje-1788354892689-jbm1b",
+  "payload": {
+    "id": "lje-1788354892689-jbm1b",
+    "timestamp": 1788354892689,
+    "eventType": "TRADE_CLOSED",
+    "setupFingerprint": "USD/JPY_SELL_ORDER_BLOCK_RETEST",
+    "evidenceTier": "NO_EVIDENCE",
+    "sampleCount": 2,
+    "realizedR": 2,
+    "reason": "Shadow trade closed with TAKE_PROFIT_2 at 98 (Realized: +2R, MFE: 200p, MAE: 0p)"
+  },
+  "createdTimestamp": 1788354892871,
+  "retryCount": 0,
+  "version": 1
+}

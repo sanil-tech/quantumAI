@@ -1,0 +1,21 @@
+{
+  "id": "wal-1788354892959-kg28g",
+  "operationType": "UPDATE_OBSERVATION",
+  "entityType": "SHADOW_OBSERVATION",
+  "entityId": "test-shadow-buy",
+  "payload": {
+    "id": "test-shadow-buy",
+    "status": "CLOSED",
+    "closeReason": "TAKE_PROFIT_1",
+    "exitPrice": 1.105,
+    "realizedR": 1,
+    "mfePips": 50,
+    "maePips": 0,
+    "highestPriceSeen": 1.105,
+    "lowestPriceSeen": 1.1,
+    "closedAt": 1788354892700
+  },
+  "createdTimestamp": 1788354892959,
+  "retryCount": 0,
+  "version": 1
+}

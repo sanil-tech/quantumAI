@@ -1,0 +1,346 @@
+[
+  {
+    "id": "setup_XAUUSD_H4_SELL",
+    "timestamp": 1789134563809,
+    "pair": "XAU/USD",
+    "timeframe": "H4",
+    "direction": "SELL",
+    "confidence": 80,
+    "entryPrice": 4401.72,
+    "stopLoss": 4446.72,
+    "takeProfit1": 4311.72,
+    "reasons": [
+      "📐 Autochartist: Corak Channel Down disahkan (Kualiti 6/10) menyokong SELL.",
+      "XAU/USD live price (4384.70) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 51.3 with ADX (23.1) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 45.97.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
+      "[ADAPTIVE LEARNING MEMORY] Strategy SMC_QUANT_V1 has 3 verified win(s) for ORDER_BLOCK_RETEST on XAU/USD. Source: REAL_TRADE.",
+      "[BACKTEST WARNING] pm-1y-1789133925685-28: Historical 1-Year Backtest indicates caution on XAU/USD (ORDER_BLOCK_RETEST SELL, TRENDING_BEARISH). Root cause: \"1-Year Backtest Evaluation: SELL setup on XAU/USD stopped out at SL 4869.79 during daily volatility expansion.\". Source: HISTORICAL_BACKTEST. Authority: BACKTEST_ENGINE. Execution Veto: NO.",
+      "[BACKTEST WARNING] pm-1y-1789133925685-24: Historical 1-Year Backtest indicates caution on XAU/USD (ORDER_BLOCK_RETEST SELL, TRENDING_BEARISH). Root cause: \"1-Year Backtest Evaluation: SELL setup on XAU/USD stopped out at SL 4983.12 during daily volatility expansion.\". Source: HISTORICAL_BACKTEST. Authority: BACKTEST_ENGINE. Execution Veto: NO.",
+      "[BACKTEST WARNING] pm-1y-1789133925685-22: Historical 1-Year Backtest indicates caution on XAU/USD (ORDER_BLOCK_RETEST SELL, TRENDING_BEARISH). Root cause: \"1-Year Backtest Evaluation: SELL setup on XAU/USD stopped out at SL 4937.66 during daily volatility expansion.\". Source: HISTORICAL_BACKTEST. Authority: BACKTEST_ENGINE. Execution Veto: NO."
+    ],
+    "pattern": {
+      "id": "pat_chan_down_H4_1789134563809",
+      "name": "Channel Down",
+      "type": "CHANNEL_DOWN",
+      "direction": "DOWN",
+      "timeframe": "H4",
+      "quality": 6,
+      "length": 57,
+      "identificationTime": 1789134563809,
+      "targetPrice": 4410.0888,
+      "description": "Saluran harga selari menurun (Lower Highs & Lower Lows). Trend menurun berterusan."
+    },
+    "status": "EXECUTED",
+    "isValid": true,
+    "executionDetails": {
+      "brokerOrderId": "317835842",
+      "dispatchedAt": 1789134566554
+    }
+  },
+  {
+    "id": "setup_EURUSD_H1_SELL",
+    "timestamp": 1789134552848,
+    "pair": "EUR/USD",
+    "timeframe": "H1",
+    "direction": "SELL",
+    "confidence": 79,
+    "entryPrice": 1.1617,
+    "stopLoss": 1.1647,
+    "takeProfit1": 1.1557,
+    "reasons": [
+      "📐 Autochartist: Corak Double Top disahkan (Kualiti 7/10) menyokong SELL.",
+      "EUR/USD live price (1.16021) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 44.3 with ADX (39.0) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.00086.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ],
+    "pattern": {
+      "id": "pat_double_top_H1_1789134552847",
+      "name": "Double Top",
+      "type": "DOUBLE_TOP",
+      "direction": "DOWN",
+      "timeframe": "H1",
+      "quality": 7,
+      "length": 24,
+      "identificationTime": 1789134552847,
+      "breakoutLevel": 1.16347,
+      "description": "Puncak berkembar pada paras 1.16347 gagal melepasi rintangan."
+    },
+    "status": "EXECUTED",
+    "isValid": true,
+    "executionDetails": {
+      "brokerOrderId": "317835768",
+      "dispatchedAt": 1789134555726
+    }
+  },
+  {
+    "id": "setup_USDCAD_M15_BUY",
+    "timestamp": 1789134561096,
+    "pair": "USD/CAD",
+    "timeframe": "M15",
+    "direction": "BUY",
+    "confidence": 77,
+    "entryPrice": 1.38584,
+    "stopLoss": 1.38284,
+    "takeProfit1": 1.39184,
+    "reasons": [
+      "USD/CAD live price (1.38712) is holding above 50 EMA trend filter.",
+      "RSI (14) sitting at 74.0 with ADX (56.6) confirming trending bullish.",
+      "SuperTrend filter is BULLISH and ATR volatility is 0.00098.",
+      "SMC Structure detected: MOMENTUM CONTINUATION with MARKET ENTRY execution.",
+      "[ADAPTIVE LEARNING MEMORY] Strategy SMC_QUANT_V1 has 2 verified win(s) for MOMENTUM_CONTINUATION on USD/CAD. Source: REAL_TRADE."
+    ],
+    "status": "EXECUTED",
+    "isValid": true,
+    "executionDetails": {
+      "brokerOrderId": "317835833",
+      "dispatchedAt": 1789134563798
+    }
+  },
+  {
+    "id": "setup_NZDUSD_H4_SELL",
+    "timestamp": 1789134561094,
+    "pair": "NZD/USD",
+    "timeframe": "H4",
+    "direction": "SELL",
+    "confidence": 90,
+    "entryPrice": 0.58331,
+    "stopLoss": 0.58631,
+    "takeProfit1": 0.57731,
+    "reasons": [
+      "NZD/USD live price (0.58228) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 40.9 with ADX (36.0) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.00158.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
+      "[ADAPTIVE LEARNING MEMORY] Strategy SMC_QUANT_V1 has 2 verified win(s) for ORDER_BLOCK_RETEST on NZD/USD. Source: REAL_TRADE."
+    ],
+    "status": "SKIPPED_PENDING_ORDER_EXISTS",
+    "isValid": true
+  },
+  {
+    "id": "setup_GBPUSD_H1_SELL",
+    "timestamp": 1789134555733,
+    "pair": "GBP/USD",
+    "timeframe": "H1",
+    "direction": "SELL",
+    "confidence": 80,
+    "entryPrice": 1.35338,
+    "stopLoss": 1.35638,
+    "takeProfit1": 1.34738,
+    "reasons": [
+      "GBP/USD live price (1.35180) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 50.4 with ADX (28.5) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.00116.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
+      "[ADAPTIVE LEARNING MEMORY] Strategy SMC_QUANT_V1 has 2 verified win(s) for ORDER_BLOCK_RETEST on GBP/USD. Source: REAL_TRADE."
+    ],
+    "status": "EXECUTED",
+    "isValid": true,
+    "executionDetails": {
+      "brokerOrderId": "317835795",
+      "dispatchedAt": 1789134558391
+    }
+  },
+  {
+    "id": "setup_AUDUSD_M15_BUY",
+    "timestamp": 1789134558397,
+    "pair": "AUD/USD",
+    "timeframe": "M15",
+    "direction": "BUY",
+    "confidence": 80,
+    "entryPrice": 0.7168,
+    "stopLoss": 0.7138,
+    "takeProfit1": 0.7228,
+    "reasons": [
+      "📐 Autochartist: Corak Double Bottom disahkan (Kualiti 7/10) menyokong BUY.",
+      "AUD/USD live price (0.71759) is holding above 50 EMA trend filter.",
+      "RSI (14) sitting at 56.8 with ADX (21.8) confirming trending bullish.",
+      "SuperTrend filter is BULLISH and ATR volatility is 0.00044.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
+      "[BACKTEST WARNING] pm-1y-1789133925491-30: Historical 1-Year Backtest indicates caution on AUD/USD (ORDER_BLOCK_RETEST BUY, TRENDING_BULLISH). Root cause: \"1-Year Backtest Evaluation: BUY setup on AUD/USD stopped out at SL 0.70471 during daily volatility expansion.\". Source: HISTORICAL_BACKTEST. Authority: BACKTEST_ENGINE. Execution Veto: NO.",
+      "[BACKTEST WARNING] pm-1y-1789133925491-26: Historical 1-Year Backtest indicates caution on AUD/USD (ORDER_BLOCK_RETEST BUY, TRENDING_BULLISH). Root cause: \"1-Year Backtest Evaluation: BUY setup on AUD/USD stopped out at SL 0.70535 during daily volatility expansion.\". Source: HISTORICAL_BACKTEST. Authority: BACKTEST_ENGINE. Execution Veto: NO.",
+      "[BACKTEST WARNING] pm-1y-1789133925491-20: Historical 1-Year Backtest indicates caution on AUD/USD (ORDER_BLOCK_RETEST BUY, TRENDING_BULLISH). Root cause: \"1-Year Backtest Evaluation: BUY setup on AUD/USD stopped out at SL 0.69479 during daily volatility expansion.\". Source: HISTORICAL_BACKTEST. Authority: BACKTEST_ENGINE. Execution Veto: NO."
+    ],
+    "pattern": {
+      "id": "pat_double_bottom_M15_1789134558395",
+      "name": "Double Bottom",
+      "type": "DOUBLE_BOTTOM",
+      "direction": "UP",
+      "timeframe": "M15",
+      "quality": 7,
+      "length": 43,
+      "identificationTime": 1789134558395,
+      "breakoutLevel": 0.71531,
+      "description": "Lembah berkembar pada paras 0.71531 menunjukkan sokongan lantai kukuh."
+    },
+    "status": "EXECUTED",
+    "isValid": true,
+    "executionDetails": {
+      "brokerOrderId": "317835823",
+      "dispatchedAt": 1789134561087
+    }
+  },
+  {
+    "id": "setup_USDCHF_H4_BUY",
+    "timestamp": 1789134561092,
+    "pair": "USD/CHF",
+    "timeframe": "H4",
+    "direction": "BUY",
+    "confidence": 88,
+    "entryPrice": 0.81369,
+    "stopLoss": 0.81069,
+    "takeProfit1": 0.81969,
+    "reasons": [
+      "USD/CHF live price (0.81482) is holding above 50 EMA trend filter.",
+      "RSI (14) sitting at 66.8 with ADX (37.5) confirming trending bullish.",
+      "SuperTrend filter is BULLISH and ATR volatility is 0.00211.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ],
+    "status": "SKIPPED_PENDING_ORDER_EXISTS",
+    "isValid": true
+  },
+  {
+    "id": "setup_USDJPY_H4_SELL",
+    "timestamp": 1789133153189,
+    "pair": "USD/JPY",
+    "timeframe": "H4",
+    "direction": "SELL",
+    "confidence": 89,
+    "entryPrice": 153.674,
+    "stopLoss": 154.024,
+    "takeProfit1": 152.974,
+    "reasons": [
+      "📐 Autochartist: Corak Channel Down disahkan (Kualiti 7/10) menyokong SELL.",
+      "USD/JPY live price (153.476) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 37.4 with ADX (42.4) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.587.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
+    ],
+    "pattern": {
+      "id": "pat_chan_down_H4_1789133153188",
+      "name": "Channel Down",
+      "type": "CHANNEL_DOWN",
+      "direction": "DOWN",
+      "timeframe": "H4",
+      "quality": 7,
+      "length": 67,
+      "identificationTime": 1789133153188,
+      "targetPrice": 152.87903,
+      "description": "Saluran harga selari menurun (Lower Highs & Lower Lows). Trend menurun berterusan."
+    },
+    "status": "DISCOVERED",
+    "isValid": true,
+    "executionDetails": {
+      "brokerOrderId": "317828919",
+      "dispatchedAt": 1789133155949
+    }
+  },
+  {
+    "id": "setup_BTCUSD_H4_SELL",
+    "timestamp": 1789134566560,
+    "pair": "BTC/USD",
+    "timeframe": "H4",
+    "direction": "SELL",
+    "confidence": 89,
+    "entryPrice": 78269.66,
+    "stopLoss": 78769.66,
+    "takeProfit1": 77269.66,
+    "reasons": [
+      "BTC/USD live price (77454.46) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 42.3 with ADX (33.4) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 826.99.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
+      "[ADAPTIVE LEARNING MEMORY] Strategy SMC_QUANT_V1 has 2 verified win(s) for ORDER_BLOCK_RETEST on BTC/USD. Source: REAL_TRADE.",
+      "[BACKTEST ADVISORY] pm-1y-1789133926091-24: 1-Year backtest suggests SL buffer expansion on BTC/USD. Source: HISTORICAL_BACKTEST. Authority: BACKTEST_ENGINE.",
+      "⚠️ Autochartist: Amaran corak Ascending Triangle (UP)."
+    ],
+    "pattern": {
+      "id": "pat_asc_triangle_H4_1789134566560",
+      "name": "Ascending Triangle",
+      "type": "ASCENDING_TRIANGLE",
+      "direction": "UP",
+      "timeframe": "H4",
+      "quality": 5,
+      "length": 66,
+      "identificationTime": 1789134566560,
+      "breakoutLevel": 79729.16,
+      "targetPrice": 82407.616,
+      "description": "Rintangan mendatar pada 79729.16 dengan sokongan cerun menaik (Bullish Confluence)."
+    },
+    "status": "EXECUTED",
+    "isValid": true,
+    "executionDetails": {
+      "brokerOrderId": "317835847",
+      "dispatchedAt": 1789134568466
+    }
+  },
+  {
+    "id": "setup_EURJPY_H4_SELL",
+    "timestamp": 1789051840425,
+    "pair": "EUR/JPY",
+    "timeframe": "H4",
+    "direction": "SELL",
+    "confidence": 77,
+    "entryPrice": 178.918,
+    "stopLoss": 179.268,
+    "takeProfit1": 178.218,
+    "reasons": [
+      "📐 Autochartist: Corak Channel Down disahkan (Kualiti 7/10) menyokong SELL.",
+      "🤖 Gemini Second Opinion: Disahkan (Keyakinan 82%) - ADJUST",
+      "H4 bearish trend alignment confirmed by SuperTrend, sub-50 EMA, and strong ADX reading of 60.2.",
+      "Baseline setup Risk:Reward ratio of 1:1.2 violates institutional adaptive rule requiring a minimum 1:2.0 R:R.",
+      "Tightened Stop Loss above local H4 Order Block invalidation level to optimize risk profile and satisfy minimum R:R criteria."
+    ],
+    "pattern": {
+      "id": "pat_chan_down_H4_1789051840425",
+      "name": "Channel Down",
+      "type": "CHANNEL_DOWN",
+      "direction": "DOWN",
+      "timeframe": "H4",
+      "quality": 7,
+      "length": 61,
+      "identificationTime": 1789051840425,
+      "targetPrice": 178.32782,
+      "description": "Saluran harga selari menurun (Lower Highs & Lower Lows). Trend menurun berterusan."
+    },
+    "status": "SKIPPED_ALREADY_OPEN",
+    "isValid": false,
+    "invalidatedAt": 1789133156545,
+    "invalidationReason": "Harga pasaran (178.143) mencecah TP1 (178.218) sebelum sempat entri"
+  },
+  {
+    "id": "setup_GBPJPY_M15_SELL",
+    "timestamp": 1789134563807,
+    "pair": "GBP/JPY",
+    "timeframe": "M15",
+    "direction": "SELL",
+    "confidence": 96,
+    "entryPrice": 207.654,
+    "stopLoss": 208.004,
+    "takeProfit1": 206.954,
+    "reasons": [
+      "📐 Autochartist: Corak Double Top disahkan (Kualiti 7/10) menyokong SELL.",
+      "GBP/JPY live price (207.410) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 27.5 with ADX (41.6) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.210.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
+      "[ADAPTIVE LEARNING MEMORY] Strategy SMC_QUANT_V1 has 7 verified win(s) for ORDER_BLOCK_RETEST on GBP/JPY. Source: REAL_TRADE."
+    ],
+    "pattern": {
+      "id": "pat_double_top_M15_1789134563804",
+      "name": "Double Top",
+      "type": "DOUBLE_TOP",
+      "direction": "DOWN",
+      "timeframe": "M15",
+      "quality": 7,
+      "length": 19,
+      "identificationTime": 1789134563804,
+      "breakoutLevel": 208.306,
+      "description": "Puncak berkembar pada paras 208.30600 gagal melepasi rintangan."
+    },
+    "status": "SKIPPED_PENDING_ORDER_EXISTS",
+    "isValid": true
+  }
+]

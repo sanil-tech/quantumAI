@@ -409,6 +409,53 @@ export interface PositionUpdatedPayload {
 }
 
 // ==========================================
+// UNIFIED SHADOW + DEMO EXECUTION CONTRACTS
+// ==========================================
+
+export type ExecutionEnvironment = 'SHADOW' | 'DEMO' | 'LIVE';
+
+export type UnifiedExecutionStatus =
+  | 'PROPOSED'
+  | 'AUTHORIZED'
+  | 'SUBMITTED'
+  | 'PENDING_BROKER_CONFIRMATION'
+  | 'BROKER_CONFIRMED'
+  | 'OPEN'
+  | 'CLOSED'
+  | 'REJECTED'
+  | 'FAILED'
+  | 'EXPIRED';
+
+export type OutcomeSource = 'SIMULATED_MARKET_OUTCOME' | 'BROKER_CONFIRMED_OUTCOME';
+
+export interface UnifiedExecutionContract {
+  traceId: string;
+  signalId: string;
+  executionEnvironment: ExecutionEnvironment;
+  symbol: string;
+  direction: MarketDirection;
+  entryPrice: number;
+  stopLoss?: number;
+  takeProfit?: number;
+  takeProfit2?: number;
+  volume: number;
+  riskPercent?: number;
+  createdAt: Date;
+  executionStatus: UnifiedExecutionStatus;
+  applicationTradeId: string;
+  brokerOrderId?: string;
+  brokerPositionId?: string;
+  brokerDealId?: string;
+  outcomeSource: OutcomeSource;
+  closePrice?: number;
+  realizedProfit?: number;
+  pnlPips?: number;
+  closeReason?: string;
+  closedAt?: Date;
+  brokerConfirmed: boolean;
+}
+
+// ==========================================
 // PHASE 6: MANUAL TRADING SIGNAL & JOURNAL TYPES
 // ==========================================
 
@@ -495,7 +542,7 @@ export interface AiPlannedSetup {
 }
 
 export type ManualTradeStatus = 'ACTIVE' | 'CLOSED' | 'CANCELLED';
-export type ManualTradeExitReason = 'TAKE_PROFIT_1' | 'TAKE_PROFIT_2' | 'STOP_LOSS' | 'INVALIDATED' | 'MANUAL_EXIT';
+export type ManualTradeExitReason = 'TAKE_PROFIT_1' | 'TAKE_PROFIT_2' | 'STOP_LOSS' | 'INVALIDATED' | 'INVALIDATION' | 'MANUAL_EXIT' | 'TIME_EXPIRY';
 export type ManualTradeResult = 'WIN' | 'LOSS' | 'BREAKEVEN' | 'PENDING';
 
 export interface UserActualTrade {
@@ -519,3 +566,68 @@ export interface UserActualTrade {
   source: 'MANUAL_USER_REPORTED';
   notes?: string;
 }
+
+// ============================================================
+// PHASE 6D: ACTIVE MANUAL TRADE MONITORING & ALERT ENGINE
+// ============================================================
+
+export type ExitConditionTriggerType =
+  | 'ALERT_TP1_REACHED'
+  | 'ALERT_TP2_REACHED'
+  | 'ALERT_STOP_LOSS_HIT'
+  | 'ALERT_INVALIDATION_TRIGGERED';
+
+export interface ManualTradeAlert {
+  alertId: string; // Deterministic: `${manualTradeId}_${triggerType}`
+  manualTradeId: string;
+  signalId: string;
+  symbol: string;
+  direction: 'BUY' | 'SELL';
+  triggerType: ExitConditionTriggerType;
+  triggeredAt: string;
+  triggerPrice: number;
+  thresholdPrice: number;
+  unrealizedPips: number;
+  unrealizedPnl: number;
+  message: string;
+  acknowledged: boolean;
+}
+
+export interface ManualTradeMonitoringSnapshot {
+  manualTradeId: string;
+  signalId: string;
+  symbol: string;
+  direction: 'BUY' | 'SELL';
+  actualEntry: number;
+  positionSize: number;
+  enteredAt: string;
+  status: ManualTradeStatus;
+  currentPrice: number | null;
+  unrealizedPips: number | null;
+  unrealizedPnl: number | null;
+  marketDataTimestamp: number | null;
+  marketDataStatus: 'VALID' | 'STALE' | 'UNAVAILABLE' | 'INVALID';
+  monitoringStatus: 'MONITORING' | 'MARKET_DATA_UNAVAILABLE' | 'MARKET_DATA_STALE' | 'NOT_ACTIVE';
+  distanceToSlPips: number | null;
+  distanceToTp1Pips: number | null;
+  distanceToTp2Pips: number | null;
+  aiPlannedSetup: AiPlannedSetup;
+  activeAlerts: ManualTradeAlert[];
+}
+
+// ============================================================
+// ADAPTIVE LEARNING PROVENANCE & AUTHORITY BOUNDARY
+// ============================================================
+
+export type LearningProvenance =
+  | 'REAL_TRADE'
+  | 'HISTORICAL_BACKTEST'
+  | 'SYNTHETIC_SIMULATION'
+  | 'SHADOW_OBSERVATION';
+
+export type LearningAuthority =
+  | 'POSTGRESQL'
+  | 'BACKTEST_ENGINE'
+  | 'SIMULATION_ONLY'
+  | 'SHADOW_ENGINE';
+

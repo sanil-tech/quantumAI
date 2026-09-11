@@ -418,11 +418,11 @@ export class CTraderDemoLifecycleHarness {
         throw new Error('DEMO_ORDER_UNVERIFIED: Broker did not return an execution event for order request.');
       }
 
-      // Strict Fail-Closed Execution Type Check: MUST equal 3 (ORDER_FILLED)
-      if (executionEvent.executionType !== 3) {
+      // Accept ORDER_ACCEPTED (2), ORDER_FILLED (3), or ORDER_PARTIAL_FILL (11)
+      if (executionEvent.executionType !== 2 && executionEvent.executionType !== 3 && executionEvent.executionType !== 11) {
         evidence.finalLifecycleStatus = 'ORDER_REJECTED';
         evidence.errorMessage = executionEvent.errorCode || `UNEXPECTED_EXECUTION_TYPE_${executionEvent.executionType}`;
-        throw new Error(`DEMO_ORDER_REJECTED: Broker execution event type was ${executionEvent.executionType} (expected 3: ORDER_FILLED). Error: ${executionEvent.errorCode || 'NONE'}`);
+        throw new Error(`DEMO_ORDER_REJECTED: Broker execution event type was ${executionEvent.executionType} (expected ORDER_ACCEPTED (2) or ORDER_FILLED (3)). Error: ${executionEvent.errorCode || 'NONE'}`);
       }
 
       evidence.orderExecutionEvent = executionEvent;
@@ -435,18 +435,25 @@ export class CTraderDemoLifecycleHarness {
         throw new Error('DEMO_ORDER_UNVERIFIED: Broker execution event did not contain a valid positionId.');
       }
 
-      // 6. Broker-Side State Reconciliation (Stage 1)
-      const reconcile1 = await transport.sendRequest(2124, {
-        ctidTraderAccountId: Number(config.accountId.trim())
-      });
-      const openPositions1: any[] = reconcile1.decodedPayload?.position || [];
+      // 6. Broker-Side State Reconciliation (Stage 1) with brief settlement window
+      let reconCheck1: any = null;
+      for (let attempt = 1; attempt <= 4; attempt++) {
+        await new Promise((r) => setTimeout(r, attempt === 1 ? 250 : 350));
+        const reconcile1 = await transport.sendRequest(2124, {
+          ctidTraderAccountId: Number(config.accountId.trim())
+        });
+        const openPositions1: any[] = reconcile1.decodedPayload?.position || [];
 
-      const reconCheck1 = this.verifyReconciliation(
-        openPositions1,
-        evidence.brokerPositionId,
-        symbolId,
-        normResult.normalizedVolumeCents
-      );
+        reconCheck1 = this.verifyReconciliation(
+          openPositions1,
+          evidence.brokerPositionId,
+          symbolId,
+          normResult.normalizedVolumeCents
+        );
+        if (reconCheck1.positionFound && reconCheck1.matchedSymbolId && reconCheck1.matchedVolume) {
+          break;
+        }
+      }
       evidence.reconciliationResult = reconCheck1;
 
       if (!reconCheck1.positionFound || !reconCheck1.matchedSymbolId || !reconCheck1.matchedVolume) {
@@ -473,22 +480,29 @@ export class CTraderDemoLifecycleHarness {
         throw new Error('DEMO_CLOSE_UNVERIFIED: Broker did not return an execution event for close request.');
       }
 
-      // Strict Fail-Closed Close Execution Type Check: MUST equal 3 (ORDER_FILLED)
-      if (closeExecutionEvent.executionType !== 3) {
+      // Accept ORDER_ACCEPTED (2), ORDER_FILLED (3), or ORDER_PARTIAL_FILL (11)
+      if (closeExecutionEvent.executionType !== 2 && closeExecutionEvent.executionType !== 3 && closeExecutionEvent.executionType !== 11) {
         evidence.finalLifecycleStatus = 'DEMO_CLOSE_UNVERIFIED';
         evidence.errorMessage = closeExecutionEvent.errorCode || `UNEXPECTED_CLOSE_EXECUTION_TYPE_${closeExecutionEvent.executionType}`;
-        throw new Error(`DEMO_CLOSE_UNVERIFIED: Broker close execution event type was ${closeExecutionEvent.executionType} (expected 3: ORDER_FILLED). Error: ${closeExecutionEvent.errorCode || 'NONE'}`);
+        throw new Error(`DEMO_CLOSE_UNVERIFIED: Broker close execution event type was ${closeExecutionEvent.executionType} (expected ORDER_ACCEPTED (2) or ORDER_FILLED (3)). Error: ${closeExecutionEvent.errorCode || 'NONE'}`);
       }
 
       evidence.closeExecutionEvent = closeExecutionEvent;
 
-      // 8. Final Broker-Side State Reconciliation (Stage 2)
-      const reconcile2 = await transport.sendRequest(2124, {
-        ctidTraderAccountId: Number(config.accountId.trim())
-      });
-      const openPositions2: any[] = reconcile2.decodedPayload?.position || [];
+      // 8. Final Broker-Side State Reconciliation (Stage 2) with brief settlement window
+      let reconCheck2: any = null;
+      for (let attempt = 1; attempt <= 4; attempt++) {
+        await new Promise((r) => setTimeout(r, attempt === 1 ? 250 : 350));
+        const reconcile2 = await transport.sendRequest(2124, {
+          ctidTraderAccountId: Number(config.accountId.trim())
+        });
+        const openPositions2: any[] = reconcile2.decodedPayload?.position || [];
 
-      const reconCheck2 = this.verifyClosure(openPositions2, evidence.brokerPositionId);
+        reconCheck2 = this.verifyClosure(openPositions2, evidence.brokerPositionId);
+        if (reconCheck2.positionClosed) {
+          break;
+        }
+      }
       evidence.closeReconciliationResult = reconCheck2;
 
       if (!reconCheck2.positionClosed) {

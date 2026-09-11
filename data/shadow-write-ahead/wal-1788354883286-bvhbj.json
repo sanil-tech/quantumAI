@@ -1,0 +1,29 @@
+{
+  "id": "wal-1788354883286-bvhbj",
+  "operationType": "SAVE_JOURNAL_EVENT",
+  "entityType": "JOURNAL_EVENT",
+  "entityId": "lje-1788354882830-9kt8d",
+  "symbol": "EUR/USD",
+  "payload": {
+    "id": "lje-1788354882830-9kt8d",
+    "timestamp": 1788354882830,
+    "eventType": "OBSERVATION_RECORDED",
+    "tradeId": "demo-exec-1788354882826-2nks7",
+    "brokerOrderId": "ord-k-01",
+    "brokerPositionId": "pos-k-01",
+    "setupFingerprint": "EUR/USD_BUY_ORDER_BLOCK_RETEST",
+    "symbol": "EUR/USD",
+    "direction": "BUY",
+    "session": "LONDON",
+    "observationType": "REAL_DEMO_EXECUTION",
+    "sampleCount": 0,
+    "evidenceTier": "NO_EVIDENCE",
+    "previousLearningWeight": 0,
+    "newLearningWeight": 0,
+    "reason": "Controlled DEMO position opened (Order: ord-k-01, Pos: pos-k-01)",
+    "affectedFutureSetupFingerprint": "EUR/USD_BUY_ORDER_BLOCK_RETEST"
+  },
+  "createdTimestamp": 1788354883286,
+  "retryCount": 0,
+  "version": 1
+}

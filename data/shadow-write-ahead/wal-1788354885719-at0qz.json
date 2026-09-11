@@ -1,0 +1,48 @@
+{
+  "id": "wal-1788354885719-at0qz",
+  "operationType": "SAVE_OBSERVATION",
+  "entityType": "SHADOW_OBSERVATION",
+  "entityId": "shadow-1788354883810-2u2uf",
+  "symbol": "EUR/USD",
+  "payload": {
+    "id": "shadow-1788354883810-2u2uf",
+    "signalId": "eur-sig-second",
+    "symbol": "EUR/USD",
+    "direction": "BUY",
+    "setupType": "ORDER_BLOCK_RETEST",
+    "setupFingerprint": "EUR/USD_BUY_ORDER_BLOCK_RETEST",
+    "session": "LONDON",
+    "marketRegime": "UNKNOWN",
+    "entryPrice": 1.171,
+    "stopLoss": 1.169,
+    "initialStopLoss": 1.169,
+    "takeProfit1": 1.175,
+    "isMultiTarget": false,
+    "tp1Hit": false,
+    "status": "ACTIVE",
+    "mfePips": 0,
+    "maePips": 0,
+    "highestPriceSeen": 1.171,
+    "lowestPriceSeen": 1.171,
+    "openedAt": 1788354883810,
+    "observationType": "SHADOW_OBSERVATION",
+    "executionQualityAssumptions": {
+      "spreadPips": 0.8,
+      "slippagePips": 0.2,
+      "latencyMs": 18.5
+    },
+    "immutableSignalSnapshot": {
+      "id": "eur-sig-second",
+      "pair": "EUR/USD",
+      "action": "BUY",
+      "entryPrice": 1.171,
+      "stopLoss": 1.169,
+      "takeProfit1": 1.175,
+      "decisionProvider": "DETERMINISTIC",
+      "snapshotTimestamp": 1788354883810
+    }
+  },
+  "createdTimestamp": 1788354885719,
+  "retryCount": 0,
+  "version": 1
+}

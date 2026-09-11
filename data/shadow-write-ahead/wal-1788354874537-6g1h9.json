@@ -1,0 +1,21 @@
+{
+  "id": "wal-1788354874537-6g1h9",
+  "operationType": "UPDATE_OBSERVATION",
+  "entityType": "SHADOW_OBSERVATION",
+  "entityId": "buy-sl",
+  "payload": {
+    "id": "buy-sl",
+    "status": "CLOSED",
+    "closeReason": "STOP_LOSS",
+    "exitPrice": 1.162,
+    "realizedR": -1,
+    "mfePips": 0,
+    "maePips": 31,
+    "highestPriceSeen": 1.165,
+    "lowestPriceSeen": 1.1619,
+    "closedAt": 1788354872367
+  },
+  "createdTimestamp": 1788354874537,
+  "retryCount": 0,
+  "version": 1
+}

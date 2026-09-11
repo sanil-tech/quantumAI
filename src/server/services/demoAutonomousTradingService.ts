@@ -1,4 +1,6 @@
 import { EventEmitter } from 'events';
+import fs from 'fs';
+import path from 'path';
 import { CurrencyPair, Timeframe } from '../../types';
 import { ctraderMarketDataFeedService } from './ctraderMarketDataFeedService';
 import { SignalIntelligenceService } from '../../../apps/decision-agent/src/services/signalIntelligenceService';
@@ -7,7 +9,10 @@ import { PortfolioRiskEngine, ProposedTradeRisk } from './portfolioRiskService';
 import { FinalExecutionGateService, ExecutionGateDecision } from './finalExecutionGateService';
 import { CTraderDemoLifecycleHarness, ControlledDemoOrderConfig, DemoOrderExecutionResult } from '../../integrations/ctrader/ctraderDemoLifecycleHarness';
 import { learningJournalService } from './learningJournalService';
+import { continuousLearningObservatoryService } from './continuousLearningObservatoryService';
 import { aiDecisionEngine } from '../../../apps/decision-agent/src/services/aiDecisionEngine';
+import { calculateAllIndicators } from '../../lib/indicators';
+import { analyzeSmcStructures } from '../../lib/smcEngine';
 
 export interface DemoAutonomousStatus {
   isAutoPilotEnabled: boolean;
@@ -71,7 +76,7 @@ export class DemoAutonomousTradingService extends EventEmitter {
   private maxAllowedSpreadPips: number = 3.0; // <= 3.0 pips
   private staleDataThresholdMs: number = 30000; // < 30s
   private maxLotsLimit: number = 0.01; // Capped at 0.01 lot micro
-  private maxConcurrentPositions: number = 1; // Strict 1 position
+  private maxConcurrentPositions: number = 10; // Strict 1 position
 
   private portfolioRiskEngine: PortfolioRiskEngine;
   private openPositions: Map<number, DemoOpenPosition> = new Map();
@@ -92,10 +97,12 @@ export class DemoAutonomousTradingService extends EventEmitter {
   private lastDecisionReason: string = 'System initialized. Awaiting market ticks.';
   private lastExecutionAt: string | null = null;
   private isEvaluating: boolean = false;
+  private ledgerFilePath: string = path.resolve(process.cwd(), 'data', 'ctrader_demo_ledger.json');
 
   private constructor() {
     super();
     this.portfolioRiskEngine = new PortfolioRiskEngine(10000.0);
+    this.loadLedgerFromDisk();
     this.setupMarketDataListener();
   }
 
@@ -104,6 +111,69 @@ export class DemoAutonomousTradingService extends EventEmitter {
       DemoAutonomousTradingService.instance = new DemoAutonomousTradingService();
     }
     return DemoAutonomousTradingService.instance;
+  }
+
+  /**
+   * Load persisted demo ledger from disk
+   */
+  private loadLedgerFromDisk(): void {
+    try {
+      if (fs.existsSync(this.ledgerFilePath)) {
+        const raw = fs.readFileSync(this.ledgerFilePath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed.openPositions)) {
+          this.openPositions.clear();
+          for (const p of parsed.openPositions) {
+            this.openPositions.set(p.positionId, p);
+          }
+        }
+        if (Array.isArray(parsed.closedTrades)) {
+          this.closedTrades = parsed.closedTrades;
+        }
+        if (Array.isArray(parsed.executionLogs)) {
+          this.executionLogs = parsed.executionLogs;
+        }
+        if (typeof parsed.isAutoPilotEnabled === 'boolean') {
+          this.isAutoPilotEnabled = parsed.isAutoPilotEnabled;
+        }
+        console.log(`[DemoAutonomousTradingService] Loaded ${this.openPositions.size} open positions, ${this.closedTrades.length} closed trades, ${this.executionLogs.length} logs from disk.`);
+      }
+    } catch (err: any) {
+      console.warn('[DemoAutonomousTradingService] Ledger load notice:', err.message);
+    }
+  }
+
+  /**
+   * Save demo ledger to disk
+   */
+  public saveLedgerToDisk(): void {
+    try {
+      const dir = path.dirname(this.ledgerFilePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      const data = {
+        openPositions: Array.from(this.openPositions.values()),
+        closedTrades: this.closedTrades,
+        executionLogs: this.executionLogs,
+        isAutoPilotEnabled: this.isAutoPilotEnabled,
+        lastSavedAt: new Date().toISOString()
+      };
+      fs.writeFileSync(this.ledgerFilePath, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (err: any) {
+      console.error('[DemoAutonomousTradingService] Ledger save error:', err.message);
+    }
+  }
+
+  /**
+   * Add a manual DEMO position and persist
+   */
+  public addManualDemoPosition(pos: DemoOpenPosition, log: any): void {
+    this.openPositions.set(pos.positionId, pos);
+    this.executionLogs.unshift(log);
+    if (this.executionLogs.length > 50) this.executionLogs.pop();
+    this.saveLedgerToDisk();
+    this.emit('orderExecuted', pos);
   }
 
   /**
@@ -118,11 +188,39 @@ export class DemoAutonomousTradingService extends EventEmitter {
   /**
    * Process live incoming market tick
    */
-  public handleMarketTick(tick: { symbol: CurrencyPair; bid: number; ask: number; timestamp: number }): void {
+  public handleMarketTick(tick: any): void {
     if (!tick || !tick.symbol) return;
 
+    const symbol = tick.symbol;
+    const bid = typeof tick.bid === 'number' && tick.bid > 0
+      ? tick.bid
+      : (typeof tick.lowPrice === 'number' && tick.lowPrice > 0
+        ? tick.lowPrice
+        : (typeof tick.currentPrice === 'number' && tick.currentPrice > 0
+          ? tick.currentPrice
+          : 0));
+
+    const ask = typeof tick.ask === 'number' && tick.ask > 0
+      ? tick.ask
+      : (typeof tick.highPrice === 'number' && tick.highPrice > 0
+        ? tick.highPrice
+        : (typeof tick.currentPrice === 'number' && tick.currentPrice > 0
+          ? tick.currentPrice
+          : 0));
+
+    const tickTimestamp = tick.timestamp || Date.now();
+
+    if (bid <= 0 || ask <= 0) return;
+
+    const mappedTick = {
+      symbol,
+      bid,
+      ask,
+      timestamp: tickTimestamp
+    };
+
     // 1. Update Open Positions PnL & Monitor SL/TP
-    this.updatePositionsAndCheckExits(tick);
+    this.updatePositionsAndCheckExits(mappedTick);
 
     // 2. If Auto-Pilot is enabled, evaluate trading loop
     if (this.isAutoPilotEnabled && !this.killSwitchActive) {
@@ -224,6 +322,7 @@ export class DemoAutonomousTradingService extends EventEmitter {
       });
     } catch (_) {}
 
+    this.saveLedgerToDisk();
     this.emit('positionClosed', closedRecord);
     return closedRecord;
   }
@@ -272,28 +371,45 @@ export class DemoAutonomousTradingService extends EventEmitter {
         return;
       }
 
-      // 5. Gather Live Candle Features & SMC Structures
+      // 5. Get Real M1 Candles — fail closed if insufficient history
+      const candleResult = ctraderMarketDataFeedService.getLiveCandles(pair);
+      if (!candleResult.valid) {
+        this.lastDecisionReason =
+          `INSUFFICIENT_CANDLE_HISTORY for ${pair}: only ${candleResult.candleCount} closed M1 candles` +
+          ` (need >= ${26}). Awaiting more market data. Reason: ${candleResult.reason ?? 'N/A'}`;
+        return;
+      }
+
+      const candles = candleResult.candles;
+
+      // 6. Calculate real technical indicators from actual candle history
+      const indicators = calculateAllIndicators(candles);
+
+      // 7. Real SMC analysis from actual candle history
+      const smc = analyzeSmcStructures(candles, 'M1');
+
       const midPrice = (bid + ask) / 2;
 
-      // 6. Strategy & AI Signal Evaluation
+      // 8. Strategy & AI Signal Evaluation with real market data
       const signal = SignalIntelligenceService.getInstance().evaluateCandidateSetup({
         pair: pair as any,
         timeframe: 'M1',
         currentPrice: midPrice,
-        indicators: {
-          rsi: 58,
-          ema20: midPrice * 1.0001,
-          ema50: midPrice * 0.9998,
-          atr: pair.includes('JPY') ? 0.280 : pair === 'XAU/USD' ? 4.50 : 0.0015,
-          adx: 26
-        },
-        smc: {
-          orderBlocks: [{ type: 'BULLISH', bias: 'BULLISH' }],
-          fairValueGaps: [{ type: 'BULLISH', bias: 'BULLISH' }]
-        }
+        indicators,
+        smc
       });
 
-      this.lastEvaluatedSignal = `${signal.action} ${pair} (Confidence: ${signal.confidenceScore}%)`;
+      this.lastEvaluatedSignal = `${signal.action} ${pair} (Confidence: ${signal.confidence ?? 'N/A'}%)`;
+
+      // Forward opportunity to Continuous Learning Observatory for shadow tracking / counterfactual logging
+      try {
+        continuousLearningObservatoryService.evaluateMarketOpportunity({
+          opportunity: signal as any,
+          session: 'LONDON'
+        });
+      } catch (err: any) {
+        console.error('[DemoAutonomousTradingService] Observatory evaluation error:', err.message);
+      }
 
       // Check if Action is Valid Trade Setup
       if (signal.action !== 'BUY' && signal.action !== 'SELL') {
@@ -302,17 +418,18 @@ export class DemoAutonomousTradingService extends EventEmitter {
       }
 
       // Check Confidence Threshold
-      if ((signal.confidenceScore || 0) < this.minConfidenceThreshold) {
-        this.lastDecisionReason = `AI Confidence (${signal.confidenceScore}%) below threshold (${this.minConfidenceThreshold}%). Awaiting clearer edge.`;
+      if ((signal.confidence || 0) < this.minConfidenceThreshold) {
+        this.lastDecisionReason = `AI Confidence (${signal.confidence}%) below threshold (${this.minConfidenceThreshold}%). Awaiting clearer edge.`;
         return;
       }
 
-      // 7. Rigorous Bid-Ask Price Assignment:
+      // 9. Rigorous Bid-Ask Price Assignment:
       // BUY executes at ASK. SELL executes at BID.
       const isBuy = signal.action === 'BUY';
       const executableEntryPrice = isBuy ? ask : bid;
       const decimals = pair.includes('JPY') ? 3 : (pair === 'XAU/USD' || pair === 'BTC/USD') ? 2 : 5;
-      const atr = pair.includes('JPY') ? 0.280 : pair === 'XAU/USD' ? 4.50 : 0.0015;
+      // Use REAL ATR from indicators, not hardcoded constant
+      const atr = indicators.atr || (pair.includes('JPY') ? 0.280 : pair === 'XAU/USD' ? 4.50 : 0.0015);
 
       const calculatedSL = isBuy
         ? Number((executableEntryPrice - atr * 1.4).toFixed(decimals))
@@ -431,8 +548,7 @@ export class DemoAutonomousTradingService extends EventEmitter {
         status: 'FILLED_DEMO',
         reason: signal.reasons && signal.reasons.length > 0 ? signal.reasons[0] : 'SMC Fair Value Gap & EMA Trend Confluence'
       });
-      if (this.executionLogs.length > 50) this.executionLogs.pop();
-
+      this.saveLedgerToDisk();
       this.emit('orderExecuted', openPos);
     } finally {
       this.isEvaluating = false;
@@ -442,6 +558,7 @@ export class DemoAutonomousTradingService extends EventEmitter {
   // Auto-Pilot Controls
   public setAutoPilot(enabled: boolean): boolean {
     this.isAutoPilotEnabled = enabled;
+    this.saveLedgerToDisk();
     this.emit('statusChanged', this.getStatus());
     return this.isAutoPilotEnabled;
   }
@@ -451,6 +568,7 @@ export class DemoAutonomousTradingService extends EventEmitter {
     if (active) {
       this.isAutoPilotEnabled = false;
     }
+    this.saveLedgerToDisk();
     this.emit('statusChanged', this.getStatus());
     return this.killSwitchActive;
   }

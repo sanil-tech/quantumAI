@@ -5,4 +5,5 @@ export * from './middlewares';
 export * from './smc';
 export * from './marketDataValidator';
 export * from './redact';
+export * from './financialPnL';
 

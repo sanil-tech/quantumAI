@@ -12,15 +12,16 @@ export class PositionRiskCalculator {
     const potentialLoss = positionExposure * profile.max_risk_per_trade;
     const expectedRisk = potentialLoss / accountEquity;
 
+    const normalizedConf = proposal.confidence > 1 ? proposal.confidence / 100 : Math.max(0, Math.min(1, proposal.confidence));
     // Estimate reward/risk ratio based on confidence and proposal evidence
-    const rewardRiskRatio = proposal.confidence > 0.8 ? 2.5 : proposal.confidence > 0.6 ? 1.8 : 1.2;
+    const rewardRiskRatio = normalizedConf > 0.8 ? 2.5 : normalizedConf > 0.6 ? 1.8 : 1.2;
     const portfolioImpact = positionExposure / profile.max_exposure;
 
     // Calculate composite normalized RiskScore [0.0 - 1.0]
     // Higher score = higher risk
     const riskFactor = expectedRisk / profile.max_risk_per_trade;
     const exposureFactor = portfolioImpact;
-    const confidenceFactor = 1 - proposal.confidence; // Low confidence increases risk score
+    const confidenceFactor = 1 - normalizedConf; // Low confidence increases risk score
 
     const rawScore = (riskFactor * 0.4) + (exposureFactor * 0.3) + (confidenceFactor * 0.3);
     const riskScore = Math.min(Math.max(Number(rawScore.toFixed(2)), 0.0), 1.0);

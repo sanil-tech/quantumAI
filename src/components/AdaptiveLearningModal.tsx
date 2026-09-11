@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PostMortemReview, CurrencyPair, Timeframe } from '../types';
 import { Brain, X, Sparkles, CheckCircle2, XCircle, AlertTriangle, ShieldCheck, RefreshCw, Award, Target, Activity, Zap, Compass, BarChart3, Fingerprint } from 'lucide-react';
 import { Language } from '../lib/translations';
@@ -694,7 +694,11 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
                 </div>
               ) : filteredReviews.length === 0 ? (
                 <div className="p-8 text-center text-slate-500 text-xs border border-slate-800 rounded-xl bg-slate-950">
-                  {isMalay ? 'Tiada rekod post-mortem ditemui untuk penapis ini.' : 'No post-mortem records found.'}
+                  <div className="space-y-1">
+                    <span className="px-2 py-0.5 bg-slate-800 text-slate-300 rounded text-[10px] font-bold mr-2 uppercase">[AUTHORITATIVE]</span>
+                    <span className="font-bold text-slate-300">NO PERSISTED LEARNING DATA IN POSTGRESQL</span>
+                    <p className="text-[11px] text-slate-500 mt-1">{isMalay ? 'Tiada rekod post-mortem disahkan dalam pangkalan data. Selesaikan trade di Papan Isyarat Manual untuk menjana analisis adaptif.' : 'Zero post-mortem reviews recorded yet. Close a manual trade to trigger automated post-mortem learning.'}</p>
+                  </div>
                 </div>
               ) : (
                 filteredReviews.map((item) => {
@@ -722,7 +726,24 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
                             isLoss ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                           }`}>
                             {isLoss ? <XCircle className="w-3.5 h-3.5 text-rose-400" /> : <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
-                            {item.outcome} â€¢ {item.direction} {item.pair}
+                            {item.outcome} • {item.direction} {item.pair}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase tracking-wider ${
+                            item.provenance === 'REAL_TRADE' || item.authority === 'POSTGRESQL' || (!item.provenance && item.tradeId)
+                              ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800'
+                              : item.provenance === 'HISTORICAL_BACKTEST' || item.authority === 'BACKTEST_ENGINE'
+                              ? 'bg-amber-950/80 text-amber-300 border border-amber-800'
+                              : item.provenance === 'SYNTHETIC_SIMULATION'
+                              ? 'bg-orange-950/80 text-orange-300 border border-orange-800'
+                              : 'bg-blue-950/80 text-blue-300 border border-blue-800'
+                          }`}>
+                            {item.provenance === 'REAL_TRADE' || (!item.provenance && item.tradeId)
+                              ? 'REAL TRADE (PG)'
+                              : item.provenance === 'HISTORICAL_BACKTEST'
+                              ? '1-YR BACKTEST'
+                              : item.provenance === 'SYNTHETIC_SIMULATION'
+                              ? 'SYNTHETIC SIM'
+                              : 'SHADOW OBS'}
                           </span>
                           <span className="text-[11px] font-mono text-slate-400">
                             Entry: {item.entryPrice} | Exit: {item.exitPrice}

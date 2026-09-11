@@ -300,3 +300,152 @@ export const idempotencyRecords = pgTable('idempotency_records', {
   result: jsonb('result').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow()
 });
+
+
+// 12. Manual Trades Table (Phase 6E: Durable Manual Trading Ledger)
+export const manualTrades = pgTable('manual_trades', {
+  manualTradeId: varchar('manual_trade_id', { length: 64 }).primaryKey(),
+  signalId: varchar('signal_id', { length: 64 }).notNull(),
+  symbol: varchar('symbol', { length: 32 }).notNull(),
+  direction: varchar('direction', { length: 10 }).notNull(),
+  actualEntry: numeric('actual_entry', { precision: 12, scale: 5 }).notNull(),
+  positionSize: numeric('position_size', { precision: 8, scale: 4 }).notNull(),
+  enteredAt: timestamp('entered_at', { withTimezone: true }).notNull().defaultNow(),
+  status: varchar('status', { length: 16 }).notNull().default('ACTIVE'),
+  exitPrice: numeric('exit_price', { precision: 12, scale: 5 }),
+  exitReason: varchar('exit_reason', { length: 64 }),
+  exitedAt: timestamp('exited_at', { withTimezone: true }),
+  realizedPnl: numeric('realized_pnl', { precision: 12, scale: 2 }),
+  realizedPips: numeric('realized_pips', { precision: 10, scale: 2 }),
+  result: varchar('result', { length: 16 }),
+  executionMode: varchar('execution_mode', { length: 32 }).notNull().default('MANUAL'),
+  brokerExecution: boolean('broker_execution').notNull().default(false),
+  source: varchar('source', { length: 64 }).notNull().default('MANUAL_USER_REPORTED'),
+  notes: text('notes'),
+  aiPlannedSetup: jsonb('ai_planned_setup').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow()
+}, (table) => {
+  return {
+    statusIdx: index('idx_manual_trades_status').on(table.status),
+    signalIdx: index('idx_manual_trades_signal').on(table.signalId),
+    symbolIdx: index('idx_manual_trades_symbol').on(table.symbol),
+    createdIdx: index('idx_manual_trades_created').on(table.createdAt)
+  };
+});
+
+// 13. Manual Trade Alerts Table (Phase 6E: Deduplicated Monitoring Alerts)
+export const manualTradeAlerts = pgTable('manual_trade_alerts', {
+  alertId: varchar('alert_id', { length: 128 }).primaryKey(),
+  manualTradeId: varchar('manual_trade_id', { length: 64 }).notNull(),
+  signalId: varchar('signal_id', { length: 64 }).notNull(),
+  symbol: varchar('symbol', { length: 32 }).notNull(),
+  direction: varchar('direction', { length: 10 }).notNull(),
+  triggerType: varchar('trigger_type', { length: 64 }).notNull(),
+  triggeredAt: timestamp('triggered_at', { withTimezone: true }).notNull().defaultNow(),
+  triggerPrice: numeric('trigger_price', { precision: 12, scale: 5 }).notNull(),
+  thresholdPrice: numeric('threshold_price', { precision: 12, scale: 5 }).notNull(),
+  unrealizedPips: numeric('unrealized_pips', { precision: 10, scale: 2 }).notNull(),
+  unrealizedPnl: numeric('unrealized_pnl', { precision: 12, scale: 2 }).notNull(),
+  message: text('message').notNull(),
+  acknowledged: boolean('acknowledged').default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow()
+}, (table) => {
+  return {
+    tradeIdx: index('idx_manual_trade_alerts_trade').on(table.manualTradeId),
+    triggerIdx: index('idx_manual_trade_alerts_trigger').on(table.triggerType),
+    createdIdx: index('idx_manual_trade_alerts_created').on(table.createdAt)
+  };
+});
+
+// 14. Shadow Observations Table (Durable Shadow Forward-Testing Isolation)
+export const shadowObservations = pgTable('shadow_observations', {
+  id: varchar('id', { length: 64 }).primaryKey(),
+  signalId: varchar('signal_id', { length: 64 }).notNull(),
+  symbol: varchar('symbol', { length: 32 }).notNull(),
+  direction: varchar('direction', { length: 10 }).notNull(),
+  setupType: varchar('setup_type', { length: 64 }).notNull(),
+  setupFingerprint: varchar('setup_fingerprint', { length: 128 }).notNull(),
+  session: varchar('session', { length: 32 }).notNull(),
+  marketRegime: varchar('market_regime', { length: 64 }).notNull(),
+
+  // Price parameters
+  entryPrice: numeric('entry_price', { precision: 12, scale: 5 }).notNull(),
+  stopLoss: numeric('stop_loss', { precision: 12, scale: 5 }).notNull(),
+  initialStopLoss: numeric('initial_stop_loss', { precision: 12, scale: 5 }).notNull(),
+  takeProfit1: numeric('take_profit_1', { precision: 12, scale: 5 }).notNull(),
+  takeProfit2: numeric('take_profit_2', { precision: 12, scale: 5 }),
+  isMultiTarget: boolean('is_multi_target').notNull().default(false),
+  tp1Hit: boolean('tp1_hit').notNull().default(false),
+
+  // Exit & Outcome
+  status: varchar('status', { length: 16 }).notNull().default('ACTIVE'),
+  closeReason: varchar('close_reason', { length: 64 }),
+  exitPrice: numeric('exit_price', { precision: 12, scale: 5 }),
+  realizedR: numeric('realized_r', { precision: 8, scale: 2 }),
+
+  // High-water mark excursions
+  mfePips: numeric('mfe_pips', { precision: 8, scale: 1 }).notNull().default('0.0'),
+  maePips: numeric('mae_pips', { precision: 8, scale: 1 }).notNull().default('0.0'),
+  highestPriceSeen: numeric('highest_price_seen', { precision: 12, scale: 5 }).notNull(),
+  lowestPriceSeen: numeric('lowest_price_seen', { precision: 12, scale: 5 }).notNull(),
+
+  // Observational metadata & Immutable Snapshot
+  monitoringState: varchar('monitoring_state', { length: 32 }).notNull().default('LIVE_MONITORING'),
+  observationType: varchar('observation_type', { length: 32 }).notNull().default('SHADOW_OBSERVATION'),
+  executionQualityAssumptions: jsonb('execution_quality_assumptions').notNull(),
+  immutableSignalSnapshot: jsonb('immutable_signal_snapshot').notNull(),
+
+  // Timestamps
+  openedAt: timestamp('opened_at', { withTimezone: true }).notNull(),
+  closedAt: timestamp('closed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow()
+}, (table) => {
+  return {
+    symbolIdx: index('idx_shadow_obs_symbol').on(table.symbol),
+    statusIdx: index('idx_shadow_obs_status').on(table.status),
+    signalIdx: index('idx_shadow_obs_signal').on(table.signalId),
+    openedAtIdx: index('idx_shadow_obs_opened_at').on(table.openedAt),
+    closedAtIdx: index('idx_shadow_obs_closed_at').on(table.closedAt),
+    fingerprintIdx: index('idx_shadow_obs_fingerprint').on(table.setupFingerprint)
+  };
+});
+
+// 15. Learning Journal Events Table (Durable Event Ledger)
+export const learningJournalEvents = pgTable('learning_journal_events', {
+  id: varchar('id', { length: 64 }).primaryKey(),
+  eventType: varchar('event_type', { length: 64 }).notNull(),
+  setupFingerprint: varchar('setup_fingerprint', { length: 128 }),
+  symbol: varchar('symbol', { length: 32 }),
+  direction: varchar('direction', { length: 10 }),
+  session: varchar('session', { length: 32 }),
+  observationType: varchar('observation_type', { length: 32 }),
+  observationId: varchar('observation_id', { length: 64 }),
+  tradeId: varchar('trade_id', { length: 64 }),
+  outcome: varchar('outcome', { length: 16 }),
+  realizedR: numeric('realized_r', { precision: 8, scale: 2 }),
+  mfePips: numeric('mfe_pips', { precision: 8, scale: 1 }),
+  maePips: numeric('mae_pips', { precision: 8, scale: 1 }),
+  sampleCount: integer('sample_count').notNull().default(0),
+  evidenceTier: varchar('evidence_tier', { length: 32 }),
+  previousLearningWeight: numeric('previous_learning_weight', { precision: 6, scale: 4 }),
+  newLearningWeight: numeric('new_learning_weight', { precision: 6, scale: 4 }),
+  previousParameter: text('previous_parameter'),
+  proposedParameter: text('proposed_parameter'),
+  appliedParameter: text('applied_parameter'),
+  boundedAdjustment: text('bounded_adjustment'),
+  reason: text('reason').notNull(),
+  confidenceBasis: text('confidence_basis'),
+  affectedFutureSetupFingerprint: varchar('affected_future_setup_fingerprint', { length: 128 }),
+  payload: jsonb('payload'),
+  timestamp: bigint('timestamp', { mode: 'number' }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow()
+}, (table) => {
+  return {
+    fingerprintIdx: index('idx_lje_fingerprint').on(table.setupFingerprint),
+    typeIdx: index('idx_lje_type').on(table.eventType),
+    timestampIdx: index('idx_lje_timestamp').on(table.timestamp)
+  };
+});
+

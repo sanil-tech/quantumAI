@@ -1,0 +1,21 @@
+{
+  "id": "wal-1788354867406-32vrk",
+  "operationType": "UPDATE_OBSERVATION",
+  "entityType": "SHADOW_OBSERVATION",
+  "entityId": "shadow-1788354866511-u96og",
+  "payload": {
+    "id": "shadow-1788354866511-u96og",
+    "status": "CLOSED",
+    "closeReason": "BREAKEVEN",
+    "exitPrice": 1.0846,
+    "realizedR": 0,
+    "mfePips": 54,
+    "maePips": 1,
+    "highestPriceSeen": 1.09,
+    "lowestPriceSeen": 1.0845,
+    "closedAt": 1788354866512
+  },
+  "createdTimestamp": 1788354867406,
+  "retryCount": 0,
+  "version": 1
+}

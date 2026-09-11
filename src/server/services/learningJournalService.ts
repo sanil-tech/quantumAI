@@ -1,4 +1,5 @@
 import { CurrencyPair, TradingSession, ObservationType, ResearchEvidenceTier } from '../../types';
+import { shadowObservationRepository } from '@iati/database';
 
 export type LearningJournalEventType =
   | 'OBSERVATION_RECORDED'
@@ -51,12 +52,42 @@ export interface LearningJournalEvent {
 export class LearningJournalService {
   private static instance: LearningJournalService;
   private events: LearningJournalEvent[] = [];
+  private isHydrated: boolean = false;
 
   public static getInstance(): LearningJournalService {
     if (!LearningJournalService.instance) {
       LearningJournalService.instance = new LearningJournalService();
     }
     return LearningJournalService.instance;
+  }
+
+  /**
+   * Hydrate events from PostgreSQL on startup
+   */
+  public async initPersistence(): Promise<void> {
+    if (this.isHydrated) return;
+    try {
+      const persisted = await shadowObservationRepository.getJournalEvents({ limit: 500 });
+      if (persisted && persisted.length > 0) {
+        // Merge without duplicating existing IDs
+        const existingIds = new Set(this.events.map(e => e.id));
+        for (const evt of persisted) {
+          if (!existingIds.has(evt.id)) {
+            this.events.push(Object.freeze({ ...evt }));
+            existingIds.add(evt.id);
+          }
+        }
+        // Sort descending by timestamp
+        this.events.sort((a, b) => b.timestamp - a.timestamp);
+        if (this.events.length > 500) {
+          this.events = this.events.slice(0, 500);
+        }
+      }
+      this.isHydrated = true;
+    } catch (err: any) {
+      // Fail-soft: keep in-memory ledger
+      this.isHydrated = false;
+    }
   }
 
   public recordEvent(eventInput: Omit<LearningJournalEvent, 'id' | 'timestamp'> & { timestamp?: number }): LearningJournalEvent {
@@ -66,11 +97,17 @@ export class LearningJournalService {
       ...eventInput
     };
 
-    // Immutable append
+    // Immutable append in memory
     this.events.unshift(Object.freeze({ ...event }));
     if (this.events.length > 500) {
       this.events.pop();
     }
+
+    // Async durable persistence to PostgreSQL (non-blocking, fail-soft)
+    shadowObservationRepository.saveJournalEvent(event).catch(() => {
+      // Ignored: repository already tracks degraded persistence status
+    });
+
     return event;
   }
 
@@ -100,6 +137,7 @@ export class LearningJournalService {
 
   public clearJournal(): void {
     this.events = [];
+    this.isHydrated = false;
   }
 
   public exportSnapshot(): LearningJournalEvent[] {
@@ -114,3 +152,4 @@ export class LearningJournalService {
 }
 
 export const learningJournalService = LearningJournalService.getInstance();
+

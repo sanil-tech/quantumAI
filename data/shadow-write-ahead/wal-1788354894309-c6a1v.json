@@ -1,0 +1,26 @@
+{
+  "id": "wal-1788354894309-c6a1v",
+  "operationType": "SAVE_JOURNAL_EVENT",
+  "entityType": "JOURNAL_EVENT",
+  "entityId": "lje-1788354894098-dc6a8",
+  "symbol": "EUR/USD",
+  "payload": {
+    "id": "lje-1788354894098-dc6a8",
+    "timestamp": 1788354894098,
+    "eventType": "CAMPAIGN_STOPPED",
+    "setupFingerprint": "GLOBAL_CAMPAIGN_CONTROL",
+    "symbol": "EUR/USD",
+    "direction": "BUY",
+    "session": "LONDON",
+    "observationType": "REAL_DEMO_EXECUTION",
+    "sampleCount": 5,
+    "evidenceTier": "EARLY_OBSERVATION",
+    "previousLearningWeight": 0,
+    "newLearningWeight": 0,
+    "reason": "Campaign stopped: Operator stopped campaign",
+    "affectedFutureSetupFingerprint": "ALL_SETUPS"
+  },
+  "createdTimestamp": 1788354894309,
+  "retryCount": 0,
+  "version": 1
+}

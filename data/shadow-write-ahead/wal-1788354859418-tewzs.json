@@ -1,0 +1,18 @@
+{
+  "id": "wal-1788354859418-tewzs",
+  "operationType": "SAVE_JOURNAL_EVENT",
+  "entityType": "JOURNAL_EVENT",
+  "entityId": "lje-1788354859275-y6qxw",
+  "payload": {
+    "id": "lje-1788354859275-y6qxw",
+    "timestamp": 1788354859275,
+    "eventType": "TRADE_CLOSED",
+    "evidenceTier": "NO_EVIDENCE",
+    "sampleCount": 1,
+    "realizedR": null,
+    "reason": "Shadow trade closed with TAKE_PROFIT_1 at 159.4 (Realized: NaNR, MFE: 21p, MAE: 0p)"
+  },
+  "createdTimestamp": 1788354859418,
+  "retryCount": 0,
+  "version": 1
+}

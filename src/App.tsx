@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { LayoutGrid, Bot, Brain, Activity, Calendar, Eye, Sparkles, SlidersHorizontal, Layers, User, Building2, ShieldCheck } from 'lucide-react';
 import { CurrencyPair, Timeframe, TradingStyle, CandleData, IndicatorValues, SmcStructures, SupportResistanceZone, MultiTimeframeAnalysis, AiTradeOpportunity, EconomicEvent, PriceAlarm } from './types';
 import { PAIR_CONFIGS, calculate24hRollingChange, generateNextTick } from './lib/marketDataGenerator';
@@ -6,33 +6,22 @@ import { calculateAllIndicators } from './lib/indicators';
 import { analyzeSmcStructures, detectSupportResistance } from './lib/smcEngine';
 import { Language } from './lib/translations';
 
-import { ShadowPerformanceCockpit } from './components/ShadowPerformanceCockpit';
 import { Header } from './components/Header';
-import { ChartWidget } from './components/ChartWidget';
-import { AiAnalysisCard } from './components/AiAnalysisCard';
-import { MultiTimeframePanel } from './components/MultiTimeframePanel';
-import { IndicatorsPanel } from './components/IndicatorsPanel';
-import { SMCPanel } from './components/SMCPanel';
 import { RiskCalculatorModal } from './components/RiskCalculatorModal';
-import { EconomicCalendarWidget } from './components/EconomicCalendarWidget';
 import { AiChatAssistant } from './components/AiChatAssistant';
-import { PakarTraderPanel } from './components/PakarTraderPanel';
 import { BacktestModule } from './components/BacktestModule';
 import { JournalModule } from './components/JournalModule';
 import { PriceAlarmModal } from './components/PriceAlarmModal';
 import { PriceAlarmToastContainer } from './components/PriceAlarmToastContainer';
-import { AiOpportunitiesScanner } from './components/AiOpportunitiesScanner';
 import { TraderAccountModal } from './components/TraderAccountModal';
 import { BrokerConnectionModal } from './components/BrokerConnectionModal';
 import { AdaptiveLearningModal } from './components/AdaptiveLearningModal';
 import { SystemAuditModal } from './components/SystemAuditModal';
 import { UserDashboard } from './components/UserDashboard';
 import { AdminDeveloperDashboard } from './components/AdminDeveloperDashboard';
-import { EarlyLearnerDashboard } from './components/EarlyLearnerDashboard';
-import { DemoExecutionMonitor } from './components/DemoExecutionMonitor';
 
 export default function App() {
-  const [portalMode, setPortalMode] = useState<'USER_DASHBOARD' | 'ADMIN_DEVELOPER' | 'FULL_DESK' | 'SHADOW_COCKPIT' | 'EARLY_LEARNER' | 'DEMO_MONITOR'>('DEMO_MONITOR');
+  const [portalMode, setPortalMode] = useState<'USER_DASHBOARD' | 'ADMIN_DEVELOPER'>('USER_DASHBOARD');
   const aiOpinionAbortControllerRef = useRef<AbortController | null>(null);
   const [activePair, setActivePair] = useState<CurrencyPair>('EUR/USD');
   const [timeframe, setTimeframe] = useState<Timeframe>('M15');
@@ -73,7 +62,7 @@ export default function App() {
     }
   }, [dashboardView]);
 
-  // Keyboard Shortcut Navigation for Workspace Views (1-6)
+  // Keyboard Shortcut Navigation for Workspace Views
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -92,34 +81,9 @@ export default function App() {
       switch (e.key) {
         case '1':
           setPortalMode('USER_DASHBOARD');
-          setDashboardView('FOCUS');
           break;
         case '2':
           setPortalMode('ADMIN_DEVELOPER');
-          break;
-        case '3':
-          setPortalMode('FULL_DESK');
-          break;
-        case '4':
-          setPortalMode('USER_DASHBOARD');
-          setDashboardView('AUTO_TRADER');
-          break;
-        case '5':
-          setPortalMode('USER_DASHBOARD');
-          setDashboardView('PAKAR');
-          break;
-        case '6':
-          setPortalMode('USER_DASHBOARD');
-          setDashboardView('TECHNICAL');
-          break;
-        case '7':
-          setPortalMode('SHADOW_COCKPIT');
-          break;
-        case '8':
-          setPortalMode('EARLY_LEARNER');
-          break;
-        case '9':
-          setPortalMode('DEMO_MONITOR');
           break;
         default:
           break;
@@ -133,6 +97,7 @@ export default function App() {
 
   // Market Data States
   const [candles, setCandles] = useState<CandleData[]>([]);
+  const [candleSource, setCandleSource] = useState<string>('UNKNOWN');
   const [currentPrice, setCurrentPrice] = useState<number>(1.08350);
   const [priceChange24h, setPriceChange24h] = useState<number>(0.32);
 
@@ -307,22 +272,55 @@ export default function App() {
 
     // 2. Fetch real candlestick history from live market API
     let history: CandleData[] = [];
+    let sourceStr = 'UNKNOWN';
     try {
-      const candleRes = await fetch(`/api/forex/candles?pair=${encodeURIComponent(activePair)}&timeframe=${timeframe}&count=150`);
+      const candleRes = await fetch(`/api/ctrader/candles?pair=${encodeURIComponent(activePair)}&timeframe=${timeframe}`);
       if (candleRes.ok) {
         const candleData = await candleRes.json();
-        if (Array.isArray(candleData.candles) && candleData.candles.length > 0) {
+        if (candleData.success && Array.isArray(candleData.candles) && candleData.candles.length > 0) {
           history = candleData.candles;
+          sourceStr = candleData.source || 'cTrader DEMO Open API (demo.ctraderapi.com)';
+        } else if (candleData.candles && Array.isArray(candleData.candles) && candleData.candles.length > 0) {
+          history = candleData.candles;
+          sourceStr = candleData.reason || 'INSUFFICIENT_CANDLE_HISTORY';
+        } else {
+          sourceStr = candleData.reason || 'WAITING FOR cTRADER MARKET HISTORY';
         }
+      } else {
+        sourceStr = 'FEED_NOT_CONNECTED';
       }
     } catch (err) {
       console.warn('Real candle fetch error, falling back:', err);
+      sourceStr = 'ERROR_FETCHING';
     }
+
+    // Sort candles by time to ensure strictly ascending order (required by lightweight-charts)
+    // Also remove duplicates - if two candles have the same time, keep only the last one
+    const uniqueCandles: typeof history = [];
+    const seenTimes = new Set<number>();
+    
+    history.sort((a, b) => {
+      const timeA = typeof a.time === 'string' ? new Date(a.time).getTime() : a.time;
+      const timeB = typeof b.time === 'string' ? new Date(b.time).getTime() : b.time;
+      return timeA - timeB;
+    });
+    
+    for (let i = history.length - 1; i >= 0; i--) {
+      const candle = history[i];
+      const candleTime = typeof candle.time === 'string' ? new Date(candle.time).getTime() : candle.time;
+      if (!seenTimes.has(candleTime)) {
+        uniqueCandles.unshift(candle);
+        seenTimes.add(candleTime);
+      }
+    }
+    
+    history = uniqueCandles;
 
     if (history.length === 0) {
       // Fail-closed: No synthetic candle fallback
       setCandles([]);
-      setCurrentPrice(0);
+      setCandleSource(sourceStr);
+      setCurrentPrice(PAIR_CONFIGS[activePair]?.basePrice || 1.16795);
       setPriceChange24h(0);
       setIndicators(undefined);
       setSmcData(undefined);
@@ -333,6 +331,7 @@ export default function App() {
     }
 
     setCandles(history);
+    setCandleSource(sourceStr);
 
     const latest = history[history.length - 1];
     if (latest) {
@@ -355,11 +354,23 @@ export default function App() {
     const formatPrice = (p: number) => p.toFixed(decimals);
 
     // Multi-Timeframe Alignment
+    const higherBiasBullish = calculatedIndicators.ema200 < latest.close;
+    const trendBiasBullish = calculatedIndicators.superTrend.trend === 'BULLISH';
+    const entryBiasBullish = calculatedIndicators.rsi > 50;
+
+    let bullishScore = 0;
+    if (higherBiasBullish) bullishScore += 40; // D1 trend weight: 40%
+    if (trendBiasBullish) bullishScore += 35;  // H4 trend weight: 35%
+    if (entryBiasBullish) bullishScore += 25;  // Entry timeframe weight: 25%
+
+    const isBuyBias = calculatedIndicators.rsi > 50;
+    const dynamicAlignmentScore = isBuyBias ? bullishScore : (100 - bullishScore);
+
     const mtf: MultiTimeframeAnalysis = {
       higherTimeframe: {
         timeframe: 'D1',
-        bias: calculatedIndicators.ema200 < latest.close ? 'BULLISH' : 'BEARISH',
-        description: `Daily macro trend remains ${calculatedIndicators.ema200 < latest.close ? 'constructive above EMA200' : 'pressured below EMA200'}. Support around ${sr[0]?.priceStart || formatPrice(latest.close * 0.995)}.`,
+        bias: higherBiasBullish ? 'BULLISH' : 'BEARISH',
+        description: `Daily macro trend remains ${higherBiasBullish ? 'constructive above EMA200' : 'pressured below EMA200'}. Support around ${sr[0]?.priceStart || formatPrice(latest.close * 0.995)}.`,
         keyLevels: [formatPrice(latest.close * 0.991), formatPrice(latest.close * 1.009)]
       },
       trendTimeframe: {
@@ -370,12 +381,12 @@ export default function App() {
       },
       entryTimeframe: {
         timeframe,
-        bias: calculatedIndicators.rsi > 50 ? 'BULLISH' : 'BEARISH',
+        bias: entryBiasBullish ? 'BULLISH' : 'BEARISH',
         description: `Execution timeframe ${timeframe} showing RSI at ${calculatedIndicators.rsi} with ${smc.orderBlocks.length} active order blocks.`,
         keyLevels: [formatPrice(latest.close * 0.998), formatPrice(latest.close * 1.002)]
       },
-      overallBias: calculatedIndicators.rsi > 50 ? 'BUY BIAS' : 'SELL BIAS',
-      alignmentScore: 82
+      overallBias: isBuyBias ? 'BUY BIAS' : 'SELL BIAS',
+      alignmentScore: Math.max(0, Math.min(100, dynamicAlignmentScore))
     };
     setMtfAnalysis(mtf);
 
@@ -583,20 +594,7 @@ export default function App() {
               }`}
             >
               <User className="w-4 h-4 text-blue-300" />
-              <span>?? {language === 'ms' ? 'Dashboard User' : 'User Dashboard'}</span>
-            </button>
-
-            <button
-              id="portal-early-learner-btn"
-              onClick={() => setPortalMode('EARLY_LEARNER')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shrink-0 ${
-                portalMode === 'EARLY_LEARNER'
-                  ? 'bg-gradient-to-r from-amber-500 via-orange-600 to-rose-600 text-white shadow-lg shadow-amber-900/40 ring-2 ring-amber-400'
-                  : 'bg-amber-950/50 hover:bg-amber-900/60 text-amber-200 border border-amber-600/60 hover:border-amber-400'
-              }`}
-            >
-              <Sparkles className="w-4 h-4 text-amber-300" />
-              <span>?? {language === 'ms' ? 'Observatori Pembelajaran' : 'Learner Observatory'}</span>
+              <span>{language === 'ms' ? 'Dashboard Utama' : 'Consolidated Dashboard'}</span>
             </button>
 
             <button
@@ -609,48 +607,7 @@ export default function App() {
               }`}
             >
               <Building2 className="w-4 h-4 text-purple-300" />
-              <span>?? {language === 'ms' ? 'Dashboard Admin & Dev' : 'Admin & Dev Dashboard'}</span>
-            </button>
-
-            <button
-              id="portal-full-desk-btn"
-              onClick={() => setPortalMode('FULL_DESK')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shrink-0 ${
-                portalMode === 'FULL_DESK'
-                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-900/40 ring-1 ring-emerald-400/50'
-                  : 'bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800'
-              }`}
-            >
-              <LayoutGrid className="w-4 h-4 text-emerald-300" />
-              <span>?? {language === 'ms' ? 'Meja Dagangan Sebenar' : 'Trading Desk'}</span>
-            </button>
-
-            <button
-              id="portal-shadow-btn"
-              onClick={() => setPortalMode('SHADOW_COCKPIT')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shrink-0 ${
-                portalMode === 'SHADOW_COCKPIT'
-                  ? 'bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 text-white shadow-lg shadow-cyan-900/40 ring-1 ring-cyan-400/50'
-                  : 'bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800'
-              }`}
-            >
-              <Eye className="w-4 h-4 text-cyan-300" />
-              <span>??? {language === 'ms' ? 'Cockpit Shadow' : 'Shadow Cockpit'}</span>
-            </button>
-            <button
-              id="portal-demo-monitor-btn"
-              onClick={() => setPortalMode('DEMO_MONITOR')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shrink-0 ${
-                portalMode === 'DEMO_MONITOR'
-                  ? 'bg-gradient-to-r from-amber-500 via-orange-600 to-indigo-600 text-white shadow-lg shadow-amber-900/40 ring-2 ring-amber-400'
-                  : 'bg-amber-950/40 hover:bg-amber-900/50 text-amber-300 border border-amber-600/50'
-              }`}
-            >
-              <Activity className="w-4 h-4 text-amber-400 animate-pulse" />
-              <span>⚡ {language === 'ms' ? 'Monitor Pelaksanaan DEMO' : 'DEMO Execution'}</span>
-              <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-300 text-[10px] rounded font-bold border border-amber-500/40">
-                DEMO
-              </span>
+              <span>{language === 'ms' ? 'Dashboard Admin & Dev' : 'Admin & Dev Dashboard'}</span>
             </button>
           </div>
 
@@ -663,42 +620,22 @@ export default function App() {
               title="Klik untuk buka Tetingkap Sambungan cTrader FIX API"
             >
               <span className="w-2 h-2 bg-emerald-400 rounded-full animate-ping" />
-              <span>? cTrader FIX (Port 5212) ONLINE</span>
+              <span>cTrader FIX (Port 5035) ONLINE</span>
             </button>
           </div>
         </div>
 
-        {/* PORTAL VIEW: DEMO EXECUTION MONITOR */}
-        {portalMode === 'DEMO_MONITOR' && (
-          <div className="space-y-6">
-            <DemoExecutionMonitor />
-          </div>
-        )}
-
-        {/* PORTAL VIEW 4: EARLY LEARNER COCKPIT */}
-        {portalMode === 'EARLY_LEARNER' && (
-          <EarlyLearnerDashboard
-            isMalay={language === 'ms'}
-          />
-        )}
-
-        {/* PORTAL VIEW 0: SHADOW OPERATOR COCKPIT */}
-        {portalMode === 'SHADOW_COCKPIT' && (
-          <ShadowPerformanceCockpit
-            activePair={activePair}
-            timeframe={timeframe}
-            isMalay={language === 'ms'}
-          />
-        )}
-
-        {/* PORTAL VIEW 1: USER DASHBOARD */}
+        {/* PORTAL VIEW 1: USER DASHBOARD (Consolidated Dashboard) */}
         {portalMode === 'USER_DASHBOARD' && (
           <UserDashboard
             currentPrice={currentPrice}
             activePair={activePair}
             setActivePair={setActivePair}
             timeframe={timeframe}
+            setTimeframe={setTimeframe}
+            onRefreshData={loadMarketData}
             candles={candles}
+            candleSource={candleSource}
             indicators={indicators}
             smcData={smcData}
             srZones={srZones}
@@ -719,198 +656,6 @@ export default function App() {
             isMalay={language === 'ms'}
             onOpenBrokerModal={() => setIsBrokerConnectionOpen(true)}
           />
-        )}
-
-        {/* PORTAL VIEW 3: FULL TECHNICAL TRADING DESK */}
-        {portalMode === 'FULL_DESK' && (
-          <>
-            {/* Row 1: Interactive Chart + Primary AI Analysis Engine (Core Focus Row) */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-              {/* Chart Widget (7 Cols on large screen) */}
-              <div className="lg:col-span-7 flex flex-col h-full">
-                <ChartWidget
-                  candles={candles}
-                  pair={activePair}
-                  timeframe={timeframe}
-                  setTimeframe={setTimeframe}
-                  aiOpportunity={aiOpportunity}
-                  smcData={smcData}
-                  srZones={srZones}
-                  onRefreshData={loadMarketData}
-                  onAskPakar={handleAskPakar}
-                  language={language}
-                />
-              </div>
-
-              {/* AI Analysis Reasoning Card (5 Cols on large screen) */}
-              <div className="lg:col-span-5 flex flex-col h-full">
-                <AiAnalysisCard
-                  activePair={activePair}
-                  opportunity={aiOpportunity}
-                  loading={aiLoading}
-                  tradingStyle={tradingStyle}
-                  currentPrice={currentPrice}
-                  onSyncToRiskCalc={handleSyncToRiskCalc}
-                  onLogToJournal={handleLogToJournal}
-                  onAskAi={handleAskPakar}
-                  language={language}
-                />
-              </div>
-            </div>
-
-        {/* Workspace Dashboard Tab Switcher - Clean Layout Architecture */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-2 sm:p-2.5 flex flex-wrap items-center justify-between gap-2 shadow-xl backdrop-blur-md sticky top-14 z-20">
-          <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none w-full md:w-auto">
-            <button
-              onClick={() => setDashboardView('FOCUS')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer shrink-0 ${
-                dashboardView === 'FOCUS'
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-900/40 ring-1 ring-blue-400/50'
-                  : 'bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 border border-slate-700/50'
-              }`}
-            >
-              <LayoutGrid className="w-3.5 h-3.5 text-blue-300" />
-              <span>{language === 'ms' ? 'ðŸŽ¯ Utama & Pakar' : 'ðŸŽ¯ Main & Pakar'}</span>
-            </button>
-
-            <button
-              onClick={() => setDashboardView('AUTO_TRADER')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer shrink-0 ${
-                dashboardView === 'AUTO_TRADER'
-                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/40 ring-1 ring-emerald-400/50'
-                  : 'bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 border border-slate-700/50'
-              }`}
-            >
-              <Bot className="w-3.5 h-3.5 text-emerald-300" />
-              <span>{language === 'ms' ? 'ðŸ¤– Bot Auto Trader & Scanner' : 'ðŸ¤– Auto Trader Bot & Scanner'}</span>
-            </button>
-
-            <button
-              onClick={() => setDashboardView('PAKAR')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer shrink-0 ${
-                dashboardView === 'PAKAR'
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-900/40 ring-1 ring-purple-400/50'
-                  : 'bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 border border-slate-700/50'
-              }`}
-            >
-              <Brain className="w-3.5 h-3.5 text-purple-300" />
-              <span>{language === 'ms' ? 'ðŸŽ“ Pakar AI Trader' : 'ðŸŽ“ Pakar AI Trader'}</span>
-            </button>
-
-            <button
-              onClick={() => setDashboardView('TECHNICAL')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer shrink-0 ${
-                dashboardView === 'TECHNICAL'
-                  ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-md shadow-amber-900/40 ring-1 ring-amber-400/50'
-                  : 'bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 border border-slate-700/50'
-              }`}
-            >
-              <Activity className="w-3.5 h-3.5 text-amber-300" />
-              <span>{language === 'ms' ? 'ðŸ” Indikator & SMC' : 'ðŸ” Technical & SMC'}</span>
-            </button>
-
-            <button
-              onClick={() => setDashboardView('ECONOMIC')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer shrink-0 ${
-                dashboardView === 'ECONOMIC'
-                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md shadow-cyan-900/40 ring-1 ring-cyan-400/50'
-                  : 'bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 border border-slate-700/50'
-              }`}
-            >
-              <Calendar className="w-3.5 h-3.5 text-cyan-300" />
-              <span>{language === 'ms' ? 'ðŸ“… Kalendar Ekonomi' : 'ðŸ“… Economic Calendar'}</span>
-            </button>
-
-            <button
-              onClick={() => setDashboardView('ALL')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer shrink-0 ${
-                dashboardView === 'ALL'
-                  ? 'bg-slate-700 text-white border border-slate-500 shadow-md'
-                  : 'bg-slate-800/50 hover:bg-slate-700/50 text-slate-400 border border-slate-800'
-              }`}
-            >
-              <Eye className="w-3.5 h-3.5 text-slate-300" />
-              <span>{language === 'ms' ? 'ðŸ‘ï¸ Semua Widget' : 'ðŸ‘ï¸ All Widgets'}</span>
-            </button>
-
-            <button
-              onClick={() => setIsSystemAuditOpen(true)}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-600/30 via-slate-800 to-emerald-600/30 hover:from-emerald-600/50 hover:to-emerald-600/50 text-emerald-300 border border-emerald-500/40 flex items-center gap-2 transition cursor-pointer shrink-0 shadow-lg shadow-emerald-950/50"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>{language === 'ms' ? 'ðŸ›¡ï¸ System Audit' : 'ðŸ›¡ï¸ System Audit'}</span>
-            </button>
-          </div>
-
-          <div className="hidden lg:flex items-center gap-2 text-xs text-slate-400 font-mono">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>{language === 'ms' ? 'Papan Kerja Teratur' : 'Organized Workspace'}</span>
-          </div>
-        </div>
-
-        {/* Dynamic Workspace Module Rendering based on Trader Criticality Hierarchy */}
-        {(dashboardView === 'FOCUS' || dashboardView === 'ALL') && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            <div className="lg:col-span-7 flex flex-col h-full">
-              <MultiTimeframePanel mtfData={mtfAnalysis} language={language} />
-            </div>
-            <div className="lg:col-span-5 flex flex-col h-full">
-              <EconomicCalendarWidget events={economicEvents} language={language} />
-            </div>
-          </div>
-        )}
-
-        {(dashboardView === 'FOCUS' || dashboardView === 'PAKAR' || dashboardView === 'ALL') && (
-          <PakarTraderPanel
-            pair={activePair}
-            timeframe={timeframe}
-            tradingStyle={tradingStyle}
-            currentPrice={currentPrice}
-            opportunity={aiOpportunity}
-            indicators={indicators}
-            smcData={smcData}
-            onAskPakar={handleAskPakar}
-            language={language}
-          />
-        )}
-
-        {(dashboardView === 'AUTO_TRADER' || dashboardView === 'ALL') && (
-          <AiOpportunitiesScanner
-            activePair={activePair}
-            setActivePair={setActivePair}
-            tradingStyle={tradingStyle}
-            language={language}
-            opportunity={aiOpportunity}
-          />
-        )}
-
-        {(dashboardView === 'TECHNICAL' || dashboardView === 'ALL') && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            <div className="lg:col-span-7 flex flex-col h-full">
-              <IndicatorsPanel
-                indicators={indicators}
-                smcData={smcData}
-                mtfAnalysis={mtfAnalysis}
-                opportunity={aiOpportunity}
-                currentPrice={currentPrice}
-                activePair={activePair}
-                language={language}
-              />
-            </div>
-            <div className="lg:col-span-5 flex flex-col h-full">
-              <SMCPanel smcData={smcData} timeframe={timeframe} language={language} />
-            </div>
-          </div>
-        )}
-
-        {dashboardView === 'ECONOMIC' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            <div className="lg:col-span-12 flex flex-col h-full">
-              <EconomicCalendarWidget events={economicEvents} language={language} />
-            </div>
-          </div>
-        )}
-          </>
         )}
       </main>
 

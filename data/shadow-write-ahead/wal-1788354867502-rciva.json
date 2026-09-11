@@ -1,0 +1,14 @@
+{
+  "id": "wal-1788354867502-rciva",
+  "operationType": "UPDATE_OBSERVATION",
+  "entityType": "SHADOW_OBSERVATION",
+  "entityId": "shadow-1788354866545-hkkix",
+  "payload": {
+    "id": "shadow-1788354866545-hkkix",
+    "tp1Hit": true,
+    "stopLoss": 1.0846
+  },
+  "createdTimestamp": 1788354867502,
+  "retryCount": 0,
+  "version": 1
+}

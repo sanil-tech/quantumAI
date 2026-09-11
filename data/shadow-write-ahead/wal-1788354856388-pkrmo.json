@@ -1,0 +1,122 @@
+{
+  "id": "wal-1788354856388-pkrmo",
+  "operationType": "SAVE_OBSERVATION",
+  "entityType": "SHADOW_OBSERVATION",
+  "entityId": "shadow-1788354855950-m3utl",
+  "symbol": "EUR/USD",
+  "payload": {
+    "id": "shadow-1788354855950-m3utl",
+    "signalId": "test-buy-sig-002",
+    "symbol": "EUR/USD",
+    "direction": "BUY",
+    "setupType": "ORDER_BLOCK_RETEST",
+    "setupFingerprint": "EUR/USD_BUY_ORDER_BLOCK_RETEST",
+    "session": "LONDON",
+    "marketRegime": "UNKNOWN",
+    "entryPrice": 1.08904,
+    "stopLoss": 1.08704,
+    "initialStopLoss": 1.08704,
+    "takeProfit1": 1.09304,
+    "isMultiTarget": false,
+    "tp1Hit": false,
+    "status": "ACTIVE",
+    "mfePips": 0,
+    "maePips": 0,
+    "highestPriceSeen": 1.08904,
+    "lowestPriceSeen": 1.08904,
+    "openedAt": 1788354855950,
+    "observationType": "SHADOW_OBSERVATION",
+    "executionQualityAssumptions": {
+      "spreadPips": 0.8,
+      "slippagePips": 0.2,
+      "latencyMs": 18.5
+    },
+    "immutableSignalSnapshot": {
+      "id": "test-buy-sig-002",
+      "pair": "EUR/USD",
+      "timeframe": "M1",
+      "currentPrice": 1.08904,
+      "action": "BUY",
+      "confidence": 85,
+      "entryPrice": 1.08904,
+      "stopLoss": 1.08704,
+      "takeProfit1": 1.09304,
+      "indicators": {
+        "ema20": 1.087810467682835,
+        "ema50": 1.08904,
+        "ema100": 1.08904,
+        "ema200": 1.08904,
+        "sma50": 1.08904,
+        "rsi": 62.95,
+        "rsiDivergence": "NONE",
+        "macd": {
+          "macdLine": 0.00054,
+          "signalLine": 0,
+          "histogram": 0.00054
+        },
+        "stochRsi": {
+          "k": 88.66,
+          "d": 79.79
+        },
+        "cci": 0,
+        "atr": 0.00155,
+        "bollingerBands": {
+          "upper": 1.08918,
+          "middle": 1.08774,
+          "lower": 1.08629
+        },
+        "superTrend": {
+          "value": 1.08432,
+          "trend": "BULLISH"
+        },
+        "adx": {
+          "adx": 32.09,
+          "plusDI": 19.52,
+          "minusDI": 7.51,
+          "trendStrength": "STRONG"
+        },
+        "vwap": 1.08724,
+        "obv": 589,
+        "ichimoku": {
+          "tenkanSen": 1.08904,
+          "kijunSen": 1.08904,
+          "senkouSpanA": 1.08904,
+          "senkouSpanB": 1.08904,
+          "chikouSpan": 1.08904,
+          "cloudState": "INSIDE_CLOUD"
+        }
+      },
+      "smc": {
+        "orderBlocks": [
+          {
+            "id": "ob-bullish-19-M1",
+            "type": "BULLISH",
+            "high": 1.08689,
+            "low": 1.08615,
+            "timeframe": "M1",
+            "timestamp": "2026-09-02T13:03:15.948Z",
+            "mitigated": false
+          }
+        ],
+        "fairValueGaps": [],
+        "lastBos": {
+          "type": "BULLISH_BOS",
+          "price": 1.08904,
+          "timestamp": "2026-09-02T13:13:15.949Z"
+        },
+        "lastChoch": {
+          "type": "BULLISH_CHOCH",
+          "price": 1.08904,
+          "timestamp": "2026-09-02T13:13:15.949Z"
+        },
+        "liquiditySweeps": []
+      },
+      "executable": false,
+      "decisionProvider": "GEMINI",
+      "snapshotTimestamp": 1788354855950
+    }
+  },
+  "createdTimestamp": 1788354856388,
+  "retryCount": 0,
+  "version": 1
+}

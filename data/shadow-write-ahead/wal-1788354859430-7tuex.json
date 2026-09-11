@@ -1,0 +1,21 @@
+{
+  "id": "wal-1788354859430-7tuex",
+  "operationType": "UPDATE_OBSERVATION",
+  "entityType": "SHADOW_OBSERVATION",
+  "entityId": "p23-test-shadow-1",
+  "payload": {
+    "id": "p23-test-shadow-1",
+    "status": "CLOSED",
+    "closeReason": "TAKE_PROFIT_1",
+    "exitPrice": 159.4,
+    "realizedR": null,
+    "mfePips": 21,
+    "maePips": 0,
+    "highestPriceSeen": 159.41,
+    "lowestPriceSeen": 159.2,
+    "closedAt": 1788354859274
+  },
+  "createdTimestamp": 1788354859430,
+  "retryCount": 0,
+  "version": 1
+}

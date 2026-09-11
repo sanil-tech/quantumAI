@@ -1,0 +1,19 @@
+{
+  "id": "wal-1788354874529-7f36o",
+  "operationType": "SAVE_JOURNAL_EVENT",
+  "entityType": "JOURNAL_EVENT",
+  "entityId": "lje-1788354872367-42p6n",
+  "payload": {
+    "id": "lje-1788354872367-42p6n",
+    "timestamp": 1788354872367,
+    "eventType": "TRADE_CLOSED",
+    "setupFingerprint": "EUR/USD_BUY_OB",
+    "evidenceTier": "NO_EVIDENCE",
+    "sampleCount": 2,
+    "realizedR": -1,
+    "reason": "Shadow trade closed with STOP_LOSS at 1.162 (Realized: -1R, MFE: 0p, MAE: 31p)"
+  },
+  "createdTimestamp": 1788354874529,
+  "retryCount": 0,
+  "version": 1
+}

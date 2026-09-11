@@ -1,4 +1,4 @@
-﻿/**
+/**
  * QuantumAI / IATI OS — cTrader Dynamic Symbol Specification & Volume Normalization
  * Strictly adheres to official Spotware cTrader Open API protobuf definitions.
  */
@@ -332,5 +332,37 @@ export class CTraderSymbolRegistry {
   public static clear(): void {
     this.symbolsById.clear();
     this.symbolsByName.clear();
+    this.initDefaults();
+  }
+
+  public static initDefaults(): void {
+    const defaults: CTraderSymbolSpec[] = [
+      { symbolId: 1, symbolName: 'EUR/USD', digits: 5, pipPosition: 4, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+      { symbolId: 2, symbolName: 'GBP/USD', digits: 5, pipPosition: 4, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+      { symbolId: 3, symbolName: 'EUR/JPY', digits: 3, pipPosition: 2, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+      { symbolId: 4, symbolName: 'USD/JPY', digits: 3, pipPosition: 2, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+      { symbolId: 5, symbolName: 'AUD/USD', digits: 5, pipPosition: 4, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+      { symbolId: 6, symbolName: 'USD/CHF', digits: 5, pipPosition: 4, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+      { symbolId: 7, symbolName: 'GBP/JPY', digits: 3, pipPosition: 2, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+      { symbolId: 8, symbolName: 'USD/CAD', digits: 5, pipPosition: 4, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+      { symbolId: 9, symbolName: 'EUR/GBP', digits: 5, pipPosition: 4, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+      { symbolId: 12, symbolName: 'NZD/USD', digits: 5, pipPosition: 4, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+      { symbolId: 41, symbolName: 'XAU/USD', digits: 2, pipPosition: 1, minVolume: 100, maxVolume: 1000000, stepVolume: 100, lotSize: 10000 },
+      { symbolId: 21501, symbolName: 'NASDAQ', digits: 2, pipPosition: 1, minVolume: 100, maxVolume: 7500, stepVolume: 100, lotSize: 100 },
+      { symbolId: 21501, symbolName: 'US TECH 100', digits: 2, pipPosition: 1, minVolume: 100, maxVolume: 7500, stepVolume: 100, lotSize: 100 },
+      { symbolId: 21501, symbolName: 'USTEC', digits: 2, pipPosition: 1, minVolume: 100, maxVolume: 7500, stepVolume: 100, lotSize: 100 },
+      { symbolId: 21501, symbolName: 'NAS100', digits: 2, pipPosition: 1, minVolume: 100, maxVolume: 7500, stepVolume: 100, lotSize: 100 },
+      { symbolId: 22395, symbolName: 'BTC/USD', digits: 2, pipPosition: 1, minVolume: 1, maxVolume: 5000, stepVolume: 1, lotSize: 100 }
+    ];
+    defaults.forEach(s => {
+      this.symbolsById.set(s.symbolId, s);
+      const clean = s.symbolName.toUpperCase().replace('/', '').replace('_', '');
+      this.symbolsByName.set(clean, s);
+      this.symbolsByName.set(s.symbolName, s);
+    });
   }
 }
+
+// Initialize canonical defaults immediately on load
+CTraderSymbolRegistry.initDefaults();
+

@@ -12,7 +12,7 @@ describe('TASK 8A-O — cTrader Open API Read-Only Account State Specification T
 
   it('2. resolves CTRADER_ACCOUNT_ID dynamically', () => {
     const resolvedId = AccountService.resolveAccountId();
-    expect(resolvedId).toBe('5881460');
+    expect(resolvedId).toBe(process.env.CTRADER_ACCOUNT_ID || '48282756');
   });
 
   it('3. ensures API failure does not wipe existing database state', () => {

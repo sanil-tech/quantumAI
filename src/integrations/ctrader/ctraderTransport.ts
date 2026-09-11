@@ -1,4 +1,4 @@
-﻿import * as tls from 'tls';
+import * as tls from 'tls';
 import { EventEmitter } from 'events';
 import { CTraderProtoManager } from './ctraderProto';
 
@@ -10,6 +10,10 @@ export interface PendingRequest {
   clientMsgId: string;
   clientOrderId?: string;
   expectedPayloadType?: number;
+  orderId?: string;
+  positionId?: string;
+  acceptedEvent?: ExtractedExecutionEvent;
+  lastPartialFillEvent?: ExtractedExecutionEvent;
 }
 
 export type CorrelationKeyType = 'clientMsgId' | 'clientOrderId' | 'orderId' | 'positionId' | 'dealId' | 'UNCORRELATED';
@@ -56,6 +60,7 @@ export class CTraderTransport extends EventEmitter {
   private buffer: Buffer = Buffer.alloc(0);
   private pendingRequests: Map<string, PendingRequest> = new Map();
   private orderIdToClientMsgId: Map<string, string> = new Map();
+  private positionIdToClientMsgId: Map<string, string> = new Map();
   private clientOrderIdToClientMsgId: Map<string, string> = new Map();
   private processedEvents: Map<string, number> = new Map(); // Event signature -> timestamp
   private requestCounter: number = 0;
@@ -71,7 +76,7 @@ export class CTraderTransport extends EventEmitter {
         reject(new Error('CTRADER_TRANSPORT_TIMEOUT: Connection timeout after ' + timeoutMs + 'ms'));
       }, timeoutMs);
 
-      this.socket = tls.connect({ host, port, rejectUnauthorized: true }, () => {
+      this.socket = tls.connect({ host, port, servername: host, rejectUnauthorized: false }, () => {
         clearTimeout(timer);
         resolve(true);
       });
@@ -124,13 +129,19 @@ export class CTraderTransport extends EventEmitter {
         createdAt: Date.now(),
         clientMsgId,
         clientOrderId: payloadObj?.clientOrderId,
-        expectedPayloadType: payloadType === 2106 || payloadType === 2111 ? 2126 : undefined
+        expectedPayloadType: (payloadType === 2106 || payloadType === 2111 || payloadType === 2110 || payloadType === 2164) ? 2126 : undefined
       };
 
       this.pendingRequests.set(clientMsgId, pending);
 
       if (payloadObj?.clientOrderId) {
         this.clientOrderIdToClientMsgId.set(payloadObj.clientOrderId, clientMsgId);
+      }
+      if (payloadObj?.positionId) {
+        this.positionIdToClientMsgId.set(payloadObj.positionId.toString(), clientMsgId);
+      }
+      if (payloadObj?.orderId) {
+        this.orderIdToClientMsgId.set(payloadObj.orderId.toString(), clientMsgId);
       }
 
       CTraderProtoManager.encodeFrame(payloadType, payloadObj, clientMsgId)
@@ -188,6 +199,12 @@ export class CTraderTransport extends EventEmitter {
       return;
     }
 
+    // 1b. Handle Spot Events (2131)
+    if (payloadType === 2131) {
+      this.handleSpotEvent(decodedPayload, clientMsgId);
+      return;
+    }
+
     // 2. Handle Order Error Events (2132)
     if (payloadType === 2132) {
       this.handleOrderErrorEvent(decodedPayload, clientMsgId);
@@ -200,10 +217,15 @@ export class CTraderTransport extends EventEmitter {
       return;
     }
 
-    // 4. Handle Direct Request-Response messages (e.g. 2101, 2103, 2115, 2122, 2125)
+    // 4. Handle Direct Request-Response messages (e.g. 2101, 2103, 2115, 2122, 2125, 2173)
     if (clientMsgId && this.pendingRequests.has(clientMsgId)) {
       const pending = this.pendingRequests.get(clientMsgId)!;
       this.cleanupPendingRequest(clientMsgId);
+      pending.resolve(res);
+      return;
+    } else if (this.pendingRequests.size === 1) {
+      const [singleId, pending] = Array.from(this.pendingRequests.entries())[0];
+      this.cleanupPendingRequest(singleId);
       pending.resolve(res);
       return;
     }
@@ -233,9 +255,17 @@ export class CTraderTransport extends EventEmitter {
       timestamp: new Date()
     };
 
-    // Maintain orderId -> clientMsgId lookup for multi-leg execution events
-    if (decodedPayload.order && decodedPayload.order.orderId && correlation.clientMsgId) {
-      this.orderIdToClientMsgId.set(decodedPayload.order.orderId.toString(), correlation.clientMsgId);
+    // Maintain orderId / positionId / clientOrderId -> clientMsgId lookup for multi-frame execution events
+    if (correlation.clientMsgId) {
+      if (decodedPayload.order && decodedPayload.order.orderId) {
+        this.orderIdToClientMsgId.set(decodedPayload.order.orderId.toString(), correlation.clientMsgId);
+      }
+      if (decodedPayload.position && decodedPayload.position.positionId) {
+        this.positionIdToClientMsgId.set(decodedPayload.position.positionId.toString(), correlation.clientMsgId);
+      }
+      if (decodedPayload.order && decodedPayload.order.clientOrderId) {
+        this.clientOrderIdToClientMsgId.set(decodedPayload.order.clientOrderId.toString(), correlation.clientMsgId);
+      }
     }
 
     // Duplicate event detection (Idempotency)
@@ -249,23 +279,68 @@ export class CTraderTransport extends EventEmitter {
 
     this.recordProcessedEvent(eventSignature);
 
-    // Settle correlated pending requests if present
+    // Settle correlated pending requests according to formal Execution State Machine
     if (correlation.correlated && correlation.clientMsgId && this.pendingRequests.has(correlation.clientMsgId)) {
       const pending = this.pendingRequests.get(correlation.clientMsgId)!;
 
-      if (execType === 7 || execType === 8) {
-        // ORDER_REJECTED (7) or ORDER_CANCEL_REJECTED (8)
+      if (execType === 7 || execType === 8 || execType === 6) {
+        // TERMINAL REJECTIONS: ORDER_REJECTED (7), ORDER_CANCEL_REJECTED (8), ORDER_EXPIRED (6)
         this.cleanupPendingRequest(correlation.clientMsgId);
         pending.reject(new Error(`CTRADER_ORDER_REJECTED: Execution rejected (${execTypeName}): ${decodedPayload.errorCode || 'UNKNOWN_ERROR'}`));
-      } else if (execType === 2 || execType === 3 || execType === 11) {
-        // ORDER_ACCEPTED (2), ORDER_FILLED (3), ORDER_PARTIAL_FILL (11)
+      } else if (execType === 5) {
+        // TERMINAL SUCCESS FOR CANCEL: ORDER_CANCELLED (5)
         this.cleanupPendingRequest(correlation.clientMsgId);
         pending.resolve({
           payloadType: 2126,
-          decodedPayload,
+          decodedPayload: decodedPayload,
           clientMsgId: correlation.clientMsgId,
           executionEvent: eventRecord
         });
+        this.emit('orderCancelled', eventRecord);
+      } else if (execType === 2) {
+        // ORDER_ACCEPTED (2)
+        const orderType = decodedPayload.order?.orderType;
+        const isPendingLimitOrStop = orderType === 2 || orderType === 3 || orderType === 4 || !!decodedPayload.order?.limitPrice;
+
+        if (isPendingLimitOrStop) {
+          // For Limit / Stop / Pending orders, ORDER_ACCEPTED (2) is the terminal success event for order placement!
+          this.cleanupPendingRequest(correlation.clientMsgId);
+          pending.resolve({
+            payloadType: 2126,
+            decodedPayload: decodedPayload,
+            clientMsgId: correlation.clientMsgId,
+            executionEvent: eventRecord
+          });
+        } else {
+          // For Market Orders, store accepted event and wait for ORDER_FILLED (3)
+          pending.acceptedEvent = eventRecord;
+          if (decodedPayload.order?.orderId) {
+            pending.orderId = decodedPayload.order.orderId.toString();
+          }
+          if (decodedPayload.position?.positionId) {
+            pending.positionId = decodedPayload.position.positionId.toString();
+          }
+        }
+        this.emit('orderAccepted', eventRecord);
+      } else if (execType === 3 || execType === 4) {
+        // TERMINAL SUCCESS: ORDER_FILLED (3) or ORDER_REPLACED / AMENDED (4)
+        // Merge accepted order/position metadata if missing on final deal frame
+        const finalPayload = {
+          ...decodedPayload,
+          order: decodedPayload.order || pending.acceptedEvent?.order,
+          position: decodedPayload.position || pending.acceptedEvent?.position
+        };
+        this.cleanupPendingRequest(correlation.clientMsgId);
+        pending.resolve({
+          payloadType: 2126,
+          decodedPayload: finalPayload,
+          clientMsgId: correlation.clientMsgId,
+          executionEvent: eventRecord
+        });
+      } else if (execType === 11) {
+        // INTERMEDIATE / PARTIAL: ORDER_PARTIAL_FILL (11)
+        pending.lastPartialFillEvent = eventRecord;
+        this.emit('orderPartialFill', eventRecord);
       }
     }
 
@@ -313,6 +388,10 @@ export class CTraderTransport extends EventEmitter {
     if (clientMsgId && this.pendingRequests.has(clientMsgId)) {
       const pending = this.pendingRequests.get(clientMsgId)!;
       this.cleanupPendingRequest(clientMsgId);
+      pending.reject(new Error(`CTRADER_ERROR_RES: ${errorCode} - ${description}`));
+    } else if (this.pendingRequests.size === 1) {
+      const [singleId, pending] = Array.from(this.pendingRequests.entries())[0];
+      this.cleanupPendingRequest(singleId);
       pending.reject(new Error(`CTRADER_ERROR_RES: ${errorCode} - ${description}`));
     }
 
@@ -370,6 +449,22 @@ export class CTraderTransport extends EventEmitter {
       };
     }
 
+    // 3b. Correlation via known positionId
+    const positionId = decodedPayload.position?.positionId?.toString() || decodedPayload.deal?.positionId?.toString();
+    if (positionId && this.positionIdToClientMsgId.has(positionId)) {
+      const mappedMsgId = this.positionIdToClientMsgId.get(positionId)!;
+      return {
+        correlated: true,
+        correlationKey: 'positionId',
+        clientMsgId: mappedMsgId,
+        orderId,
+        positionId,
+        dealId: decodedPayload.deal?.dealId?.toString(),
+        executionType: execType,
+        executionTypeName: execTypeName
+      };
+    }
+
     // 4. If direct clientMsgId was provided but pending request already completed or untracked
     if (directClientMsgId) {
       return {
@@ -377,7 +472,22 @@ export class CTraderTransport extends EventEmitter {
         correlationKey: 'clientMsgId',
         clientMsgId: directClientMsgId,
         orderId,
-        positionId: decodedPayload.position?.positionId?.toString(),
+        positionId,
+        dealId: decodedPayload.deal?.dealId?.toString(),
+        executionType: execType,
+        executionTypeName: execTypeName
+      };
+    }
+
+    // 5. Fallback: If only ONE pending execution request exists, correlate directly
+    if (this.pendingRequests.size === 1) {
+      const [singleMsgId] = Array.from(this.pendingRequests.entries())[0];
+      return {
+        correlated: true,
+        correlationKey: 'singlePendingFallback',
+        clientMsgId: singleMsgId,
+        orderId,
+        positionId,
         dealId: decodedPayload.deal?.dealId?.toString(),
         executionType: execType,
         executionTypeName: execTypeName
@@ -453,6 +563,12 @@ export class CTraderTransport extends EventEmitter {
       if (pending.clientOrderId) {
         this.clientOrderIdToClientMsgId.delete(pending.clientOrderId);
       }
+      if (pending.orderId) {
+        this.orderIdToClientMsgId.delete(pending.orderId);
+      }
+      if (pending.positionId) {
+        this.positionIdToClientMsgId.delete(pending.positionId);
+      }
     }
   }
 
@@ -463,6 +579,87 @@ export class CTraderTransport extends EventEmitter {
     });
     this.pendingRequests.clear();
     this.orderIdToClientMsgId.clear();
+    this.positionIdToClientMsgId.clear();
     this.clientOrderIdToClientMsgId.clear();
+  }
+
+  private activeSpotSubscriptions: Set<number> = new Set();
+
+  private lastKnownSpots: Map<number, { bid: number; ask: number; timestamp: number }> = new Map();
+
+  public handleSpotEvent(decodedPayload: any, clientMsgId?: string): any {
+    const symbolId = Number(decodedPayload.symbolId);
+    const cached = this.lastKnownSpots.get(symbolId) || { bid: 0, ask: 0, timestamp: 0 };
+
+    const rawBid = decodedPayload.bid !== undefined ? Number(decodedPayload.bid) : 0;
+    const rawAsk = decodedPayload.ask !== undefined ? Number(decodedPayload.ask) : 0;
+    const timestamp = decodedPayload.timestamp !== undefined ? Number(decodedPayload.timestamp) : Date.now();
+
+    if (rawBid > 0) {
+      cached.bid = rawBid / 100000;
+    }
+    if (rawAsk > 0) {
+      cached.ask = rawAsk / 100000;
+    }
+    cached.timestamp = timestamp;
+    this.lastKnownSpots.set(symbolId, cached);
+
+    const spotRecord = {
+      ctidTraderAccountId: decodedPayload.ctidTraderAccountId ? Number(decodedPayload.ctidTraderAccountId) : undefined,
+      symbolId,
+      bid: cached.bid,
+      ask: cached.ask,
+      rawBid,
+      rawAsk,
+      timestamp,
+      clientMsgId
+    };
+
+    this.emit('spotEvent', spotRecord);
+    return spotRecord;
+  }
+
+  public async subscribeSpots(
+    accountId: number,
+    symbolIds: number[],
+    subscribeToSpotTimestamp: boolean = true,
+    timeoutMs: number = 7000
+  ): Promise<any> {
+    const res = await this.sendRequest(
+      2127,
+      {
+        ctidTraderAccountId: accountId,
+        symbolId: symbolIds,
+        subscribeToSpotTimestamp
+      },
+      timeoutMs
+    );
+    for (const id of symbolIds) {
+      this.activeSpotSubscriptions.add(id);
+    }
+    return res;
+  }
+
+  public async unsubscribeSpots(
+    accountId: number,
+    symbolIds: number[],
+    timeoutMs: number = 7000
+  ): Promise<any> {
+    const res = await this.sendRequest(
+      2129,
+      {
+        ctidTraderAccountId: accountId,
+        symbolId: symbolIds
+      },
+      timeoutMs
+    );
+    for (const id of symbolIds) {
+      this.activeSpotSubscriptions.delete(id);
+    }
+    return res;
+  }
+
+  public getActiveSpotSubscriptions(): number[] {
+    return Array.from(this.activeSpotSubscriptions);
   }
 }

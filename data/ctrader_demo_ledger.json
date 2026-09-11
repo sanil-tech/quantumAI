@@ -1,0 +1,55 @@
+{
+  "openPositions": [],
+  "closedTrades": [
+    {
+      "tradeId": 83601061,
+      "symbol": "EUR/USD",
+      "side": "BUY",
+      "lots": 0.01,
+      "entryPrice": 1.16788,
+      "closePrice": 1.16934,
+      "realizedPnL": 1.46,
+      "openTime": "2026-08-20T03:25:59.191Z",
+      "closeTime": "2026-08-21T07:26:14.235Z",
+      "exitReason": "MANUAL",
+      "proposalId": "prop-demo-manual-1787196359191"
+    },
+    {
+      "tradeId": 61902287,
+      "symbol": "EUR/USD",
+      "side": "BUY",
+      "lots": 0.01,
+      "entryPrice": 1.085,
+      "closePrice": 1.08815,
+      "realizedPnL": 3.15,
+      "openTime": "2026-08-20T02:54:59.803Z",
+      "closeTime": "2026-08-20T02:55:01.195Z",
+      "exitReason": "TAKE_PROFIT",
+      "proposalId": "prop-demo-manual-1787194499802"
+    }
+  ],
+  "executionLogs": [
+    {
+      "id": "ORD-DEMO-1787196359191",
+      "timestamp": "2026-08-20T03:25:59.191Z",
+      "pair": "EUR/USD",
+      "direction": "BUY",
+      "confidence": 82,
+      "price": 1.16788,
+      "status": "FILLED_MANUAL_DEMO",
+      "reason": "Manual Confirmation from DEMO Monitor Dashboard"
+    },
+    {
+      "id": "ORD-DEMO-1787194499802",
+      "timestamp": "2026-08-20T02:54:59.803Z",
+      "pair": "EUR/USD",
+      "direction": "BUY",
+      "confidence": 82,
+      "price": 1.085,
+      "status": "FILLED_MANUAL_DEMO",
+      "reason": "Manual Confirmation from DEMO Monitor Dashboard"
+    }
+  ],
+  "isAutoPilotEnabled": true,
+  "lastSavedAt": "2026-09-02T13:15:05.057Z"
+}

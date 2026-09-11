@@ -8,7 +8,7 @@ export interface SafetyCheckResult {
 
 let killSwitchState = false;
 let killSwitchReason = '';
-let liveExecutionArmedState = process.env.ENABLE_LIVE_EXECUTION_ARMED !== 'false';
+let liveExecutionArmedState = false;
 
 export function setKillSwitch(active: boolean, reason: string = 'Manual Operator Kill Switch'): void {
   killSwitchState = active;

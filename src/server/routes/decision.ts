@@ -6,6 +6,7 @@ import { researchLearningEngine } from '../../../apps/decision-agent/src/service
 import { controlledDemoLearningCampaignService } from '../../../apps/execution-router/src/services/controlledDemoLearningCampaignService';
 import { learningJournalService } from '../services/learningJournalService';
 import { continuousLearningObservatoryService } from '../services/continuousLearningObservatoryService';
+import { shadowObservationRepository } from '../../../packages/database/src/shadowRepository';
 
 export const decisionRouter = Router();
 
@@ -185,11 +186,41 @@ decisionRouter.get('/forex/post-mortem-lessons', handlePostMortemLessonsGet);
 decisionRouter.post('/post-mortem', handlePostMortemPost);
 decisionRouter.post('/forex/post-mortem', handlePostMortemPost);
 
-decisionRouter.get('/learning/early-learner', (req: Request, res: Response) => {
-  res.json(researchLearningEngine.getEarlyLearnerPayload());
+decisionRouter.get('/learning/early-learner', async (req: Request, res: Response) => {
+  try {
+    const payload = researchLearningEngine.getEarlyLearnerPayload();
+    const dbStats = await shadowObservationRepository.getAuthoritativeDatabaseStatistics();
+    if (dbStats && dbStats.totalClosed > 0) {
+      payload.campaignMetrics.closedTrades = dbStats.totalClosed;
+      payload.campaignMetrics.winCount = dbStats.winCount;
+      payload.campaignMetrics.lossCount = dbStats.lossCount;
+      payload.campaignMetrics.breakevenCount = dbStats.breakevenCount;
+      payload.campaignMetrics.winRate = dbStats.winRate;
+      payload.campaignMetrics.totalRealizedR = dbStats.totalRealizedR;
+      payload.campaignMetrics.avgRealizedR = dbStats.totalClosed > 0 ? parseFloat((dbStats.totalRealizedR / dbStats.totalClosed).toFixed(2)) : 0;
+    }
+    res.json(payload);
+  } catch {
+    res.json(researchLearningEngine.getEarlyLearnerPayload());
+  }
 });
-decisionRouter.get('/forex/learning/early-learner', (req: Request, res: Response) => {
-  res.json(researchLearningEngine.getEarlyLearnerPayload());
+decisionRouter.get('/forex/learning/early-learner', async (req: Request, res: Response) => {
+  try {
+    const payload = researchLearningEngine.getEarlyLearnerPayload();
+    const dbStats = await shadowObservationRepository.getAuthoritativeDatabaseStatistics();
+    if (dbStats && dbStats.totalClosed > 0) {
+      payload.campaignMetrics.closedTrades = dbStats.totalClosed;
+      payload.campaignMetrics.winCount = dbStats.winCount;
+      payload.campaignMetrics.lossCount = dbStats.lossCount;
+      payload.campaignMetrics.breakevenCount = dbStats.breakevenCount;
+      payload.campaignMetrics.winRate = dbStats.winRate;
+      payload.campaignMetrics.totalRealizedR = dbStats.totalRealizedR;
+      payload.campaignMetrics.avgRealizedR = dbStats.totalClosed > 0 ? parseFloat((dbStats.totalRealizedR / dbStats.totalClosed).toFixed(2)) : 0;
+    }
+    res.json(payload);
+  } catch {
+    res.json(researchLearningEngine.getEarlyLearnerPayload());
+  }
 });
 
 // Phase 7I: Controlled DEMO Learning Campaign API
@@ -428,17 +459,37 @@ decisionRouter.post('/learning/observatory/tick', (req: Request, res: Response) 
   res.json({ success: true, closedObservations: closed });
 });
 
-decisionRouter.get('/forex/learning/observatory/observations', (req: Request, res: Response) => {
-  res.json({
-    success: true,
-    active: continuousLearningObservatoryService.getActiveObservations(),
-    completed: continuousLearningObservatoryService.getCompletedObservations(50)
-  });
+decisionRouter.get('/forex/learning/observatory/observations', async (req: Request, res: Response) => {
+  try {
+    const summary = await shadowObservationRepository.getAuthoritativeDatabaseStatistics();
+    res.json({
+      success: true,
+      active: continuousLearningObservatoryService.getActiveObservations(),
+      completed: continuousLearningObservatoryService.getCompletedObservations(100),
+      summary
+    });
+  } catch {
+    res.json({
+      success: true,
+      active: continuousLearningObservatoryService.getActiveObservations(),
+      completed: continuousLearningObservatoryService.getCompletedObservations(100)
+    });
+  }
 });
-decisionRouter.get('/learning/observatory/observations', (req: Request, res: Response) => {
-  res.json({
-    success: true,
-    active: continuousLearningObservatoryService.getActiveObservations(),
-    completed: continuousLearningObservatoryService.getCompletedObservations(50)
-  });
+decisionRouter.get('/learning/observatory/observations', async (req: Request, res: Response) => {
+  try {
+    const summary = await shadowObservationRepository.getAuthoritativeDatabaseStatistics();
+    res.json({
+      success: true,
+      active: continuousLearningObservatoryService.getActiveObservations(),
+      completed: continuousLearningObservatoryService.getCompletedObservations(100),
+      summary
+    });
+  } catch {
+    res.json({
+      success: true,
+      active: continuousLearningObservatoryService.getActiveObservations(),
+      completed: continuousLearningObservatoryService.getCompletedObservations(100)
+    });
+  }
 });

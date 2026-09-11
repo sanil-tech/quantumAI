@@ -1,0 +1,19 @@
+{
+  "id": "wal-1788354892927-xo5f6",
+  "operationType": "SAVE_JOURNAL_EVENT",
+  "entityType": "JOURNAL_EVENT",
+  "entityId": "lje-1788354892696-0i1p5",
+  "payload": {
+    "id": "lje-1788354892696-0i1p5",
+    "timestamp": 1788354892696,
+    "eventType": "TRADE_CLOSED",
+    "setupFingerprint": "USD/JPY_SELL_ORDER_BLOCK_RETEST",
+    "evidenceTier": "NO_EVIDENCE",
+    "sampleCount": 3,
+    "realizedR": 0,
+    "reason": "Shadow trade closed with BREAKEVEN at 100 (Realized: +0R, MFE: 100p, MAE: 0p)"
+  },
+  "createdTimestamp": 1788354892927,
+  "retryCount": 0,
+  "version": 1
+}

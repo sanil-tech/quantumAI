@@ -6,6 +6,10 @@ import { RiskGovernanceEngine } from '../../../apps/risk-governance/src/modules/
 import { authorizeExecution } from '../../../apps/risk-governance/src/modules/executionAuthorization';
 import { TradeProposal } from '@iati/core-types';
 
+import { brokerReconciliationService } from '../../../apps/execution-router/src/services/brokerReconciliationService';
+
+import { ctraderMarketDataFeedService } from '../services/ctraderMarketDataFeedService';
+
 export const brokerRouter = Router();
 const governanceEngine = new RiskGovernanceEngine();
 
@@ -13,36 +17,93 @@ const governanceEngine = new RiskGovernanceEngine();
 export const serverBrokerConnection = {
   id: 'broker-default-ctrader',
   platform: 'CTRADER',
-  brokerName: 'Spotware cTrader (Demo/Live)',
-  accountNumber: '5877246',
-  serverHost: 'demo-uk-eqx-01.p.c-trader.com',
+  brokerName: 'Spotware cTrader Open API',
+  accountNumber: '5881460',
+  ctidTraderAccountId: 48282756,
+  serverHost: 'demo.ctraderapi.com',
   environment: 'DEMO',
-  autoExecuteRealMoney: true,
-  liveBalance: 1136.03,
-  liveEquity: 1136.03,
+  autoExecuteRealMoney: false,
+  liveBalance: 990.73,
+  liveEquity: 990.73,
+  leverage: '1:100',
   isConnected: true,
+  latencyMs: 38,
   lastConnectedAt: Date.now()
 };
+
+// Wire continuous real-time balance & equity events from cTrader Open API
+ctraderMarketDataFeedService.on('liveAccountUpdate', (status) => {
+  if (status && typeof status.balance === 'number' && Number.isFinite(status.balance)) {
+    serverBrokerConnection.liveBalance = status.balance;
+    serverBrokerConnection.liveEquity = status.equity || status.balance;
+    serverBrokerConnection.accountNumber = status.accountNumber || serverBrokerConnection.accountNumber;
+    serverBrokerConnection.leverage = status.leverage || serverBrokerConnection.leverage;
+    serverBrokerConnection.isConnected = true;
+    serverBrokerConnection.lastConnectedAt = Date.now();
+    sharedAutoTraderState.balance = status.balance;
+  }
+});
+
+// Start continuous 3-second live account sync loop
+setInterval(() => {
+  ctraderMarketDataFeedService.fetchLiveAccountStatus().catch(() => {});
+}, 3000);
 
 export const serverBridgeHeartbeat = {
   lastHeartbeatAt: Date.now(),
   activePlatform: 'CTRADER',
-  accountNumber: '5877246',
-  brokerName: 'Spotware cTrader',
-  clientType: 'cTrader C# cBot (QuantumAI)',
+  accountNumber: '5881460',
+  brokerName: 'Spotware cTrader Open API',
+  clientType: 'cTrader Open API Telemetry',
   totalPings: 1,
-  totalCommandsExecuted: 0,
-  lastAction: 'QuantumAI cBot Active Heartbeat'
+  totalCommandsExecuted: 1,
+  lastAction: 'Broker Idle / Standby'
 };
 
 /**
  * GET /api/broker/status
  */
-brokerRouter.get('/broker/status', (req: Request, res: Response) => {
+brokerRouter.get('/broker/status', async (req: Request, res: Response) => {
+  try {
+    const live = await ctraderMarketDataFeedService.fetchLiveAccountStatus();
+    if (live && typeof live.balance === 'number') {
+      serverBrokerConnection.liveBalance = live.balance;
+      serverBrokerConnection.liveEquity = live.equity;
+      serverBrokerConnection.accountNumber = live.accountNumber;
+      serverBrokerConnection.leverage = live.leverage;
+      serverBrokerConnection.isConnected = true;
+    }
+  } catch {}
+
   if (serverBrokerConnection && serverBrokerConnection.isConnected) {
     serverBrokerConnection.lastConnectedAt = Date.now();
   }
-  res.json({ connection: serverBrokerConnection });
+  res.json({
+    connection: serverBrokerConnection,
+    platform: serverBrokerConnection.platform,
+    brokerName: serverBrokerConnection.brokerName,
+    accountNumber: serverBrokerConnection.accountNumber,
+    serverHost: serverBrokerConnection.serverHost,
+    liveBalance: serverBrokerConnection.liveBalance,
+    liveEquity: serverBrokerConnection.liveEquity,
+    balance: serverBrokerConnection.liveBalance,
+    equity: serverBrokerConnection.liveEquity,
+    connected: serverBrokerConnection.isConnected,
+    latencyMs: serverBrokerConnection.latencyMs
+  });
+});
+
+/**
+ * GET /api/broker/reconcile
+ */
+brokerRouter.get('/broker/reconcile', async (req: Request, res: Response) => {
+  try {
+    const accountId = String(req.query.accountId || serverBrokerConnection.accountNumber || '5877246_DEMO');
+    const report = await brokerReconciliationService.reconcile(accountId);
+    res.json({ success: true, report });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 /**
@@ -74,55 +135,29 @@ brokerRouter.get('/broker/ping', async (req: Request, res: Response) => {
  * POST /api/broker/connect
  */
 brokerRouter.post('/broker/connect', (req: Request, res: Response) => {
-  let { token, platform, brokerName, accountNumber, serverHost, apiKeyOrPassword, apiSecret, environment, customBalance, initialBalance } = req.body;
-
-  if (token) {
-    try {
-      let decodedStr = token;
-      if (!token.trim().startsWith('{')) {
-        decodedStr = Buffer.from(token.trim(), 'base64').toString('utf-8');
-      }
-      const parsedToken = JSON.parse(decodedStr);
-      if (parsedToken.platform === 'ctrader' || parsedToken.plant === 'ctrader') {
-        platform = 'CTRADER';
-        brokerName = brokerName || 'cTrader Demo (UK EQX) Spotware';
-        accountNumber = accountNumber || '5877246';
-        serverHost = serverHost || 'demo-uk-eqx-01.p.c-trader.com';
-        environment = parsedToken.environment ? parsedToken.environment.toUpperCase() : 'DEMO';
-        customBalance = customBalance || 1136.03;
-        apiKeyOrPassword = apiKeyOrPassword || 'demo.ctrader.5877246';
-        apiSecret = apiSecret || '5212';
-      }
-    } catch (err) {
-      console.error('Token decode error:', err);
-    }
-  }
-
-  if (platform === 'CTRADER' || accountNumber === '5877246' || (brokerName && String(brokerName).toLowerCase().includes('ctrader'))) {
-    if (!apiKeyOrPassword) apiKeyOrPassword = 'demo.ctrader.5877246';
-    if (!apiSecret) apiSecret = '5212';
-  }
+  const { platform, brokerName, accountNumber, serverHost, environment, customBalance, initialBalance } = req.body || {};
 
   const targetPlatform = platform || 'CTRADER';
-  const targetBroker = brokerName || 'Spotware cTrader (Demo/Live)';
-  const targetAccount = accountNumber || '5877246';
+  const targetBroker = brokerName || 'Spotware cTrader Open API';
+  const targetAccount = accountNumber || '';
 
   const parsedBalance = Number(customBalance || initialBalance);
-  const resolvedBalance = !isNaN(parsedBalance) && parsedBalance > 0 ? parsedBalance : 1136.03;
+  const resolvedBalance = !isNaN(parsedBalance) && parsedBalance > 0 ? parsedBalance : 0;
 
   serverBrokerConnection.platform = targetPlatform;
   serverBrokerConnection.brokerName = targetBroker;
   serverBrokerConnection.accountNumber = targetAccount;
-  serverBrokerConnection.serverHost = serverHost || 'demo-uk-eqx-01.p.c-trader.com';
+  serverBrokerConnection.serverHost = serverHost || '';
   serverBrokerConnection.environment = environment ? environment.toUpperCase() : 'DEMO';
   serverBrokerConnection.liveBalance = resolvedBalance;
   serverBrokerConnection.liveEquity = resolvedBalance;
-  serverBrokerConnection.isConnected = true;
+  serverBrokerConnection.autoExecuteRealMoney = false;
+  serverBrokerConnection.isConnected = Boolean(targetAccount);
   serverBrokerConnection.lastConnectedAt = Date.now();
 
   res.json({
     success: true,
-    message: `Connected successfully to ${serverBrokerConnection.brokerName} (#${serverBrokerConnection.accountNumber})`,
+    message: `Connected successfully to ${serverBrokerConnection.brokerName}`,
     connection: serverBrokerConnection
   });
 });
@@ -194,9 +229,9 @@ brokerRouter.post('/broker/mt5-webhook', async (req: Request, res: Response) => 
 
 brokerRouter.all('/broker/ctrader-webhook', async (req: Request, res: Response) => {
   const payload = req.method === 'POST' ? req.body : req.query;
-  const acc = String(payload.accountNumber || serverBrokerConnection.accountNumber || '5877246');
-  const bal = payload.balance ? Number(payload.balance) : (serverBrokerConnection.liveBalance || 1136.03);
-  const eq = payload.equity ? Number(payload.equity) : (serverBrokerConnection.liveEquity || 1136.03);
+  const acc = String(payload.accountNumber || serverBrokerConnection.accountNumber || '5881460');
+  const bal = payload.balance ? Number(payload.balance) : (serverBrokerConnection.liveBalance || 990.73);
+  const eq = payload.equity ? Number(payload.equity) : (serverBrokerConnection.liveEquity || 990.73);
 
   serverBrokerConnection.isConnected = true;
   serverBrokerConnection.platform = 'CTRADER';
@@ -287,8 +322,9 @@ brokerRouter.post('/broker/tradingview-webhook', async (req: Request, res: Respo
       return;
     }
 
-    const reqDataMode = dataMode || (req.body.isReal ? 'LIVE' : 'LIVE');
-    const reqExecMode = executionMode || 'LIVE';
+    const isRealMode = req.body.isReal === true || (executionMode === 'LIVE' && dataMode === 'LIVE');
+    const reqDataMode = dataMode || (isRealMode ? 'LIVE' : 'SIMULATION');
+    const reqExecMode = executionMode || (isRealMode ? 'LIVE' : 'PAPER');
 
     const authResult = await authorizeExecution({
       signalId: proposal.id,
@@ -325,7 +361,7 @@ brokerRouter.post('/broker/tradingview-webhook', async (req: Request, res: Respo
       accountNumber: targetAccount,
       environment: reqExecMode === 'LIVE' ? 'REAL_LIVE' : 'DEMO',
       lineage: {
-        dataClass: reqDataMode === 'LIVE' ? 'LIVE' : 'SIMULATED',
+        dataClass: reqDataMode === 'LIVE' ? 'LIVE' : 'SIMULATION',
         provider: 'TradingView Webhook',
         symbol: pair,
         timestamp: Date.now(),
@@ -352,7 +388,7 @@ brokerRouter.post('/broker/tradingview-webhook', async (req: Request, res: Respo
       command: queueResult.command
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(400).json({ error: err.message || 'Invalid or malformed request payload' });
   }
 });
 
@@ -416,13 +452,9 @@ brokerRouter.post('/trader/profile', (req: Request, res: Response) => {
   res.json({ success: true, profile: serverTraderProfile });
 });
 
-/**
- * POST /api/broker/reconcile-positions
- * Reconciles external broker positions without enqueueing new commands
- */
 brokerRouter.post('/broker/reconcile-positions', async (req: Request, res: Response) => {
   const { accountNumber, positions } = req.body || {};
-  const acc = String(accountNumber || serverBrokerConnection.accountNumber || '5877246');
+  const acc = String(accountNumber || serverBrokerConnection.accountNumber || '5881460');
 
   if (Array.isArray(positions)) {
     positions.forEach((pos: any) => {

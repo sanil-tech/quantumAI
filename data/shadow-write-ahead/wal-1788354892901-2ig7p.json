@@ -1,0 +1,14 @@
+{
+  "id": "wal-1788354892901-2ig7p",
+  "operationType": "UPDATE_OBSERVATION",
+  "entityType": "SHADOW_OBSERVATION",
+  "entityId": "test-shadow-sell-be",
+  "payload": {
+    "id": "test-shadow-sell-be",
+    "tp1Hit": true,
+    "stopLoss": 100
+  },
+  "createdTimestamp": 1788354892901,
+  "retryCount": 0,
+  "version": 1
+}

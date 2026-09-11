@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, ShieldAlert, Zap, AlertTriangle, Radio, Power, RefreshCw, Cpu } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, AlertTriangle, Power, RefreshCw, Lock } from 'lucide-react';
 
 export type SystemEnvironment = 'TEST' | 'DEMO' | 'REAL_LIVE';
 export type MarketDataLineage = 'LIVE' | 'SIMULATED' | 'SYNTHETIC' | 'UNKNOWN';
@@ -21,14 +21,16 @@ export const SystemSafetyBanner: React.FC<SystemSafetyBannerProps> = ({
   environment = 'DEMO',
   marketDataLineage = 'LIVE',
   brokerConnected = true,
-  isArmed = true,
+  isArmed = false,
   killSwitchActive = false,
   readinessStatus = 'READY',
   lastSyncTime,
   onRefresh,
   onToggleKillSwitch
 }) => {
-  // Determine overall readiness state
+  // Authoritative safety invariant: LIVE execution is permanently forbidden and blocked
+  const liveExecutionStatus = 'FORBIDDEN';
+
   let computedStatus: ReadinessStatus = (readinessStatus as ReadinessStatus) || 'READY';
   if (killSwitchActive) {
     computedStatus = 'KILL_SWITCH_ACTIVE';
@@ -42,7 +44,7 @@ export const SystemSafetyBanner: React.FC<SystemSafetyBannerProps> = ({
         return (
           <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-xl font-mono text-xs font-black flex items-center gap-1.5 shadow-sm">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            SYSTEM READY
+            SHADOW ACTIVE
           </span>
         );
       case 'KILL_SWITCH_ACTIVE':
@@ -72,7 +74,7 @@ export const SystemSafetyBanner: React.FC<SystemSafetyBannerProps> = ({
   const getEnvLabel = () => {
     switch (environment) {
       case 'REAL_LIVE':
-        return <span className="text-emerald-400 font-bold">REAL LIVE</span>;
+        return <span className="text-rose-400 font-bold">REAL LIVE (BLOCKED)</span>;
       case 'DEMO':
         return <span className="text-cyan-300 font-bold">DEMO (Paper)</span>;
       default:
@@ -119,7 +121,7 @@ export const SystemSafetyBanner: React.FC<SystemSafetyBannerProps> = ({
               {getStatusBadge()}
             </div>
             <p className="text-xs text-slate-300 mt-1">
-              Authoritative live safety state verified by backend Risk Authority &amp; Zero-Bypass Guard.
+              Authoritative live safety state verified: ExecutionSafetyGate BLOCKED fail-closed (0 Broker Orders).
             </p>
           </div>
         </div>
@@ -139,22 +141,16 @@ export const SystemSafetyBanner: React.FC<SystemSafetyBannerProps> = ({
           <div className="bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-1.5">
             <span className="text-[9px] text-slate-400 uppercase font-bold block">Live Execution</span>
             <div>
-              {isArmed ? (
-                <span className="text-emerald-400 font-bold">ARMED ⚡</span>
-              ) : (
-                <span className="text-slate-400 font-bold">DISARMED 🔒</span>
-              )}
+              <span className="text-slate-400 font-bold flex items-center gap-1">
+                <Lock className="w-3 h-3 text-amber-400 inline" /> FORBIDDEN / DISARMED
+              </span>
             </div>
           </div>
 
           <div className="bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-1.5">
-            <span className="text-[9px] text-slate-400 uppercase font-bold block">Kill Switch</span>
+            <span className="text-[9px] text-slate-400 uppercase font-bold block">Safety Gate</span>
             <div>
-              {killSwitchActive ? (
-                <span className="text-rose-400 font-bold">ACTIVE 🚨</span>
-              ) : (
-                <span className="text-emerald-400 font-bold">INACTIVE ✅</span>
-              )}
+              <span className="text-emerald-400 font-bold">BLOCKED (Fail-Closed)</span>
             </div>
           </div>
         </div>
@@ -183,7 +179,7 @@ export const SystemSafetyBanner: React.FC<SystemSafetyBannerProps> = ({
               }`}
             >
               <Power className="w-3.5 h-3.5" />
-              <span>{killSwitchActive ? 'Deactivate Kill Switch' : 'EMERGENCY KILL SWITCH'}</span>
+              <span>{killSwitchActive ? 'Reset Emergency Stop' : 'EMERGENCY STOP'}</span>
             </button>
           )}
         </div>

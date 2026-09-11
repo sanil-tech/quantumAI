@@ -1,0 +1,18 @@
+{
+  "id": "wal-1788354856279-8r7n0",
+  "operationType": "SAVE_JOURNAL_EVENT",
+  "entityType": "JOURNAL_EVENT",
+  "entityId": "lje-1788354855932-3bllf",
+  "payload": {
+    "id": "lje-1788354855932-3bllf",
+    "timestamp": 1788354855932,
+    "eventType": "SHADOW_RECORDED",
+    "setupFingerprint": "EUR/USD_BUY_ORDER_BLOCK_RETEST",
+    "evidenceTier": "NO_EVIDENCE",
+    "sampleCount": 1,
+    "reason": "Simulated BUY entry at 1.08799 (SL: 1.08616, TP1: 1.09148, TP2: 1.09407)"
+  },
+  "createdTimestamp": 1788354856279,
+  "retryCount": 0,
+  "version": 1
+}

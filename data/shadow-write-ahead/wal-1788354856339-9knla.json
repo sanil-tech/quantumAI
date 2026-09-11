@@ -1,0 +1,106 @@
+{
+  "id": "wal-1788354856339-9knla",
+  "operationType": "SAVE_OBSERVATION",
+  "entityType": "SHADOW_OBSERVATION",
+  "entityId": "shadow-1788354855966-p0xcr",
+  "symbol": "EUR/USD",
+  "payload": {
+    "id": "shadow-1788354855966-p0xcr",
+    "signalId": "test-buy-sig-003",
+    "symbol": "EUR/USD",
+    "direction": "BUY",
+    "setupType": "ORDER_BLOCK_RETEST",
+    "setupFingerprint": "EUR/USD_BUY_ORDER_BLOCK_RETEST",
+    "session": "LONDON",
+    "marketRegime": "UNKNOWN",
+    "entryPrice": 1.08363,
+    "stopLoss": 1.08163,
+    "initialStopLoss": 1.08163,
+    "takeProfit1": 1.08763,
+    "isMultiTarget": false,
+    "tp1Hit": false,
+    "status": "CLOSED",
+    "mfePips": 113.7,
+    "maePips": 0,
+    "highestPriceSeen": 1.095,
+    "lowestPriceSeen": 1.08363,
+    "openedAt": 1788354855966,
+    "observationType": "SHADOW_OBSERVATION",
+    "executionQualityAssumptions": {
+      "spreadPips": 0.8,
+      "slippagePips": 0.2,
+      "latencyMs": 18.5
+    },
+    "immutableSignalSnapshot": {
+      "id": "test-buy-sig-003",
+      "pair": "EUR/USD",
+      "timeframe": "M1",
+      "currentPrice": 1.08363,
+      "action": "BUY",
+      "confidence": 85,
+      "entryPrice": 1.08363,
+      "stopLoss": 1.08163,
+      "takeProfit1": 1.08763,
+      "indicators": {
+        "ema20": 1.0847599494978009,
+        "ema50": 1.08363,
+        "ema100": 1.08363,
+        "ema200": 1.08363,
+        "sma50": 1.08363,
+        "rsi": 38.67,
+        "rsiDivergence": "BULLISH",
+        "macd": {
+          "macdLine": 0.00006,
+          "signalLine": 0,
+          "histogram": 0.00006
+        },
+        "stochRsi": {
+          "k": 18.83,
+          "d": 16.95
+        },
+        "cci": 0,
+        "atr": 0.00166,
+        "bollingerBands": {
+          "upper": 1.08611,
+          "middle": 1.08459,
+          "lower": 1.08307
+        },
+        "superTrend": {
+          "value": 1.08077,
+          "trend": "BULLISH"
+        },
+        "adx": {
+          "adx": 27.21,
+          "plusDI": 7.39,
+          "minusDI": 19.16,
+          "trendStrength": "MODERATE"
+        },
+        "vwap": 1.08476,
+        "obv": -691,
+        "ichimoku": {
+          "tenkanSen": 1.08363,
+          "kijunSen": 1.08363,
+          "senkouSpanA": 1.08363,
+          "senkouSpanB": 1.08363,
+          "chikouSpan": 1.08363,
+          "cloudState": "INSIDE_CLOUD"
+        }
+      },
+      "smc": {
+        "orderBlocks": [],
+        "fairValueGaps": [],
+        "liquiditySweeps": []
+      },
+      "executable": false,
+      "decisionProvider": "GEMINI",
+      "snapshotTimestamp": 1788354855966
+    },
+    "exitPrice": 1.08763,
+    "closeReason": "TAKE_PROFIT_1",
+    "closedAt": 1788354855992,
+    "realizedR": 2
+  },
+  "createdTimestamp": 1788354856339,
+  "retryCount": 0,
+  "version": 1
+}
