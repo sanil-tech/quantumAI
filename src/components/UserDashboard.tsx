@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { DemoTraderCommandCenter } from './DemoTraderCommandCenter';
 import { EconomicCalendarWidget } from './EconomicCalendarWidget';
+import { InteractiveTradeStatisticsCockpit } from './InteractiveTradeStatisticsCockpit';
+import { CTraderBrokerConnectionHub } from './CTraderBrokerConnectionHub';
 
 interface UserDashboardProps {
   currentPrice: number;
@@ -376,274 +378,10 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* 4. TAB 2: VERIFIED TRACK RECORD & INSTITUTIONAL PERFORMANCE LEDGER        */}
+      {/* 4. TAB 2: VERIFIED TRACK RECORD & INSTITUTIONAL PERFORMANCE COCKPIT       */}
       {/* ========================================================================= */}
       {activeTab === 'STATISTICS' && (
-        <div className="space-y-6">
-          {/* Institutional Performance Banner */}
-          <div className="p-6 bg-gradient-to-br from-slate-900 via-indigo-950/40 to-slate-900 border border-slate-800 rounded-2xl shadow-2xl relative overflow-hidden">
-            <div className="max-w-3xl space-y-2 relative z-10">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-mono font-bold rounded-full">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span>100% REAL BROKER EXECUTION • AUDITED POSTGRESQL LEDGER</span>
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                Rekod Prestasi &amp; Analitik Trade Sahih
-              </h2>
-              <p className="text-sm text-slate-300 leading-relaxed">
-                Semua statistik di bawah dijana secara automatik daripada pelaksanaan broker cTrader sebenar. Tiada data mock, tiada manipulasi.
-              </p>
-            </div>
-
-            {/* Performance KPI Cards */}
-            {(() => {
-              const totalClosed = closedTrades.length;
-              if (totalClosed === 0) {
-                return (
-                  <div className="p-6 bg-slate-950/90 border border-slate-800 rounded-xl text-center text-xs text-slate-400 font-mono mt-6 relative z-10">
-                    <span className="px-2 py-0.5 bg-slate-800 text-slate-300 rounded text-[10px] font-bold mr-2 uppercase">[SAHIH]</span>
-                    Tiada rekod trade ditutup yang disahkan dalam pangkalan data semasa.
-                  </div>
-                );
-              }
-
-              const wins = closedTrades.filter(t => (t.pnlDollars || t.realizedProfit || 0) > 0);
-              const losses = closedTrades.filter(t => (t.pnlDollars || t.realizedProfit || 0) < 0);
-              const winRate = ((wins.length / totalClosed) * 100).toFixed(1);
-              const totalProfit = wins.reduce((acc, t) => acc + (t.pnlDollars || t.realizedProfit || 0), 0);
-              const totalLoss = Math.abs(losses.reduce((acc, t) => acc + (t.pnlDollars || t.realizedProfit || 0), 0));
-              const netPnL = totalProfit - totalLoss;
-              const profitFactor = totalLoss > 0 ? (totalProfit / totalLoss).toFixed(2) : (totalProfit > 0 ? 'MAX' : '0.00');
-
-              return (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 relative z-10 font-mono">
-                  <div className="p-4 bg-slate-950/90 border border-slate-800 rounded-xl shadow-sm">
-                    <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Jumlah Trade Disahkan</div>
-                    <div className="text-2xl font-black text-white mt-1">{totalClosed}</div>
-                    <div className="text-[10px] text-slate-400 mt-1">{wins.length} Menang / {losses.length} Kalah</div>
-                  </div>
-
-                  <div className="p-4 bg-slate-950/90 border border-slate-800 rounded-xl shadow-sm">
-                    <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Kadar Kemenangan (Win Rate)</div>
-                    <div className="text-2xl font-black text-emerald-400 mt-1">{winRate}%</div>
-                    <div className="text-[10px] text-slate-400 mt-1">cTrader Execution Rate</div>
-                  </div>
-
-                  <div className="p-4 bg-slate-950/90 border border-slate-800 rounded-xl shadow-sm">
-                    <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Untung Bersih Disahkan</div>
-                    <div className={`text-2xl font-black mt-1 ${netPnL >= 0 ? 'text-cyan-300' : 'text-rose-400'}`}>
-                      {netPnL >= 0 ? '+' : ''}${netPnL.toFixed(2)}
-                    </div>
-                    <div className="text-[10px] text-slate-400 mt-1">Realized Net Returns</div>
-                  </div>
-
-                  <div className="p-4 bg-slate-950/90 border border-slate-800 rounded-xl shadow-sm">
-                    <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Profit Factor</div>
-                    <div className="text-2xl font-black text-purple-300 mt-1">{profitFactor}</div>
-                    <div className="text-[10px] text-slate-400 mt-1">Nisbah Untung/Rugi</div>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-
-          {/* Paginated Authoritative Ledger Table */}
-          <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 shadow-xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
-              <div className="flex items-center gap-2.5">
-                <History className="w-5 h-5 text-emerald-400" />
-                <div>
-                  <h3 className="font-bold text-white text-base">Senarai Lengkap Trade Broker Selesai</h3>
-                  <span className="text-[11px] text-slate-400 font-mono">Direkodkan secara kekal dari pangkalan data PostgreSQL &amp; lejar cTrader</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleExportLedgerCSV}
-                  disabled={closedTrades.length === 0}
-                  className="px-3.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
-                  title="Muat turun fail CSV lejar transaksi yang disahkan untuk audit"
-                >
-                  <Download className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Eksport CSV / Audit</span>
-                </button>
-                <button
-                  onClick={fetchDashboardState}
-                  className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border border-slate-700"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isLoadingTrades ? 'animate-spin' : ''}`} />
-                  <span>KEMASKINI DARI BROKER</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Filter toolbar & Search */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 font-mono text-xs">
-              
-              {/* Left: Filters */}
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-slate-400 text-[10px] uppercase font-bold">Simbol:</span>
-                  {['ALL', 'EUR/USD', 'GBP/USD', 'USD/JPY', 'EUR/JPY', 'AUD/USD', 'XAU/USD', 'NASDAQ', 'BTC/USD'].map(sym => (
-                    <button
-                      key={sym}
-                      onClick={() => { setClosedHistoryFilterPair(sym); setClosedHistoryPage(1); }}
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
-                        closedHistoryFilterPair === sym ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
-                      }`}
-                    >
-                      {sym}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  <span className="text-slate-400 text-[10px] uppercase font-bold">Keputusan:</span>
-                  {['ALL', 'WIN', 'LOSS'].map(out => (
-                    <button
-                      key={out}
-                      onClick={() => { setClosedHistoryFilterOutcome(out); setClosedHistoryPage(1); }}
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
-                        closedHistoryFilterOutcome === out ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
-                      }`}
-                    >
-                      {out}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Right: Instant Search Box */}
-              <div className="relative w-full lg:w-64">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  type="text"
-                  value={closedHistorySearchQuery}
-                  onChange={(e) => { setClosedHistorySearchQuery(e.target.value); setClosedHistoryPage(1); }}
-                  placeholder="Cari No. Tiket / Simbol..."
-                  className="w-full pl-8 pr-7 py-1 bg-slate-950/90 border border-slate-800 focus:border-cyan-500/60 rounded-xl text-xs font-mono text-white placeholder-slate-500 focus:outline-none transition shadow-inner"
-                />
-                {closedHistorySearchQuery && (
-                  <button
-                    onClick={() => setClosedHistorySearchQuery('')}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {(() => {
-              const filtered = closedTrades.filter(t => {
-                const pair = t.pair || t.symbol || '';
-                if (closedHistoryFilterPair !== 'ALL' && pair !== closedHistoryFilterPair) return false;
-                const pnl = t.pnlDollars || t.realizedProfit || 0;
-                if (closedHistoryFilterOutcome === 'WIN' && pnl <= 0) return false;
-                if (closedHistoryFilterOutcome === 'LOSS' && pnl >= 0) return false;
-
-                if (closedHistorySearchQuery.trim()) {
-                  const q = closedHistorySearchQuery.trim().toUpperCase();
-                  const tkt = String(t.brokerTicket || t.ticketId || t.id || '').toUpperCase();
-                  const sym = pair.toUpperCase().replace('/', '');
-                  if (!tkt.includes(q) && !sym.includes(q.replace('/', '')) && !pair.toUpperCase().includes(q)) {
-                    return false;
-                  }
-                }
-                return true;
-              });
-
-              if (filtered.length === 0) {
-                return (
-                  <div className="p-8 text-center text-slate-500 text-xs font-mono bg-slate-950/50 rounded-xl border border-slate-800">
-                    Tiada rekod sepadan dengan tapisan yang dipilih.
-                  </div>
-                );
-              }
-
-              const pageSize = 10;
-              const totalPages = Math.ceil(filtered.length / pageSize) || 1;
-              const paginated = filtered.slice((closedHistoryPage - 1) * pageSize, closedHistoryPage * pageSize);
-
-              return (
-                <div className="space-y-3 font-mono text-xs">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-slate-950 border-b border-slate-800 text-[11px] text-slate-400 uppercase">
-                          <th className="p-3">Tiket &amp; Masa</th>
-                          <th className="p-3">Simbol</th>
-                          <th className="p-3">Arah</th>
-                          <th className="p-3">Harga Masuk</th>
-                          <th className="p-3">Harga Keluar</th>
-                          <th className="p-3">Sebab Tutup</th>
-                          <th className="p-3 text-right">Realized P&amp;L ($)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800/60 bg-slate-950/40">
-                        {paginated.map((t) => {
-                          const pnl = Number(t.pnlDollars || t.realizedProfit || 0);
-                          const isWin = pnl > 0;
-                          const sym = t.pair || t.symbol || 'EUR/USD';
-                          const decimals = sym.includes('JPY') ? 3 : sym.includes('XAU') ? 2 : 5;
-                          const closeDate = t.closeTime ? new Date(t.closeTime) : new Date();
-                          const timeStr = !isNaN(closeDate.getTime()) ? closeDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—';
-
-                          return (
-                            <tr key={t.id || t.ticketId} className="hover:bg-slate-950/70 transition">
-                              <td className="p-3 text-slate-300">
-                                <div className="font-bold text-white">#{t.ticketId || t.id}</div>
-                                <div className="text-[10px] text-slate-500">{timeStr}</div>
-                              </td>
-                              <td className="p-3 font-bold text-white">{sym}</td>
-                              <td className="p-3">
-                                <span className={`px-2 py-0.5 rounded font-black text-[10px] ${
-                                  t.direction === 'BUY' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
-                                }`}>
-                                  {t.direction}
-                                </span>
-                              </td>
-                              <td className="p-3 text-slate-300">{typeof t.entryPrice === 'number' ? t.entryPrice.toFixed(decimals) : t.entryPrice}</td>
-                              <td className="p-3 text-cyan-300 font-semibold">{typeof t.closePrice === 'number' ? t.closePrice.toFixed(decimals) : (t.closePrice || t.exitPrice || '—')}</td>
-                              <td className="p-3 text-slate-400">{t.closeReason || 'MANUAL_CLOSE'}</td>
-                              <td className={`p-3 font-black text-right ${isWin ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                {isWin ? '+' : ''}${pnl.toFixed(2)}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Pagination */}
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-slate-400">
-                    <div>
-                      Menunjukkan {(closedHistoryPage - 1) * pageSize + 1} ke {Math.min(closedHistoryPage * pageSize, filtered.length)} daripada {filtered.length} trade
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setClosedHistoryPage(p => Math.max(1, p - 1))}
-                        disabled={closedHistoryPage <= 1}
-                        className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white rounded text-xs transition cursor-pointer"
-                      >
-                        PREV
-                      </button>
-                      <span className="font-bold text-white">Muka {closedHistoryPage} / {totalPages}</span>
-                      <button
-                        onClick={() => setClosedHistoryPage(p => Math.min(totalPages, p + 1))}
-                        disabled={closedHistoryPage >= totalPages}
-                        className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white rounded text-xs transition cursor-pointer"
-                      >
-                        NEXT
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        </div>
+        <InteractiveTradeStatisticsCockpit onRefreshTriggered={fetchDashboardState} />
       )}
 
       {/* ========================================================================= */}
@@ -653,6 +391,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
         <EconomicCalendarWidget
           events={economicEvents}
           language={isMalay ? 'ms' : 'en'}
+          onRefresh={fetchDashboardState}
         />
       )}
 
@@ -660,57 +399,10 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
       {/* 6. TAB 4: BROKER INTEGRATION & CLIENT PROFILE SETTINGS                     */}
       {/* ========================================================================= */}
       {activeTab === 'BROKER_CONNECT' && (
-        <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-6 shadow-xl font-sans">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-            <div>
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Cpu className="w-5 h-5 text-cyan-400" />
-                <span>Pautan Broker &amp; Profil Pelanggan</span>
-              </h2>
-              <p className="text-xs text-slate-400 mt-1">
-                Sambungkan akaun cTrader Open API / FIX anda untuk memulakan eksekusi signal automatik secara non-custodial.
-              </p>
-            </div>
-            <button
-              onClick={onOpenBrokerModal}
-              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer"
-            >
-              <Cpu className="w-4 h-4" />
-              <span>Konfigurasi Pautan cTrader</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-xs">
-            <div className="p-5 bg-slate-950 border border-emerald-500/30 rounded-xl space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-white text-sm">cTrader Open API Live Stream</span>
-                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 text-[10px] font-bold rounded">
-                  ONLINE &amp; SYNCHRONIZED
-                </span>
-              </div>
-              <div className="text-slate-300 space-y-1.5 text-[11px]">
-                <div>No. Akaun: <strong className="text-emerald-400 font-bold">#{brokerConn.accountNumber || '5881460'}</strong></div>
-                <div>Pelayan: <strong className="text-slate-200">demo.ctraderapi.com:5035</strong></div>
-                <div>Protokol: <strong className="text-cyan-300">Protobuf WebSocket FIX</strong></div>
-                <div>Latency Purata: <strong className="text-emerald-400">{brokerConn.latencyMs || 38}ms</strong></div>
-              </div>
-            </div>
-
-            <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-white text-sm">Jaminan Keselamatan Modal</span>
-                <span className="px-2 py-0.5 bg-purple-500/20 text-purple-300 text-[10px] font-bold rounded">
-                  NON-CUSTODIAL
-                </span>
-              </div>
-              <div className="text-slate-300 space-y-1.5 text-[11px]">
-                <div>Had Kerugian Harian: <strong className="text-amber-400">${brokerConn.maxDailyLossDollars || 250}.00 USD</strong></div>
-                <div>Kebenaran Pengeluaran: <strong className="text-rose-400 font-bold">DISEKAT (TIADA AKSES)</strong></div>
-                <div>Brek Kecemasan: <strong className="text-emerald-400">AKTIF (Circuit Breaker On)</strong></div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <CTraderBrokerConnectionHub
+          language={isMalay ? 'ms' : 'en'}
+          onOpenBrokerModal={onOpenBrokerModal}
+        />
       )}
     </div>
   );

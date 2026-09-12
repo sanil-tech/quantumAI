@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import {
   CurrencyPair, CandleData, IndicatorValues, SmcStructures, SupportResistanceZone,
-  AiTradeOpportunity, Timeframe, TradingStyle, BrokerConnectionConfig, AutoTrade
+  AiTradeOpportunity, Timeframe, TradingStyle, BrokerConnectionConfig, AutoTrade, EconomicEvent
 } from '../types';
 import { ChartWidget } from './ChartWidget';
 import { translations, Language } from '../lib/translations';
@@ -16,6 +16,9 @@ import { SubscriberTrustCockpit, SubscriberRiskMode } from './SubscriberTrustCoc
 import { tradeAudio } from '../utils/tradeAudio';
 import { NewUserOnboardingModal } from './NewUserOnboardingModal';
 import { SubscriptionPricingModal } from './SubscriptionPricingModal';
+import { MacroEconomicShieldCard } from './MacroEconomicShieldCard';
+import { AiReasoningCard } from './AiReasoningCard';
+import { getMarketStatus, isCryptoPair } from '../lib/marketHours';
 
 interface DemoTraderCommandCenterProps {
   currentPrice: number;
@@ -128,6 +131,28 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
     }
   };
 
+  const [economicEvents, setEconomicEvents] = useState<EconomicEvent[]>([]);
+
+  // Poll live macroeconomic calendar events
+  useEffect(() => {
+    const fetchEconomicEvents = async () => {
+      try {
+        const res = await fetch('/api/forex/economic-calendar');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && Array.isArray(data.events)) {
+            setEconomicEvents(data.events);
+          }
+        }
+      } catch (e) {
+        // quiet
+      }
+    };
+    fetchEconomicEvents();
+    const econInterval = setInterval(fetchEconomicEvents, 60000);
+    return () => clearInterval(econInterval);
+  }, []);
+
   // Poll live exchange rates
   useEffect(() => {
     const fetchRates = async () => {
@@ -194,11 +219,12 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
   // Fetch Live State from Backend
   const fetchState = useCallback(async () => {
     try {
-      const [autotraderRes, brokerRes, reconRes, scannerRes] = await Promise.all([
+      const [autotraderRes, brokerRes, reconRes, scannerRes, brokerPosRes] = await Promise.all([
         fetch('/api/autotrader/state').then(r => r.json()).catch(() => null),
         fetch('/api/broker/status').then(r => r.json()).catch(() => null),
         fetch('/api/broker/reconcile').then(r => r.json()).catch(() => null),
-        fetch('/api/autotrader/scanner/status').then(r => r.json()).catch(() => null)
+        fetch('/api/autotrader/scanner/status').then(r => r.json()).catch(() => null),
+        fetch('/api/broker/open-positions').then(r => r.json()).catch(() => null)
       ]);
 
       const scannerData = autotraderRes?.scanner || autotraderRes?.state?.scanner || scannerRes;
@@ -211,26 +237,56 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
       }
 
       const stateObj = autotraderRes?.state || autotraderRes;
-      if (stateObj) {
-        const rawOpen = Array.isArray(stateObj.openTrades) 
-          ? stateObj.openTrades 
-          : (Array.isArray(autotraderRes?.openTrades) ? autotraderRes.openTrades : []);
-        const rawClosed = Array.isArray(stateObj.closedTrades) 
-          ? stateObj.closedTrades 
-          : (Array.isArray(autotraderRes?.closedTrades) ? autotraderRes.closedTrades : []);
+      let rawOpen = Array.isArray(stateObj?.openTrades) 
+        ? stateObj.openTrades 
+        : (Array.isArray(autotraderRes?.openTrades) ? autotraderRes.openTrades : []);
+      const rawClosed = Array.isArray(stateObj?.closedTrades) 
+        ? stateObj.closedTrades 
+        : (Array.isArray(autotraderRes?.closedTrades) ? autotraderRes.closedTrades : []);
 
-        setAccountState(prev => ({
-          ...prev,
-          balance: Number(brokerRes?.liveBalance ?? stateObj.balance ?? prev.balance),
-          equity: Number(brokerRes?.liveEquity ?? stateObj.equity ?? stateObj.balance ?? prev.equity),
-          initialCapital: Number(stateObj.initialCapital ?? prev.initialCapital),
-          isAutoEnabled: Boolean(stateObj.isAutoEnabled ?? prev.isAutoEnabled),
-          openTrades: rawOpen,
-          closedTrades: rawClosed,
-          performance: stateObj.performance || prev.performance,
-          latestAiRule: stateObj.latestAiRule || prev.latestAiRule
-        }));
+      // Authoritative Direct Broker Open Positions Fallback
+      if (rawOpen.length === 0 && Array.isArray(brokerPosRes?.positions) && brokerPosRes.positions.length > 0) {
+        rawOpen = brokerPosRes.positions.map((p: any) => {
+          const symId = Number(p.tradeData?.symbolId ?? p.symbolId ?? 1);
+          const rawName = (symId === 3 ? 'EUR/JPY' : (symId === 1 ? 'EUR/USD' : (p.symbol || 'EUR/USD')));
+          const dir = (p.tradeData?.tradeSide === 2 || p.tradeSide === 'SELL' || p.tradeSide === 2) ? 'SELL' : 'BUY';
+          const rawVol = Number(p.tradeData?.volume ?? p.volume ?? 100000);
+          const volLots = Number((rawVol / 10000000).toFixed(2));
+          const entry = Number(p.price ?? p.entryPrice ?? 1.0);
+          const sl = Number(p.stopLoss ?? 0);
+          const tp = Number(p.takeProfit ?? 0);
+
+          return {
+            id: String(p.positionId),
+            positionId: String(p.positionId),
+            pair: rawName,
+            symbol: rawName,
+            direction: dir,
+            lotSize: volLots > 0 ? volLots : 0.01,
+            entryPrice: entry,
+            currentPrice: entry,
+            stopLoss: sl,
+            takeProfit1: tp,
+            takeProfit: tp,
+            openTime: p.tradeData?.openTimestamp || Date.now(),
+            status: 'OPEN',
+            environment: 'DEMO',
+            setupId: p.tradeData?.comment || `cTrader_live_${rawName}_${dir}`
+          };
+        });
       }
+
+      setAccountState(prev => ({
+        ...prev,
+        balance: Number(brokerRes?.liveBalance ?? stateObj?.balance ?? prev.balance),
+        equity: Number(brokerRes?.liveEquity ?? stateObj?.equity ?? stateObj?.balance ?? prev.equity),
+        initialCapital: Number(stateObj?.initialCapital ?? prev.initialCapital),
+        isAutoEnabled: Boolean(stateObj?.isAutoEnabled ?? prev.isAutoEnabled),
+        openTrades: rawOpen,
+        closedTrades: rawClosed,
+        performance: stateObj?.performance || prev.performance,
+        latestAiRule: stateObj?.latestAiRule || prev.latestAiRule
+      }));
 
       if (brokerRes) {
         setBrokerConn({
@@ -753,6 +809,7 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
               const isSelected = activePair === pair;
               const livePriceVal = getLivePrice(pair);
               const dec = pair.includes('JPY') ? 3 : (pair.includes('XAU') || pair.includes('BTC')) ? 2 : pair.includes('NASDAQ') ? 1 : 5;
+              const pairMarket = getMarketStatus(pair);
               const setupForPair = Array.isArray(scannerStatus?.recentSetups) 
                 ? scannerStatus.recentSetups.find((s: any) => s.pair === pair)
                 : null;
@@ -770,6 +827,15 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
                   <div className="flex items-center gap-1.5">
                     <span className="font-extrabold">{pair}</span>
                     {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-ping"></span>}
+                    {pairMarket.isCrypto ? (
+                      <span className="px-1 py-0.2 rounded text-[8px] font-black bg-emerald-500/30 text-emerald-300 border border-emerald-500/40">
+                        24/7
+                      </span>
+                    ) : !pairMarket.isOpen ? (
+                      <span className="px-1 py-0.2 rounded text-[8px] font-black bg-rose-500/30 text-rose-300 border border-rose-500/40">
+                        TUTUP
+                      </span>
+                    ) : null}
                     {setupForPair && (
                       <span className={`px-1 py-0.2 rounded text-[9px] font-black ${
                         setupForPair.direction === 'BUY' ? 'bg-emerald-500/30 text-emerald-300' : 'bg-rose-500/30 text-rose-300'
@@ -788,11 +854,143 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
         </div>
       </div>
 
+      {/* 2.4. INSTITUTIONAL WEEKEND MARKET STATUS & LIVE SESSION AWARENESS BANNER */}
+      {(() => {
+        const activeMarket = getMarketStatus(activePair);
+        if (!activeMarket.isOpen) {
+          return (
+            <div className="bg-gradient-to-r from-rose-950/60 via-slate-900 to-slate-950 border border-rose-500/40 rounded-2xl p-3.5 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-3 backdrop-blur animate-in fade-in duration-300">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center shrink-0 mt-0.5">
+                  <Clock className="w-5 h-5 text-rose-400 animate-pulse" />
+                </div>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-md bg-rose-500/30 text-rose-300 text-[10px] font-mono font-black uppercase tracking-wider border border-rose-500/50">
+                      🔴 {isMalay ? 'PASARAN DITUTUP (HUJUNG MINGGU)' : 'MARKET CLOSED (WEEKEND)'}
+                    </span>
+                    <span className="text-xs font-mono font-bold text-slate-300">
+                      {activePair}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                    {isMalay 
+                      ? `Pasaran Forex, Emas (XAU/USD) & Indeks ditutup pada hujung minggu. Pasaran akan dibuka semula pada `
+                      : `Forex, Gold (XAU/USD) & Index markets are closed for the weekend. Reopening on `}
+                    <strong className="text-amber-300 font-mono">{isMalay ? activeMarket.formattedNextOpenMs : activeMarket.formattedNextOpenEn}</strong>.
+                    {isMalay 
+                      ? ` Untuk dagangan aktif & analisis AI langsung tanpa henti sepanjang hujung minggu, sila bertukar ke `
+                      : ` For active live trading & uninterrupted AI analysis throughout the weekend, please switch to `}
+                    <strong className="text-cyan-300 font-mono font-black">BTC/USD (Kripto 24/7)</strong>.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setActivePair('BTC/USD')}
+                className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-mono font-black shadow-lg shadow-emerald-950/60 border border-emerald-400/50 flex items-center gap-2 shrink-0 cursor-pointer active:scale-95 transition hover:brightness-110"
+              >
+                <Zap className="w-4 h-4 text-amber-300 animate-bounce" />
+                <span>{isMalay ? '⚡ Tukar ke BTC/USD (24/7 Aktif)' : '⚡ Switch to BTC/USD (24/7 Open)'}</span>
+              </button>
+            </div>
+          );
+        } else if (activeMarket.isCrypto) {
+          return (
+            <div className="bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-950 border border-emerald-500/30 rounded-2xl px-4 py-2.5 shadow-md flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+                <span className="text-xs font-mono font-bold text-emerald-300">
+                  {isMalay ? '🟢 PASARAN KRIPTO 24/7 TERBUKA & AKTIF' : '🟢 24/7 CRYPTO MARKET OPEN & ACTIVE'}
+                </span>
+                <span className="text-xs text-slate-400 hidden sm:inline">
+                  — {isMalay ? 'BTC/USD beroperasi berterusan tanpa henti 24 jam sehari sepanjang hujung minggu.' : 'BTC/USD operates continuously 24/7 throughout the weekend.'}
+                </span>
+              </div>
+              <span className="px-2.5 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono font-extrabold">
+                24/7 LIVE
+              </span>
+            </div>
+          );
+        }
+        return null;
+      })()}
+
+      {/* 2.5. INSTITUTIONAL 2-COLUMN INTELLIGENCE & REAL-TIME RISK COCKPIT */}
+      {(() => {
+        const pairSymbols = activePair.replace(/[\/\-_]/g, '').toUpperCase();
+        const baseCurr = pairSymbols.slice(0, 3);
+        const quoteCurr = pairSymbols.slice(3, 6);
+        const now = Date.now();
+        const relevantEvents = economicEvents.filter(e => {
+          const curr = (e.currency || '').toUpperCase();
+          return curr === baseCurr || curr === quoteCurr || (pairSymbols.includes('XAU') && curr === 'USD') || (pairSymbols.includes('NAS') && curr === 'USD');
+        });
+
+        const highImpactRelevant = (relevantEvents.length > 0 ? relevantEvents : economicEvents).filter(e => e.impact === 'HIGH');
+        
+        // Check blackout (±30 minutes)
+        const activeBlackoutEvent = highImpactRelevant.find(e => {
+          const evTime = e.timestamp || (e.date ? new Date(`${e.date}T${(e.time || '12:00').replace(' UTC', ':00Z')}`).getTime() : 0);
+          return Math.abs(now - evTime) <= 30 * 60 * 1000;
+        });
+
+        // Upcoming high impact event
+        const upcomingList = highImpactRelevant
+          .map(e => ({
+            ...e,
+            eventTime: e.timestamp || (e.date ? new Date(`${e.date}T${(e.time || '12:00').replace(' UTC', ':00Z')}`).getTime() : now + 3600000)
+          }))
+          .filter(e => e.eventTime > now)
+          .sort((a, b) => a.eventTime - b.eventTime);
+
+        const nextDiffMins = upcomingList.length > 0 ? Math.max(1, Math.round((upcomingList[0].eventTime - now) / 60000)) : null;
+        const countdownStr = nextDiffMins !== null
+          ? (nextDiffMins >= 60 ? `${Math.floor(nextDiffMins / 60)}j ${nextDiffMins % 60}m` : `${nextDiffMins}m`)
+          : 'Tiada dalam 24j';
+
+        const aiReasonsList = (aiOpportunity?.reasons && aiOpportunity.reasons.length > 0)
+          ? aiOpportunity.reasons
+          : ((aiOpportunity?.technicalEvidence && aiOpportunity.technicalEvidence.length > 0)
+              ? aiOpportunity.technicalEvidence
+              : (aiOpportunity?.reasoning ? [aiOpportunity.reasoning] : []));
+
+        const realAiDecision = aiOpportunity && aiOpportunity.action && aiOpportunity.action !== 'NO_SETUP' ? {
+          pair: activePair,
+          direction: (aiOpportunity.type === 'BUY' || aiOpportunity.type === 'SELL' || aiOpportunity.bias === 'BULLISH' ? 'BUY' : 'SELL') as 'BUY' | 'SELL',
+          confidence: Number(aiOpportunity.confidence) || 80,
+          decision: (Number(aiOpportunity.confidence) >= 70 ? 'CONFIRM' : 'ADJUST') as 'CONFIRM' | 'VETO' | 'ADJUST',
+          reasons: aiReasonsList.length > 0 ? aiReasonsList : [`Struktur SMC ${activePair}: Analisis zon Order Block (${timeframe})`],
+          vetoReason: (aiOpportunity.vetoReasons && aiOpportunity.vetoReasons.length > 0) ? aiOpportunity.vetoReasons[0] : undefined
+        } : undefined;
+
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            <div className="lg:col-span-6">
+              <MacroEconomicShieldCard
+                events={highImpactRelevant.length > 0 ? highImpactRelevant : economicEvents}
+                isBlackoutActive={Boolean(activeBlackoutEvent)}
+                nextEventCountdown={countdownStr}
+              />
+            </div>
+            <div className="lg:col-span-6">
+              <AiReasoningCard
+                latestDecision={realAiDecision}
+                postMortemReviews={accountState.latestAiRule ? [{
+                  pair: activePair,
+                  outcome: 'LOSS',
+                  adaptiveRuleMs: accountState.latestAiRule
+                } as any] : []}
+              />
+            </div>
+          </div>
+        );
+      })()}
+
       {/* 3. ROW: INTERACTIVE CHART & AI DECISION / ORDER EXECUTION COCKPIT */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Left: Professional Trading Chart (8 Cols) */}
-        <div className="lg:col-span-8 flex flex-col h-[600px] bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
+        <div className="lg:col-span-8 flex flex-col min-h-[640px] bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
           <ChartWidget
             candles={candles}
             pair={activePair}
@@ -803,100 +1001,62 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
             srZones={srZones}
             onRefreshData={onRefreshData || (() => {})}
             language={isMalay ? 'ms' : 'en'}
+            currentPrice={currentPrice}
           />
         </div>
 
-        {/* Right: AI Decision Hub + Fast 1-Click Order Pad (4 Cols) */}
-        <div className="lg:col-span-4 flex flex-col h-[600px] space-y-4">
-          
-          {/* AI Decision & "Why It Is Open" Card */}
-          <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl shadow-xl space-y-3 flex-1 overflow-y-auto">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Bot className="w-4 h-4 text-blue-400" />
-                <h3 className="text-xs font-black text-white uppercase tracking-wider">
-                  AI Decision &amp; Trade Rationale
-                </h3>
-              </div>
-              <span className={`px-2 py-0.5 text-[10px] font-mono font-black rounded ${
-                aiOpportunity?.type === 'BUY' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-rose-500/20 text-rose-400 border border-rose-500/40'
-              }`}>
-                {aiOpportunity?.type || 'ANALYZING...'}
-              </span>
-            </div>
-
-            {/* AI Setup Key Numbers */}
-            <div className="grid grid-cols-3 gap-2 font-mono text-xs bg-slate-950/80 p-3 rounded-xl border border-slate-800/80">
-              <div>
-                <div className="text-[9px] text-slate-500 uppercase font-bold">Harga Masuk</div>
-                <div className="text-white font-bold mt-0.5">
-                  {aiOpportunity?.entryPrice || (aiOpportunity?.entryZone?.min ? aiOpportunity.entryZone.min : currentPrice.toFixed(activePair.includes('JPY') ? 3 : 5))}
+        {/* Right: Unified Institutional Order Cockpit & Risk Engine (4 Cols) */}
+        <div className="lg:col-span-4 flex flex-col min-h-[640px]">
+          <div className="p-5 bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/40 border border-slate-800 rounded-2xl shadow-xl space-y-4 flex flex-col justify-between h-full">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-cyan-400" />
+                  <h3 className="text-xs font-black text-white uppercase tracking-wider">
+                    Pad Eksekusi Institusi {activePair}
+                  </h3>
                 </div>
-              </div>
-              <div>
-                <div className="text-[9px] text-slate-500 uppercase font-bold">Stop Loss</div>
-                <div className="text-rose-400 font-bold mt-0.5">
-                  {aiOpportunity?.stopLoss ? aiOpportunity.stopLoss : '—'}
-                </div>
-              </div>
-              <div>
-                <div className="text-[9px] text-slate-500 uppercase font-bold">Take Profit</div>
-                <div className="text-emerald-400 font-bold mt-0.5">
-                  {aiOpportunity?.takeProfit1 ? aiOpportunity.takeProfit1 : '—'}
-                </div>
-              </div>
-            </div>
-
-            {/* Why This Trade Reason Breakdown */}
-            <div className="space-y-2 text-xs">
-              <div className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-                <span className="flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-amber-400" />
-                  Sebab &amp; Rasional AI (Why Open)
+                <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-slate-800 text-cyan-300 border border-slate-700">
+                  {timeframe} • cTrader Demo
                 </span>
-                <span className="text-[9px] text-slate-500 font-mono font-normal">Enjin: Gemini + SMC Engine</span>
               </div>
-              <div className="p-3 bg-slate-950 border border-indigo-500/20 rounded-xl text-slate-300 text-[11px] leading-relaxed">
-                {aiLoading ? (
-                  <div className="flex items-center gap-2 text-cyan-300 font-mono">
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-400" />
-                    <span>Menganalisis data pasaran live, struktur SMC &amp; peraturan adaptif...</span>
+
+              {/* AI Setup Key Numbers or Current Spot */}
+              <div className="grid grid-cols-3 gap-2 font-mono text-xs bg-slate-950/80 p-3 rounded-xl border border-slate-800/80">
+                <div>
+                  <div className="text-[9px] text-slate-500 uppercase font-bold">Harga Semasa</div>
+                  <div className="text-white font-bold mt-0.5">
+                    {currentPrice > 0 ? currentPrice.toFixed(activePair.includes('JPY') ? 3 : (activePair.includes('XAU') || activePair.includes('NAS') || activePair.includes('BTC') ? 2 : 5)) : '—'}
                   </div>
-                ) : aiOpportunity?.reasoning ? (
-                  aiOpportunity.reasoning
-                ) : (
-                  <span>
-                    Struktur SMC {activePair}: Order Block &amp; Liquidity Sweep pada rangka masa {timeframe}. Skor Confluence <strong>{aiOpportunity?.confidence || 88}%</strong>.
-                  </span>
-                )}
+                </div>
+                <div>
+                  <div className="text-[9px] text-slate-500 uppercase font-bold">Stop Loss</div>
+                  <div className="text-rose-400 font-bold mt-0.5">
+                    {aiOpportunity?.stopLoss ? Number(aiOpportunity.stopLoss).toFixed(activePair.includes('JPY') ? 3 : (activePair.includes('XAU') || activePair.includes('NAS') || activePair.includes('BTC') ? 2 : 5)) : 'Dinamik ATR'}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[9px] text-slate-500 uppercase font-bold">Take Profit</div>
+                  <div className="text-emerald-400 font-bold mt-0.5">
+                    {aiOpportunity?.takeProfit1 ? Number(aiOpportunity.takeProfit1).toFixed(activePair.includes('JPY') ? 3 : (activePair.includes('XAU') || activePair.includes('NAS') || activePair.includes('BTC') ? 2 : 5)) : '1:2.0 R:R'}
+                  </div>
+                </div>
               </div>
-            </div>
 
-            {/* Confluence Criteria Checklist */}
-            <div className="space-y-1.5 font-mono text-[11px]">
-              <div className="flex justify-between items-center text-slate-400">
-                <span>Struktur Pasaran (SMC):</span>
-                <span className="text-emerald-400 font-bold">{smcData?.structures?.length ? `${smcData.structures.length} Zon Dikesan` : 'BOS / Liquidity Valid'}</span>
+              <div className="space-y-1.5 font-mono text-[11px] bg-slate-950/40 p-2.5 rounded-xl border border-slate-800/60">
+                <div className="flex justify-between items-center text-slate-400">
+                  <span>Struktur SMC:</span>
+                  <span className="text-emerald-400 font-bold">{smcData?.structures?.length ? `${smcData.structures.length} Zon Dikesan` : 'BOS / Liquidity Valid'}</span>
+                </div>
+                <div className="flex justify-between items-center text-slate-400">
+                  <span>Trend MTF:</span>
+                  <span className="text-cyan-400 font-bold">{timeframe} / H4 Aligned</span>
+                </div>
+                <div className="flex justify-between items-center text-slate-400">
+                  <span>Risk Gate:</span>
+                  <span className="text-emerald-400 font-bold">APPROVED ({riskPercent}% Risk)</span>
+                </div>
               </div>
-              <div className="flex justify-between items-center text-slate-400">
-                <span>Multi-Timeframe Trend:</span>
-                <span className="text-cyan-400 font-bold">{timeframe} / H4 Aligned</span>
-              </div>
-              <div className="flex justify-between items-center text-slate-400">
-                <span>Risk Gate Verification:</span>
-                <span className="text-emerald-400 font-bold">APPROVED (1.0% Risk)</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Fast 1-Click Demo Execution Order Pad */}
-          <div className="p-5 bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/40 border border-slate-800 rounded-2xl shadow-xl space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
-                <Zap className="w-4 h-4 text-emerald-400" />
-                Pad Eksekusi Pantas cTrader Demo
-              </span>
-              <span className="text-[10px] font-mono text-emerald-400 font-bold">DEMO 1-CLICK</span>
             </div>
 
             {/* Multi-Timeframe AI Radar Selector */}
@@ -1049,198 +1209,6 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
           </div>
         </div>
       </div>
-
-
-
-      {/* 5. 100% AUTHENTIC CTRADER CLOSED TRADE LEDGER & AI POST-MORTEM */}
-      {(() => {
-        // Strictly isolate authentic cTrader broker executed closed trades
-        const rawClosedList = (accountState.closedTrades || []).filter((t: any) => {
-          const idStr = String(t.id || t.positionId || t.ticketId || '');
-          const ticketStr = String(t.ticketId || t.mt5Ticket || '');
-          return (
-            (ticketStr.match(/^[0-9]{7,10}$/) || idStr.match(/^trade_[0-9]{7,10}$/)) &&
-            !idStr.startsWith('pos_') &&
-            !idStr.includes('mock')
-          );
-        });
-
-        const totalProfitDollars = rawClosedList
-          .filter((t: any) => (typeof t.pnlDollars === 'number' ? t.pnlDollars : (typeof t.realizedProfit === 'number' ? t.realizedProfit : 0)) > 0)
-          .reduce((acc: number, t: any) => acc + (typeof t.pnlDollars === 'number' ? t.pnlDollars : (typeof t.realizedProfit === 'number' ? t.realizedProfit : 0)), 0);
-
-        const totalLossDollars = rawClosedList
-          .filter((t: any) => (typeof t.pnlDollars === 'number' ? t.pnlDollars : (typeof t.realizedProfit === 'number' ? t.realizedProfit : 0)) < 0)
-          .reduce((acc: number, t: any) => acc + Math.abs(typeof t.pnlDollars === 'number' ? t.pnlDollars : (typeof t.realizedProfit === 'number' ? t.realizedProfit : 0)), 0);
-
-        const netPnlDollars = totalProfitDollars - totalLossDollars;
-        const winCount = rawClosedList.filter((t: any) => (typeof t.pnlDollars === 'number' ? t.pnlDollars : (typeof t.realizedProfit === 'number' ? t.realizedProfit : 0)) > 0).length;
-        const lossCount = rawClosedList.filter((t: any) => (typeof t.pnlDollars === 'number' ? t.pnlDollars : (typeof t.realizedProfit === 'number' ? t.realizedProfit : 0)) < 0).length;
-        const computedWinRate = rawClosedList.length > 0 
-          ? ((winCount / rawClosedList.length) * 100).toFixed(1) 
-          : (accountState.performance?.winRatePercent ? Number(accountState.performance.winRatePercent).toFixed(1) : '0.0');
-        const profitFactor = totalLossDollars > 0 ? (totalProfitDollars / totalLossDollars).toFixed(2) : (totalProfitDollars > 0 ? 'MAX' : '0.00');
-
-        return (
-          <div className="p-6 bg-slate-900/85 border border-white/[0.08] rounded-2xl shadow-2xl space-y-4 backdrop-blur-xl">
-            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-white/[0.06] pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                  <History className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-extrabold text-white tracking-wide uppercase flex items-center gap-2">
-                    <span>Buku Rekod Trade Sahih cTrader (Closed Ledger)</span>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono font-bold">
-                      100% REAL BROKER DEALS
-                    </span>
-                  </h2>
-                  <p className="text-[11px] text-slate-400 font-mono mt-0.5">
-                    Jumlah Rekod: <span className="text-white font-bold">{rawClosedList.length} Trade</span> ({winCount} Menang, {lossCount} Kalah) &bull; Purata R:R: <span className="text-cyan-400 font-bold">1:2.0</span>
-                  </p>
-                </div>
-              </div>
-
-              {/* Real-time Aggregate PnL & Performance Badges */}
-              <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
-                {/* Total Profit */}
-                <div className="px-3 py-1.5 bg-emerald-950/60 border border-emerald-500/40 rounded-xl flex items-center gap-1.5 shadow-sm">
-                  <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-[10px] text-emerald-400/80 uppercase font-bold">Untung:</span>
-                  <span className="font-black text-emerald-400">
-                    +${totalProfitDollars.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </div>
-
-                {/* Total Loss */}
-                <div className="px-3 py-1.5 bg-rose-950/60 border border-rose-500/40 rounded-xl flex items-center gap-1.5 shadow-sm">
-                  <TrendingDown className="w-3.5 h-3.5 text-rose-400" />
-                  <span className="text-[10px] text-rose-400/80 uppercase font-bold">Rugi:</span>
-                  <span className="font-black text-rose-400">
-                    -${totalLossDollars.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </div>
-
-                {/* Net P&L */}
-                <div className={`px-3 py-1.5 rounded-xl border flex items-center gap-1.5 shadow-sm ${
-                  netPnlDollars >= 0 
-                    ? 'bg-cyan-950/60 border-cyan-500/40 text-cyan-300' 
-                    : 'bg-amber-950/60 border-amber-500/40 text-amber-300'
-                }`}>
-                  <DollarSign className="w-3.5 h-3.5" />
-                  <span className="text-[10px] opacity-80 uppercase font-bold">Net P&amp;L:</span>
-                  <span className="font-black">
-                    {netPnlDollars >= 0 ? `+$${netPnlDollars.toFixed(2)}` : `-$${Math.abs(netPnlDollars).toFixed(2)}`}
-                  </span>
-                </div>
-
-                {/* Win Rate */}
-                <div className="px-3 py-1.5 bg-slate-950/80 border border-white/[0.08] rounded-xl flex items-center gap-1.5 text-slate-300">
-                  <BarChart3 className="w-3.5 h-3.5 text-cyan-400" />
-                  <span className="text-[10px] text-slate-400 uppercase font-bold">Win Rate:</span>
-                  <span className="font-black text-emerald-400">{computedWinRate}%</span>
-                </div>
-
-                {/* Profit Factor */}
-                <div className="px-3 py-1.5 bg-purple-950/50 border border-purple-500/30 rounded-xl flex items-center gap-1.5 text-purple-300">
-                  <Zap className="w-3.5 h-3.5 text-purple-400" />
-                  <span className="text-[10px] text-purple-400/80 uppercase font-bold">PF:</span>
-                  <span className="font-black text-purple-200">{profitFactor}</span>
-                </div>
-              </div>
-            </div>
-
-            {rawClosedList.length === 0 ? (
-              <div className="p-8 bg-slate-950/60 border border-white/[0.06] rounded-xl text-center font-mono text-xs text-slate-400">
-                [TIADA REKOD DITUTUP] Belum ada trade ditutup dalam sesi semasa.
-              </div>
-            ) : (
-              <div className="overflow-x-auto max-h-[440px] overflow-y-auto rounded-xl border border-white/[0.06]">
-                <table className="w-full text-left text-xs font-mono border-collapse">
-                  <thead className="sticky top-0 bg-slate-950/95 z-10 backdrop-blur-md">
-                    <tr className="border-b border-white/[0.08] text-[11px] text-slate-400 uppercase">
-                      <th className="p-3">Masa &amp; Tiket</th>
-                      <th className="p-3">Simbol</th>
-                      <th className="p-3">Mod</th>
-                      <th className="p-3">Arah</th>
-                      <th className="p-3">Entri</th>
-                      <th className="p-3">Tutup</th>
-                      <th className="p-3">Sebab Tutup</th>
-                      <th className="p-3">Realized P&amp;L</th>
-                      <th className="p-3">Status Pembelajaran AI</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/[0.04] bg-slate-950/40">
-                    {[...rawClosedList]
-                      .sort((a: any, b: any) => (Number(b.closeTime) || 0) - (Number(a.closeTime) || 0))
-                      .map((t: any) => {
-                        const pnl = typeof t.pnlDollars === 'number' ? t.pnlDollars : (typeof t.realizedProfit === 'number' ? t.realizedProfit : 0);
-                        const isWin = pnl > 0;
-                        const isLoss = pnl < 0;
-                        const isDemo = t.environment === 'DEMO' || !t.environment;
-                        const exit = t.closePrice || t.exitPrice || t.currentPrice;
-                        const pairSym = t.pair || t.symbol || 'EUR/USD';
-                        const decimals = pairSym.includes('JPY') ? 3 : pairSym.includes('XAU') ? 2 : 5;
-                        const closeDate = t.closeTime ? new Date(t.closeTime) : new Date();
-                        const timeStr = !isNaN(closeDate.getTime()) 
-                          ? closeDate.toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
-                          : '—';
-                        const ticketDisplay = t.ticketId || (t.id ? String(t.id).replace('trade_', '#') : '#');
-
-                        return (
-                          <tr key={t.id || t.ticketId} className="hover:bg-slate-800/40 transition">
-                            <td className="p-3 text-slate-300 font-mono text-[11px] whitespace-nowrap">
-                              <div className="font-bold text-white">{timeStr}</div>
-                              <div className="text-[10px] text-slate-500">#{ticketDisplay}</div>
-                            </td>
-                            <td className="p-3 font-bold text-white">{pairSym}</td>
-                            <td className="p-3">
-                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                                isDemo ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' : 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/30'
-                              }`}>
-                                {isDemo ? 'cTrader DEMO' : 'SHADOW'}
-                              </span>
-                            </td>
-                            <td className="p-3">
-                              <span className={`px-2 py-0.5 rounded-md text-[10px] font-black ${
-                                t.direction === 'BUY' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                              }`}>
-                                {t.direction}
-                              </span>
-                            </td>
-                            <td className="p-3 text-slate-300">{typeof t.entryPrice === 'number' ? t.entryPrice.toFixed(decimals) : t.entryPrice}</td>
-                            <td className="p-3 text-cyan-300 font-semibold">{typeof exit === 'number' ? exit.toFixed(decimals) : (exit || '—')}</td>
-                            <td className="p-3 text-slate-400 font-mono text-[10px]">{t.closeReason || 'MANUAL_CLOSE'}</td>
-                            <td className="p-3 font-bold">
-                              <span className={`px-2.5 py-1 rounded-lg text-xs font-black inline-block ${
-                                isWin 
-                                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' 
-                                  : isLoss 
-                                    ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30' 
-                                    : 'bg-slate-800 text-slate-400'
-                              }`}>
-                                {isWin ? `+$${Number(pnl).toFixed(2)}` : isLoss ? `-$${Math.abs(Number(pnl)).toFixed(2)}` : `$0.00`}
-                              </span>
-                            </td>
-                            <td className="p-3">
-                              <button
-                                onClick={() => setSelectedTradeRationale(t)}
-                                className="px-2.5 py-1 bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-300 rounded-lg text-[10px] font-bold transition flex items-center gap-1.5 cursor-pointer"
-                              >
-                                <Bot className="w-3 h-3 text-purple-400" />
-                                <span>AI POST-MORTEM</span>
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        );
-      })()}
 
       {/* Modal: View Comprehensive Trade Rationale & AI Pedagogical Breakdown */}
       {selectedTradeRationale && (() => {

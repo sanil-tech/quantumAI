@@ -507,7 +507,13 @@ export default function App() {
     }
   };
 
-  const highImpactNews = economicEvents.find((e) => e.impact === 'HIGH' && e.warningText);
+  const now = Date.now();
+  const liveNews = economicEvents.find((e) => e.impact === 'HIGH' && e.status === 'LIVE_WINDOW');
+  const nextUpcomingNews = economicEvents
+    .filter((e) => e.impact === 'HIGH' && (e.status === 'UPCOMING' || e.timestamp > now))
+    .sort((a, b) => a.timestamp - b.timestamp)[0];
+
+  const highImpactNews = liveNews || nextUpcomingNews;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-blue-600 selection:text-white flex flex-col">

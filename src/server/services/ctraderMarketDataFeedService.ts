@@ -706,6 +706,38 @@ export class CTraderMarketDataFeedService extends EventEmitter {
     return this.lastOpenPositions;
   }
 
+  public getLastClosedDeals(): any[] {
+    return this.lastClosedDeals;
+  }
+
+  public async fetchRawClosedDeals(days: number = 90, maxRows: number = 500): Promise<any[]> {
+    if (!this.transport || !this.transport.isConnected() || !this.isAccountAuthenticated) {
+      await this.startFeed().catch(() => {});
+    }
+    if (!this.transport || !this.transport.isConnected() || !this.isAccountAuthenticated) {
+      return this.lastClosedDeals;
+    }
+    try {
+      const accountId = Number(process.env.CTRADER_ACCOUNT_ID || 48282756);
+      const fromTimestamp = Date.now() - days * 24 * 60 * 60 * 1000;
+      const toTimestamp = Date.now() + 24 * 60 * 60 * 1000;
+      const dealsRes = await this.transport.sendRequest(2133, {
+        ctidTraderAccountId: accountId,
+        fromTimestamp,
+        toTimestamp,
+        maxRows
+      }, 8000);
+      if (dealsRes.payloadType === 2134 && Array.isArray(dealsRes.decodedPayload?.deal)) {
+        this.lastClosedDeals = dealsRes.decodedPayload.deal;
+        this.emit('brokerClosedDealsUpdated', this.lastClosedDeals);
+        return this.lastClosedDeals;
+      }
+    } catch (err: any) {
+      console.warn('[CTRADER-FEED] fetchRawClosedDeals error:', err.message);
+    }
+    return this.lastClosedDeals;
+  }
+
   public async fetchLiveAccountStatus(): Promise<{
     balance: number;
     equity: number;
@@ -742,10 +774,10 @@ export class CTraderMarketDataFeedService extends EventEmitter {
         try {
           const dealsRes = await this.transport.sendRequest(2133, {
             ctidTraderAccountId: accountId,
-            fromTimestamp: Date.now() - 7 * 24 * 60 * 60 * 1000,
+            fromTimestamp: Date.now() - 90 * 24 * 60 * 60 * 1000,
             toTimestamp: Date.now() + 60 * 60 * 1000,
-            maxRows: 50
-          }, 3000);
+            maxRows: 500
+          }, 4000);
           if (dealsRes.payloadType === 2134 && Array.isArray(dealsRes.decodedPayload?.deal)) {
             this.lastClosedDeals = dealsRes.decodedPayload.deal;
             this.emit('brokerClosedDealsUpdated', this.lastClosedDeals);

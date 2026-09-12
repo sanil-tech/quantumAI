@@ -383,7 +383,109 @@ executionRouter.get('/autotrader/state', async (req: Request, res: Response) => 
 
     const allOpen = await tradingRepo.query(`SELECT * FROM positions WHERE status = 'OPEN' ORDER BY opened_at DESC`).catch(() => ({ rows: [] }));
     openPositions = allOpen.rows.map(r => tradingRepo.mapPositionRow(r));
+
+    // Authoritative cTrader Open API Direct Fallback
+    if (openPositions.length === 0) {
+      try {
+        const { ctraderMarketDataFeedService } = await import('../services/ctraderMarketDataFeedService');
+        const rawBrokerPos = await ctraderMarketDataFeedService.fetchRawOpenPositions();
+        if (Array.isArray(rawBrokerPos) && rawBrokerPos.length > 0) {
+          const { CTraderSymbolRegistry } = await import('../../integrations/ctrader/ctraderSymbolService');
+          openPositions = rawBrokerPos.map((p: any) => {
+            const symId = Number(p.tradeData?.symbolId ?? p.symbolId ?? 1);
+            const symSpec = CTraderSymbolRegistry.getSymbolById(symId);
+            const rawName = symSpec ? symSpec.symbolName : (symId === 1 ? 'EURUSD' : symId === 3 ? 'EURJPY' : 'EURUSD');
+            const formattedSym = rawName.includes('/') ? rawName : (rawName.length === 6 ? `${rawName.slice(0, 3)}/${rawName.slice(3)}` : rawName);
+            const dir = (p.tradeData?.tradeSide === 2 || p.tradeSide === 'SELL' || p.tradeSide === 2) ? 'SELL' : 'BUY';
+            const rawVol = Number(p.tradeData?.volume ?? p.volume ?? 100000);
+            const volLots = Number((rawVol / 10000000).toFixed(2));
+            const entry = Number(p.price ?? p.entryPrice ?? 1.0);
+            const sl = Number(p.stopLoss ?? 0);
+            const tp = Number(p.takeProfit ?? 0);
+
+            return {
+              positionId: String(p.positionId),
+              ticketId: String(p.positionId),
+              setupId: p.tradeData?.comment || `cTrader_live_${formattedSym}_${dir}`,
+              accountId: '48282756',
+              symbol: formattedSym,
+              direction: dir,
+              quantity: volLots > 0 ? volLots : 0.01,
+              entryPrice: entry,
+              currentPrice: entry,
+              stopLoss: sl,
+              takeProfit: tp,
+              status: 'OPEN',
+              broker: 'CTRADER',
+              environment: 'DEMO',
+              openedAt: p.tradeData?.openTimestamp ? new Date(p.tradeData.openTimestamp) : new Date(),
+              updatedAt: new Date()
+            };
+          });
+        }
+      } catch (err: any) {
+        console.warn('[DirectCTraderFallback] Error:', err.message);
+      }
+    }
+
     closedPositions = await tradingRepo.getClosedPositionsAcrossAccounts(5000).catch(() => []);
+
+    // Fallback: Populate closedPositions with direct cTrader Open API closed deals if database closed table is empty
+    if (closedPositions.length === 0) {
+      try {
+        const { ctraderMarketDataFeedService } = await import('../services/ctraderMarketDataFeedService');
+        const { CTraderSymbolRegistry } = await import('../../integrations/ctrader/ctraderSymbolService');
+        const rawDeals = await ctraderMarketDataFeedService.fetchRawClosedDeals(90, 500);
+        const closedDeals = (rawDeals || []).filter((d: any) => d.closePositionDetail != null);
+
+        if (closedDeals.length > 0) {
+          closedPositions = closedDeals.map((d: any) => {
+            const symId = Number(d.symbolId || 1);
+            const symSpec = CTraderSymbolRegistry.getSymbolById(symId);
+            const rawName = symSpec?.symbolName || (symId === 1 ? 'EURUSD' : symId === 3 ? 'EURJPY' : 'EURUSD');
+            const formattedSym = rawName.includes('/') ? rawName : (rawName.length === 6 ? `${rawName.slice(0, 3)}/${rawName.slice(3)}` : rawName);
+            const moneyDigits = Number(d.closePositionDetail?.moneyDigits ?? 2);
+            const divisor = Math.pow(10, moneyDigits);
+            const grossProfit = Number(d.closePositionDetail?.grossProfit || 0) / divisor;
+            const commission = Number(d.closePositionDetail?.commission || 0) / divisor;
+            const swap = Number(d.closePositionDetail?.swap || 0) / divisor;
+            const netPnl = Number((grossProfit + commission + swap).toFixed(2));
+            const entryPrice = Number(d.closePositionDetail?.entryPrice || d.executionPrice);
+            const exitPrice = Number(d.executionPrice);
+            const closeTime = Number(d.executionTimestamp);
+            const dir = (d.tradeSide === 2 || d.tradeSide === 'SELL') ? 'BUY' : 'SELL';
+            const rawVol = Number(d.closePositionDetail?.closedVolume || d.filledVolume || 100000);
+            const volumeLots = Math.max(0.01, Number((rawVol / 10000000).toFixed(2)));
+
+            return {
+              positionId: String(d.positionId || d.dealId),
+              ticketId: String(d.positionId || d.dealId),
+              setupId: `cTrader_closed_${formattedSym}_${dir}`,
+              accountId: '48282756',
+              symbol: formattedSym,
+              direction: dir,
+              quantity: volumeLots,
+              entryPrice: entryPrice,
+              currentPrice: exitPrice,
+              closePrice: exitPrice,
+              stopLoss: 0,
+              takeProfit: 0,
+              status: 'CLOSED',
+              realizedProfit: netPnl,
+              unrealizedProfit: 0,
+              pnlPips: 0,
+              openedAt: new Date(d.createTimestamp || closeTime).toISOString(),
+              closedAt: new Date(closeTime).toISOString(),
+              closeReason: netPnl >= 0 ? 'TP_OR_MANUAL_PROFIT' : 'SL_OR_MANUAL_LOSS',
+              broker: 'CTRADER',
+              environment: 'DEMO'
+            };
+          });
+        }
+      } catch (dealErr: any) {
+        console.warn('[DirectCTraderClosedDealsFallback] Error:', dealErr.message);
+      }
+    }
 
     [performance, accountStateRecord, pendingCommands] = await Promise.all([
       tradingRepo.calculatePerformanceMetrics(accountId).catch(() => ({
@@ -397,6 +499,21 @@ executionRouter.get('/autotrader/state', async (req: Request, res: Response) => 
       tradingRepo.getAccountState(accountId).catch(() => null),
       executionQueueService.getPendingCommands(accountId).catch(() => [])
     ]);
+
+    // Recalculate performance if calculated was empty but closed positions were fetched
+    if ((!performance || performance.totalTrades === 0) && closedPositions.length > 0) {
+      const wins = closedPositions.filter(p => (p.realizedProfit || 0) > 0);
+      const losses = closedPositions.filter(p => (p.realizedProfit || 0) < 0);
+      const totalPnl = closedPositions.reduce((acc, p) => acc + (p.realizedProfit || 0), 0);
+      performance = {
+        winCount: wins.length,
+        lossCount: losses.length,
+        winRatePercent: Number(((wins.length / closedPositions.length) * 100).toFixed(1)),
+        totalPnlDollars: Number(totalPnl.toFixed(2)),
+        totalPnlPips: 0,
+        totalTrades: closedPositions.length
+      };
+    }
 
     // Sanitize any existing open positions with missing/corrupted SL/TP, symbol mismatch or entryPrice
     for (const pos of openPositions) {
@@ -964,6 +1081,19 @@ export async function handleExecuteTrade(req: Request, res: Response) {
     if (!sharedAutoTraderState.openTrades.some(t => t.id === newTrade.id)) {
       sharedAutoTraderState.openTrades.push(newTrade);
     }
+
+    // Dispatch parallel trade copying to all connected subscriber cTrader accounts
+    import('../services/multiClientCopierService').then(({ multiClientCopierService }) => {
+      multiClientCopierService.dispatchMasterTrade({
+        pair,
+        direction,
+        entryPrice: Number(entryPrice),
+        stopLoss: sanitizedSl,
+        takeProfit1: sanitizedTp,
+        confidence: req.body.confidence || 85,
+        strategyId: req.body.strategyId
+      }).catch((e: any) => console.warn('[COPIER] Parallel copy dispatch error:', e.message));
+    }).catch(() => {});
 
     res.json({
       success: true,

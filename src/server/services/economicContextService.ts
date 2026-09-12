@@ -48,7 +48,7 @@ export class EconomicContextService {
   }
 
   public static evaluateEconomicContext(params: {
-    symbol: 'EURUSD' | 'GBPUSD' | 'USDJPY' | 'XAUUSD';
+    symbol: string;
     currentTimeUtc?: string;
     windowMinutes?: number;
     allowStale?: boolean;
@@ -56,11 +56,12 @@ export class EconomicContextService {
     const now = params.currentTimeUtc ? new Date(params.currentTimeUtc).getTime() : Date.now();
     const windowMs = (params.windowMinutes || 30) * 60 * 1000;
 
-    let baseCurrency = 'EUR';
-    let quoteCurrency = 'USD';
-    if (params.symbol === 'GBPUSD') { baseCurrency = 'GBP'; quoteCurrency = 'USD'; }
-    if (params.symbol === 'USDJPY') { baseCurrency = 'USD'; quoteCurrency = 'JPY'; }
-    if (params.symbol === 'XAUUSD') { baseCurrency = 'XAU'; quoteCurrency = 'USD'; }
+    const clean = (params.symbol || '').replace(/[\/\-_]/g, '').toUpperCase();
+    let baseCurrency = clean.length >= 6 ? clean.substring(0, 3) : 'EUR';
+    let quoteCurrency = clean.length >= 6 ? clean.substring(3, 6) : 'USD';
+    if (clean.includes('XAU') || clean.includes('GOLD')) { baseCurrency = 'XAU'; quoteCurrency = 'USD'; }
+    if (clean.includes('NAS') || clean.includes('TECH')) { baseCurrency = 'USD'; quoteCurrency = 'USD'; }
+    if (clean.includes('BTC')) { baseCurrency = 'USD'; quoteCurrency = 'USD'; }
 
     const relevantCurrencies = [baseCurrency, quoteCurrency];
     const activeEvents: NormalizedEconomicEvent[] = [];

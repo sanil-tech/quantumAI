@@ -211,7 +211,7 @@ export interface AiTradeOpportunity {
 export interface EconomicEvent {
   id: string;
   title: string;
-  currency: string; // e.g. EUR, USD, GBP, JPY, AUD, CAD
+  currency: string; // e.g. EUR, USD, GBP, JPY, AUD, CAD, CHF, NZD
   impact: 'HIGH' | 'MEDIUM' | 'LOW';
   date?: string;
   time: string; // e.g. "13:30 UTC"
@@ -219,8 +219,15 @@ export interface EconomicEvent {
   forecast?: string;
   previous?: string;
   actual?: string;
+  unit?: string;
+  category?: 'INFLATION' | 'EMPLOYMENT' | 'CENTRAL_BANK' | 'GROWTH_GDP' | 'RETAIL_CONSUMER' | 'PMI_BUSINESS' | 'SPEECH';
+  country?: string;
+  flag?: string;
+  betterThanExpected?: boolean;
+  affectedPairs?: string[];
   warningText?: string;
   aiImpactRule?: string;
+  aiDetailedBreakdown?: string;
   status?: 'UPCOMING' | 'RELEASED' | 'LIVE_WINDOW';
 }
 
@@ -294,58 +301,6 @@ export interface BacktestResult {
 }
 
 export interface ChatMessage {
-  id: string;
-}
-
-export interface EconomicEvent {
-  id: string;
-  title: string;
-  currency: string; // e.g. EUR, USD, GBP, JPY, AUD, CAD
-  impact: 'HIGH' | 'MEDIUM' | 'LOW';
-  date?: string;
-  time: string; // e.g. "13:30 UTC"
-  timestamp: number;
-  forecast?: string;
-  previous?: string;
-  actual?: string;
-  warningText?: string;
-  aiImpactRule?: string;
-  status?: 'UPCOMING' | 'RELEASED' | 'LIVE_WINDOW';
-}
-
-export interface RiskCalculation {
-  accountSize: number;
-  riskPercent: number; // e.g. 1.0
-  riskAmountDollars: number;
-  entryPrice: number;
-  stopLossPrice: number;
-  pipDistance: number;
-  pipValuePerLot: number;
-  recommendedLots: number;
-  units: number;
-  potentialProfitTP1: number;
-  potentialProfitTP2: number;
-}
-
-export interface JournalEntry {
-  id: string;
-  timestamp: number;
-  pair: CurrencyPair;
-  tradingStyle: TradingStyle;
-  direction: 'BUY' | 'SELL';
-  entryPrice: number;
-  exitPrice?: number;
-  stopLoss: number;
-  takeProfit: number;
-  lotSize: number;
-  pnlDollars?: number;
-  status: 'OPEN' | 'CLOSED_WIN' | 'CLOSED_LOSS' | 'CLOSED_BREAKEVEN';
-  notes: string;
-  tags: string[];
-}
-
-export interface ChatMessage {
-
   id: string;
   sender: 'user' | 'assistant';
   text: string;

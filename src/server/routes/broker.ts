@@ -9,6 +9,7 @@ import { TradeProposal } from '@iati/core-types';
 import { brokerReconciliationService } from '../../../apps/execution-router/src/services/brokerReconciliationService';
 
 import { ctraderMarketDataFeedService } from '../services/ctraderMarketDataFeedService';
+import { CTraderSymbolRegistry } from '../../integrations/ctrader/ctraderSymbolService';
 
 export const brokerRouter = Router();
 const governanceEngine = new RiskGovernanceEngine();
@@ -91,6 +92,192 @@ brokerRouter.get('/broker/status', async (req: Request, res: Response) => {
     connected: serverBrokerConnection.isConnected,
     latencyMs: serverBrokerConnection.latencyMs
   });
+});
+
+/**
+ * GET /api/broker/open-positions
+ */
+brokerRouter.get('/broker/open-positions', async (req: Request, res: Response) => {
+  try {
+    const rawBrokerPos = await ctraderMarketDataFeedService.fetchRawOpenPositions();
+    res.json({ success: true, positions: rawBrokerPos || [] });
+  } catch (err: any) {
+    res.json({ success: false, error: err.message, positions: [] });
+  }
+});
+
+/**
+ * GET /api/broker/deals
+ * Fetches real historical closed deals from cTrader Open API with institutional statistics
+ */
+brokerRouter.get('/broker/deals', async (req: Request, res: Response) => {
+  try {
+    const days = Number(req.query.days || 90);
+    const maxRows = Number(req.query.maxRows || 500);
+    const rawDeals = await ctraderMarketDataFeedService.fetchRawClosedDeals(days, maxRows);
+
+    // Filter only deals that closed a position (contain closePositionDetail)
+    const closedDeals = (rawDeals || []).filter((d: any) => d.closePositionDetail != null);
+
+    const parsed = closedDeals.map((d: any) => {
+      const symId = Number(d.symbolId || 1);
+      const symSpec = CTraderSymbolRegistry.getSymbolById(symId);
+      const rawName = symSpec?.symbolName || (symId === 1 ? 'EURUSD' : symId === 3 ? 'EURJPY' : 'EURUSD');
+      const formattedSym = rawName.includes('/') ? rawName : (rawName.length === 6 ? `${rawName.slice(0, 3)}/${rawName.slice(3)}` : rawName);
+
+      const moneyDigits = Number(d.closePositionDetail?.moneyDigits ?? 2);
+      const divisor = Math.pow(10, moneyDigits);
+      const grossProfit = Number(d.closePositionDetail?.grossProfit || 0) / divisor;
+      const commission = Number(d.closePositionDetail?.commission || 0) / divisor;
+      const swap = Number(d.closePositionDetail?.swap || 0) / divisor;
+      const netPnl = grossProfit + commission + swap;
+      const entryPrice = Number(d.closePositionDetail?.entryPrice || d.executionPrice);
+      const exitPrice = Number(d.executionPrice);
+      const closeTime = Number(d.executionTimestamp);
+      const direction: 'BUY' | 'SELL' = (d.tradeSide === 2 || d.tradeSide === 'SELL') ? 'BUY' : 'SELL';
+      const rawVol = Number(d.closePositionDetail?.closedVolume || d.filledVolume || 100000);
+      const volumeLots = Number((rawVol / 10000000).toFixed(2));
+
+      return {
+        id: `deal_${d.dealId}`,
+        dealId: String(d.dealId),
+        positionId: String(d.positionId),
+        orderId: String(d.orderId),
+        ticketId: String(d.positionId),
+        symbol: formattedSym,
+        direction,
+        volumeLots: Math.max(0.01, volumeLots),
+        lotSize: Math.max(0.01, volumeLots),
+        entryPrice,
+        exitPrice,
+        grossProfit: Number(grossProfit.toFixed(2)),
+        commission: Number(commission.toFixed(2)),
+        swap: Number(swap.toFixed(2)),
+        netPnl: Number(netPnl.toFixed(2)),
+        pnlDollars: Number(netPnl.toFixed(2)),
+        realizedProfit: Number(netPnl.toFixed(2)),
+        balance: Number((Number(d.closePositionDetail?.balance || 0) / divisor).toFixed(2)),
+        closeTime,
+        closeDate: new Date(closeTime).toISOString(),
+        closeReason: netPnl >= 0 ? 'TP_OR_MANUAL_PROFIT' : 'SL_OR_MANUAL_LOSS',
+        broker: 'CTRADER',
+        environment: 'DEMO'
+      };
+    });
+
+    // Sort chronologically ascending for equity curve calculation
+    const chronological = [...parsed].sort((a, b) => a.closeTime - b.closeTime);
+
+    // Compute cumulative equity curve progression
+    let runningPnl = 0;
+    const equityCurve = chronological.map((t, idx) => {
+      runningPnl += t.netPnl;
+      return {
+        index: idx + 1,
+        dealId: t.dealId,
+        timestamp: t.closeTime,
+        dateStr: new Date(t.closeTime).toLocaleDateString(),
+        timeStr: new Date(t.closeTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        symbol: t.symbol,
+        direction: t.direction,
+        tradePnl: t.netPnl,
+        cumulativePnl: Number(runningPnl.toFixed(2)),
+        balance: t.balance
+      };
+    });
+
+    // Statistical aggregation
+    const totalWins = parsed.filter(p => p.netPnl > 0);
+    const totalLosses = parsed.filter(p => p.netPnl < 0);
+    const totalBreakeven = parsed.filter(p => p.netPnl === 0);
+    const totalProfit = totalWins.reduce((acc, p) => acc + p.netPnl, 0);
+    const totalLoss = Math.abs(totalLosses.reduce((acc, p) => acc + p.netPnl, 0));
+    const netPnl = totalProfit - totalLoss;
+    const winRate = parsed.length > 0 ? Number(((totalWins.length / parsed.length) * 100).toFixed(1)) : 0;
+    const profitFactor = totalLoss > 0 ? Number((totalProfit / totalLoss).toFixed(2)) : (totalProfit > 0 ? 99.99 : 0);
+
+    const avgWin = totalWins.length > 0 ? Number((totalProfit / totalWins.length).toFixed(2)) : 0;
+    const avgLoss = totalLosses.length > 0 ? Number((totalLoss / totalLosses.length).toFixed(2)) : 0;
+    const payoffRatio = avgLoss > 0 ? Number((avgWin / avgLoss).toFixed(2)) : 0;
+
+    // Directional Breakdown
+    const longs = parsed.filter(p => p.direction === 'BUY');
+    const shorts = parsed.filter(p => p.direction === 'SELL');
+    const longWins = longs.filter(p => p.netPnl > 0).length;
+    const shortWins = shorts.filter(p => p.netPnl > 0).length;
+    const longPnl = longs.reduce((acc, p) => acc + p.netPnl, 0);
+    const shortPnl = shorts.reduce((acc, p) => acc + p.netPnl, 0);
+
+    // Per-Symbol Breakdown
+    const symbolMap: Record<string, { total: number; wins: number; losses: number; pnl: number; volume: number }> = {};
+    for (const d of parsed) {
+      if (!symbolMap[d.symbol]) {
+        symbolMap[d.symbol] = { total: 0, wins: 0, losses: 0, pnl: 0, volume: 0 };
+      }
+      symbolMap[d.symbol].total++;
+      if (d.netPnl > 0) symbolMap[d.symbol].wins++;
+      else if (d.netPnl < 0) symbolMap[d.symbol].losses++;
+      symbolMap[d.symbol].pnl += d.netPnl;
+      symbolMap[d.symbol].volume += d.volumeLots;
+    }
+
+    const symbolStats = Object.entries(symbolMap).map(([sym, data]) => ({
+      symbol: sym,
+      totalTrades: data.total,
+      winCount: data.wins,
+      lossCount: data.losses,
+      winRate: Number(((data.wins / data.total) * 100).toFixed(1)),
+      netPnl: Number(data.pnl.toFixed(2)),
+      volumeLots: Number(data.volume.toFixed(2))
+    })).sort((a, b) => b.totalTrades - a.totalTrades);
+
+    // Max Drawdown calculation from cumulative equity
+    let peak = 0;
+    let maxDrawdown = 0;
+    for (const pt of equityCurve) {
+      if (pt.cumulativePnl > peak) peak = pt.cumulativePnl;
+      const dd = peak - pt.cumulativePnl;
+      if (dd > maxDrawdown) maxDrawdown = dd;
+    }
+
+    res.json({
+      success: true,
+      totalDeals: parsed.length,
+      deals: parsed,
+      statistics: {
+        totalTrades: parsed.length,
+        winCount: totalWins.length,
+        lossCount: totalLosses.length,
+        breakevenCount: totalBreakeven.length,
+        winRatePercent: winRate,
+        profitFactor,
+        totalProfitDollars: Number(totalProfit.toFixed(2)),
+        totalLossDollars: Number(totalLoss.toFixed(2)),
+        netPnlDollars: Number(netPnl.toFixed(2)),
+        avgWinDollars: avgWin,
+        avgLossDollars: avgLoss,
+        payoffRatio,
+        maxDrawdownDollars: Number(maxDrawdown.toFixed(2)),
+        expectancyDollars: parsed.length > 0 ? Number((netPnl / parsed.length).toFixed(2)) : 0,
+        longStats: {
+          total: longs.length,
+          wins: longWins,
+          winRate: longs.length > 0 ? Number(((longWins / longs.length) * 100).toFixed(1)) : 0,
+          netPnl: Number(longPnl.toFixed(2))
+        },
+        shortStats: {
+          total: shorts.length,
+          wins: shortWins,
+          winRate: shorts.length > 0 ? Number(((shortWins / shorts.length) * 100).toFixed(1)) : 0,
+          netPnl: Number(shortPnl.toFixed(2))
+        },
+        symbolBreakdown: symbolStats
+      },
+      equityCurve
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message, deals: [] });
+  }
 });
 
 /**

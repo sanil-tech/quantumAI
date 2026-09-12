@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createChart, IChartApi, ISeriesApi, ColorType, CandlestickData, LineStyle, CandlestickSeries } from 'lightweight-charts';
 import { CandleData, CurrencyPair, Timeframe, AiTradeOpportunity, SmcStructures, SupportResistanceZone } from '../types';
-import { calculate24hRollingChange } from '../lib/marketDataGenerator';
-import { Layers, Eye, RefreshCw, TrendingUp, TrendingDown, Zap, CheckCircle2, XCircle, DollarSign, Brain, ShieldCheck, AlertTriangle, Sparkles, Target, Fingerprint, ChevronDown, ChevronUp, Bot } from 'lucide-react';
+import { calculate24hRollingChange, PAIR_CONFIGS } from '../lib/marketDataGenerator';
+import { getMarketStatus } from '../lib/marketHours';
+import { Layers, Eye, RefreshCw, TrendingUp, TrendingDown, Zap, CheckCircle2, XCircle, DollarSign, Brain, ShieldCheck, AlertTriangle, Sparkles, Target, Fingerprint, ChevronDown, ChevronUp, Bot, Clock } from 'lucide-react';
 
 interface ChartWidgetProps {
   candles: CandleData[];
@@ -16,6 +17,7 @@ interface ChartWidgetProps {
   onAskPakar?: (prompt: string) => void;
   language?: 'en' | 'ms';
   onExecuteTrade?: (direction: 'BUY' | 'SELL', entryPrice?: number) => void;
+  currentPrice?: number;
 }
 
 const TIMEFRAMES: Timeframe[] = ['M1', 'M5', 'M15', 'M30', 'H1', 'H4', 'D1', 'W1', 'MN'];
@@ -64,6 +66,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
   onAskPakar,
   language = 'ms',
   onExecuteTrade,
+  currentPrice: currentPriceProp,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartInstanceRef = useRef<IChartApi | null>(null);
@@ -322,6 +325,21 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
 
   // Direct On-Chart Trade Execution Handler (BUY/SELL)
   const handleChartDirectExecute = (direction: 'BUY' | 'SELL') => {
+    const currentMarketStatus = getMarketStatus(pair);
+    if (!currentMarketStatus.isOpen) {
+      setExecutionToast({
+        show: true,
+        type: 'CLOSE',
+        pair,
+        entry: 0,
+        sl: 0,
+        tp: 0,
+        customMsg: language === 'ms' ? currentMarketStatus.detailedNoticeMs : currentMarketStatus.detailedNoticeEn
+      });
+      setTimeout(() => setExecutionToast(null), 5000);
+      return;
+    }
+
     const latestCandle = candles[candles.length - 1];
     const currentMarketPrice = latestCandle ? latestCandle.close : (aiOpportunity?.entryPrice || 1.0);
     const targetEntry = currentMarketPrice;
@@ -429,6 +447,21 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
 
   // 1-Click AI Setup Execution Handler
   const handleExecuteAiSetup = () => {
+    const currentMarketStatus = getMarketStatus(pair);
+    if (!currentMarketStatus.isOpen) {
+      setExecutionToast({
+        show: true,
+        type: 'CLOSE',
+        pair,
+        entry: 0,
+        sl: 0,
+        tp: 0,
+        customMsg: language === 'ms' ? currentMarketStatus.detailedNoticeMs : currentMarketStatus.detailedNoticeEn
+      });
+      setTimeout(() => setExecutionToast(null), 5000);
+      return;
+    }
+
     if (!aiOpportunity) {
       alert('Tiada Setup AI aktif untuk mata wang ini.');
       return;
@@ -960,9 +993,12 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
   }, [candles, aiOpportunity, showOverlays, customSlPips, customTpPips, customSlPriceVal, customTpPriceVal]);
 
   const meta = getPairMeta(pair);
+  const marketStatus = getMarketStatus(pair);
 
-  const currentPrice = candles && candles.length > 0 ? candles[candles.length - 1].close : 1.0;
-  const percentChange = calculate24hRollingChange(candles, currentPrice);
+  const activeSpotPrice = (typeof currentPriceProp === 'number' && currentPriceProp > 0)
+    ? currentPriceProp
+    : (candles && candles.length > 0 ? candles[candles.length - 1].close : (PAIR_CONFIGS[pair]?.basePrice || 1.08500));
+  const percentChange = calculate24hRollingChange(candles, activeSpotPrice);
   const isPositive = percentChange >= 0;
 
   const formatPriceParts = (price: number, p: CurrencyPair) => {
@@ -980,7 +1016,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
     return { main: str, fractional: '' };
   };
 
-  const { main, fractional } = formatPriceParts(currentPrice, pair);
+  const { main, fractional } = formatPriceParts(activeSpotPrice, pair);
 
   // Live Manual Entry Calculated Metrics
   const liveRrRatio = customSlPips > 0 ? (customTpPips / customSlPips).toFixed(2) : '1.00';
@@ -1035,6 +1071,31 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
                 </span>
               </div>
             </div>
+          </div>
+
+          {/* Market Status & Weekend Schedule Badge */}
+          <div className="flex items-center">
+            {marketStatus.isOpen ? (
+              <span className={`px-3 py-1.5 rounded-full text-xs font-mono font-bold flex items-center gap-1.5 border shadow-sm ${
+                marketStatus.isCrypto 
+                  ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40' 
+                  : 'bg-cyan-500/15 text-cyan-300 border-cyan-500/40'
+              }`}>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>{language === 'ms' ? marketStatus.badgeLabelMs : marketStatus.badgeLabelEn}</span>
+              </span>
+            ) : (
+              <span 
+                className="px-3 py-1.5 rounded-full text-xs font-mono font-bold flex items-center gap-1.5 border shadow-sm bg-rose-500/20 text-rose-300 border-rose-500/50"
+                title={language === 'ms' ? marketStatus.detailedNoticeMs : marketStatus.detailedNoticeEn}
+              >
+                <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping"></span>
+                <span>{language === 'ms' ? '🔴 PASARAN TUTUP (Hujung Minggu)' : '🔴 MARKET CLOSED (Weekend)'}</span>
+                <span className="text-[10px] text-rose-200/80 font-normal hidden sm:inline">
+                  • Buka: {marketStatus.formattedNextOpenMs}
+                </span>
+              </span>
+            )}
           </div>
 
           {/* Direct On-Header Instant Execution & Broker Panel (Standard One-Click Style) */}

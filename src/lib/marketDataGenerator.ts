@@ -3,7 +3,7 @@ import { MarketDataEnvelope, MarketDataMode } from '@iati/core-types';
 import { buildMarketDataEnvelope } from '@iati/core/marketDataValidator';
 
 export const PAIR_CONFIGS: Record<CurrencyPair, { basePrice: number; decimals: number; pipValue: number; pipMultiplier: number }> = {
-  'EUR/USD': { basePrice: 1.16600, decimals: 5, pipValue: 10, pipMultiplier: 10000 },
+  'EUR/USD': { basePrice: 1.08500, decimals: 5, pipValue: 10, pipMultiplier: 10000 },
   'GBP/USD': { basePrice: 1.36300, decimals: 5, pipValue: 10, pipMultiplier: 10000 },
   'USD/JPY': { basePrice: 159.280, decimals: 3, pipValue: 6.5, pipMultiplier: 100 },
   'AUD/USD': { basePrice: 0.71500, decimals: 5, pipValue: 10, pipMultiplier: 10000 },

@@ -27,6 +27,7 @@ import { executionRouter as executionApiRouter, sharedAutoTraderState } from "./
 import { observabilityRouter } from "./src/server/routes/observability";
 import { adminRouter } from "./src/server/routes/admin";
 import shadowTestRouter from "./src/server/routes/shadowTest";
+import { copierRouter } from "./src/server/routes/copier";
 import { backtestEngine } from "./apps/decision-agent/src/services/backtestEngine";
 import { aiDecisionEngine } from "./apps/decision-agent/src/services/aiDecisionEngine";
 import { learningService } from "./src/server/services/learningService";
@@ -83,6 +84,7 @@ async function startServer() {
   app.use("/api", observabilityRouter);
   app.use("/api/admin", adminRouter);
   app.use("/api/shadow", shadowTestRouter);
+  app.use("/api", copierRouter);
 
   // Direct top-level scanner status & trigger routes
   app.get("/api/autotrader/scanner/status", async (req, res) => {

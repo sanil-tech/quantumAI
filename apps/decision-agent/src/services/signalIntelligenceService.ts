@@ -116,7 +116,7 @@ export class SignalIntelligenceService {
       pair === 'USD/CAD' ? 1.39500 :
       pair === 'AUD/USD' ? 0.71500 :
       pair === 'NZD/USD' ? 0.58500 :
-      1.16600
+      1.08500
     );
 
     const rsi = Number(indicators.rsi) || 50;

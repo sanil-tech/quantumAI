@@ -12,6 +12,10 @@ import { TradingRepository } from '@iati/database';
 import { CTraderAdapter } from '../../../apps/execution-router/src/adapters/ctraderAdapter';
 
 import { SignalIntelligenceService } from '../../../apps/decision-agent/src/services/signalIntelligenceService';
+import { EconomicContextService } from './economicContextService';
+import { economicCalendarProvider } from './economicCalendarProvider';
+import { telegramNotificationService } from './telegramNotificationService';
+import { getMarketStatus } from '../../lib/marketHours';
 
 export interface DiscoveredSetup {
   id: string;
@@ -25,7 +29,7 @@ export interface DiscoveredSetup {
   takeProfit1: number;
   reasons: string[];
   pattern?: DetectedChartPattern;
-  status: 'EXECUTED' | 'SKIPPED_ALREADY_OPEN' | 'SKIPPED_PENDING_ORDER_EXISTS' | 'SKIPPED_COOLDOWN' | 'SKIPPED_RISK' | 'FAILED' | 'DISCOVERED' | 'INVALID' | 'EXPIRED';
+  status: 'EXECUTED' | 'SKIPPED_ALREADY_OPEN' | 'SKIPPED_PENDING_ORDER_EXISTS' | 'SKIPPED_COOLDOWN' | 'SKIPPED_RISK' | 'SKIPPED_ECONOMIC_EVENT' | 'SKIPPED_MARKET_CLOSED' | 'FAILED' | 'DISCOVERED' | 'INVALID' | 'EXPIRED';
   executionDetails?: any;
   isValid?: boolean;
   invalidatedAt?: number;
@@ -578,6 +582,59 @@ export class AutonomousMarketScannerService extends EventEmitter {
         }
       }
 
+      // 8. Enforce Real-Time Global Economic Calendar & News Blackout Defense (±30m)
+      economicCalendarProvider.getWeeklyEvents();
+      const econEval = EconomicContextService.evaluateEconomicContext({
+        symbol: pairKey,
+        windowMinutes: 30
+      });
+
+      if (!econEval.decisionAllowed || econEval.hasHighImpactEventActive) {
+        console.log(`🛡️ [AutonomousMarketScanner] Economic Veto Active for ${pair}: ${econEval.reason} (High-impact news active in ±30m window). No cTrader order.`);
+        const item: DiscoveredSetup = {
+          id: setupId,
+          timestamp: Date.now(),
+          pair,
+          timeframe: best.timeframe,
+          direction: best.direction,
+          confidence: best.confidence,
+          entryPrice: best.entryPrice,
+          stopLoss: best.stopLoss,
+          takeProfit1: best.takeProfit1,
+          reasons: [`🔴 DIELAKKAN: Peristiwa Ekonomi Berimpak Tinggi (${econEval.reason}) dalam tempoh ±30m`, ...best.reasons],
+          pattern: best.pattern,
+          status: 'SKIPPED_ECONOMIC_EVENT',
+          isValid: true
+        };
+        if (existingIdx >= 0) this.discoveredSetups[existingIdx] = item;
+        else this.recordDiscoveredSetup(item);
+        return;
+      }
+
+      // 9. Enforce Weekend Market Hours Awareness (Forex/Metals/Indices closed, Crypto 24/7 active)
+      const marketStatus = getMarketStatus(pair);
+      if (!marketStatus.isOpen) {
+        console.log(`⏸️ [AutonomousMarketScanner] Market Closed for ${pair} (Weekend). Next open: ${marketStatus.formattedNextOpenEn}. No broker order.`);
+        const item: DiscoveredSetup = {
+          id: setupId,
+          timestamp: Date.now(),
+          pair,
+          timeframe: best.timeframe,
+          direction: best.direction,
+          confidence: best.confidence,
+          entryPrice: best.entryPrice,
+          stopLoss: best.stopLoss,
+          takeProfit1: best.takeProfit1,
+          reasons: [`🔴 PASARAN DITUTUP: Pasaran ${pair} ditutup untuk hujung minggu. Dibuka semula ${marketStatus.formattedNextOpenMs}.`, ...best.reasons],
+          pattern: best.pattern,
+          status: 'SKIPPED_MARKET_CLOSED',
+          isValid: true
+        };
+        if (existingIdx >= 0) this.discoveredSetups[existingIdx] = item;
+        else this.recordDiscoveredSetup(item);
+        return;
+      }
+
       // Set cooldown on this pair immediately
       this.cooldownLedger.set(pairKey, Date.now());
 
@@ -639,6 +696,21 @@ export class AutonomousMarketScannerService extends EventEmitter {
           this.discoveredSetups[updatedIdx] = discovered;
         }
         this.saveToDisk();
+
+        // Broadcast live institutional alert to Telegram / Webhook subscribers
+        telegramNotificationService.broadcastTradeEvent({
+          pair: best.pair || pair,
+          direction: best.direction,
+          timeframe: best.timeframe,
+          entryPrice: best.entryPrice,
+          stopLoss: best.stopLoss,
+          takeProfit1: best.takeProfit1,
+          confidence: best.confidence,
+          reasons: best.reasons,
+          brokerOrderId: orderResult.broker_order_id || orderResult.report_id,
+          lotSize: best.lotSize,
+          status: 'ENTRY_DISPATCHED'
+        }).catch(() => {});
       } catch (autoErr: any) {
         console.warn(`[AutonomousMarketScanner] Auto-dispatch notice for ${pair}:`, autoErr.message);
       }
@@ -696,6 +768,19 @@ export class AutonomousMarketScannerService extends EventEmitter {
       const indicators: IndicatorValues = calculateAllIndicators(candles);
       const smcData: SmcStructures = analyzeSmcStructures(candles, tf);
 
+      // Evaluate Real-Time Economic Context for this symbol
+      economicCalendarProvider.getWeeklyEvents();
+      const rawSym = pair.replace(/[\/\-_]/g, '').toUpperCase();
+      const econEval = EconomicContextService.evaluateEconomicContext({
+        symbol: rawSym,
+        windowMinutes: 30
+      });
+
+      const activeEventsSummary = econEval.activeEvents.map(e => `${e.title} (${e.impact}) @ ${e.time}`).join(', ');
+      const newsContextStr = econEval.hasHighImpactEventActive
+        ? `⚠️ HIGH IMPACT ECONOMIC EVENT ACTIVE (±30m blackout): ${activeEventsSummary || econEval.reason}`
+        : (activeEventsSummary ? `Upcoming events: ${activeEventsSummary}` : 'No immediate high impact news scheduled.');
+
       // PASS 1: Fast local quantitative SMC evaluation (0 Gemini API calls)
       const candidateSetup = SignalIntelligenceService.getInstance().evaluateCandidateSetup({
         pair,
@@ -704,6 +789,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
         currentPrice,
         indicators,
         smc: smcData,
+        newsContext: newsContextStr,
         postMortemReviews: aiDecisionEngine.getPostMortemReviews()
       });
 
@@ -748,6 +834,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
           reasons: candidateSetup.reasons || [],
           indicators,
           smc: smcData,
+          newsContext: newsContextStr,
           postMortemReviews: aiDecisionEngine.getPostMortemReviews()
         }).catch(err => {
           console.warn(`[AutonomousMarketScanner] Second opinion failed for ${pair} ${tf}:`, err.message);
