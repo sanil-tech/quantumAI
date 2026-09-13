@@ -11,6 +11,7 @@ import { DemoTraderCommandCenter } from './DemoTraderCommandCenter';
 import { EconomicCalendarWidget } from './EconomicCalendarWidget';
 import { InteractiveTradeStatisticsCockpit } from './InteractiveTradeStatisticsCockpit';
 import { CTraderBrokerConnectionHub } from './CTraderBrokerConnectionHub';
+import { CommercialOnboardingModal } from './onboarding/CommercialOnboardingModal';
 
 interface UserDashboardProps {
   currentPrice: number;
@@ -56,6 +57,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   onLogToJournal
 }) => {
   const [activeTab, setActiveTab] = useState<'TERMINAL' | 'STATISTICS' | 'ECONOMIC_CALENDAR' | 'BROKER_CONNECT'>('TERMINAL');
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(false);
 
   // Broker and Trader State from Backend
   const [brokerConn, setBrokerConn] = useState<any>({
@@ -336,75 +338,100 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
 
             <button
               onClick={() => setActiveTab('BROKER_CONNECT')}
-              className={`px-4 py-2 rounded-lg text-xs font-black transition flex items-center gap-2 cursor-pointer ${
-                activeTab === 'BROKER_CONNECT'
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-950/50'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Cpu className="w-3.5 h-3.5 text-purple-300" />
-              <span>4. Pautan Broker &amp; Profil</span>
-            </button>
-          </div>
+                className={`px-4 py-2 rounded-lg text-xs font-black transition flex items-center gap-2 cursor-pointer ${
+                  activeTab === 'BROKER_CONNECT'
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-950/50'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Cpu className="w-3.5 h-3.5 text-purple-300" />
+                <span>4. Pautan Broker &amp; Profil</span>
+              </button>
+            </div>
 
-          <div className="hidden sm:flex items-center gap-2 font-mono text-[11px] text-slate-400">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>Kesesuaian Pelanggan: <strong className="text-emerald-400">100% Non-Custodial &amp; Zero Lock-in</strong></span>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsOnboardingOpen(true)}
+                className="px-3 py-1.5 rounded-lg text-xs font-black bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white shadow-md shadow-emerald-950/50 transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                <span>🚀 Panduan Pengguna Baharu</span>
+              </button>
+
+              <div className="hidden sm:flex items-center gap-2 font-mono text-[11px] text-slate-400">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span>Kesesuaian: <strong className="text-emerald-400">100% Non-Custodial</strong></span>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* ========================================================================= */}
-      {/* 3. TAB 1: TERMINAL AI LIVE (FULL COMMAND CENTER WITH ZERO DUPLICATION)    */}
-      {/* ========================================================================= */}
-      {activeTab === 'TERMINAL' && (
-        <DemoTraderCommandCenter
-          currentPrice={currentPrice}
-          activePair={activePair}
-          setActivePair={setActivePair}
-          candles={candles}
-          candleSource={candleSource}
-          indicators={indicators}
-          smcData={smcData}
-          srZones={srZones}
-          aiOpportunity={aiOpportunity}
-          aiLoading={aiLoading}
-          onRefreshData={onRefreshData}
-          onOpenBrokerModal={onOpenBrokerModal}
-          timeframe={timeframe}
-          setTimeframe={setTimeframe}
+        {/* ========================================================================= */}
+        {/* 3. TAB 1: TERMINAL AI LIVE (FULL COMMAND CENTER WITH ZERO DUPLICATION)    */}
+        {/* ========================================================================= */}
+        {activeTab === 'TERMINAL' && (
+          <DemoTraderCommandCenter
+            currentPrice={currentPrice}
+            activePair={activePair}
+            setActivePair={setActivePair}
+            candles={candles}
+            candleSource={candleSource}
+            indicators={indicators}
+            smcData={smcData}
+            srZones={srZones}
+            aiOpportunity={aiOpportunity}
+            aiLoading={aiLoading}
+            onRefreshData={onRefreshData}
+            onOpenBrokerModal={onOpenBrokerModal}
+            timeframe={timeframe}
+            setTimeframe={setTimeframe}
+            language={isMalay ? 'ms' : 'en'}
+          />
+        )}
+
+        {/* ========================================================================= */}
+        {/* 4. TAB 2: VERIFIED TRACK RECORD & INSTITUTIONAL PERFORMANCE COCKPIT       */}
+        {/* ========================================================================= */}
+        {activeTab === 'STATISTICS' && (
+          <InteractiveTradeStatisticsCockpit onRefreshTriggered={fetchDashboardState} />
+        )}
+
+        {/* ========================================================================= */}
+        {/* 5. TAB 3: LIVE ECONOMIC CALENDAR & MACRO RISK                             */}
+        {/* ========================================================================= */}
+        {activeTab === 'ECONOMIC_CALENDAR' && (
+          <EconomicCalendarWidget
+            events={economicEvents}
+            language={isMalay ? 'ms' : 'en'}
+            onRefresh={fetchDashboardState}
+          />
+        )}
+
+        {/* ========================================================================= */}
+        {/* 6. TAB 4: BROKER INTEGRATION & CLIENT PROFILE SETTINGS                     */}
+        {/* ========================================================================= */}
+        {activeTab === 'BROKER_CONNECT' && (
+          <CTraderBrokerConnectionHub
+            language={isMalay ? 'ms' : 'en'}
+            onOpenBrokerModal={onOpenBrokerModal}
+            onNavigateTab={(tab) => setActiveTab(tab)}
+          />
+        )}
+
+        {/* ========================================================================= */}
+        {/* 7. COMMERCIAL ONBOARDING MODAL WIZARD (5-STEP SUBSCRIBER ONBOARDING)      */}
+        {/* ========================================================================= */}
+        <CommercialOnboardingModal
+          isOpen={isOnboardingOpen}
+          onClose={() => setIsOnboardingOpen(false)}
           language={isMalay ? 'ms' : 'en'}
-        />
-      )}
-
-      {/* ========================================================================= */}
-      {/* 4. TAB 2: VERIFIED TRACK RECORD & INSTITUTIONAL PERFORMANCE COCKPIT       */}
-      {/* ========================================================================= */}
-      {activeTab === 'STATISTICS' && (
-        <InteractiveTradeStatisticsCockpit onRefreshTriggered={fetchDashboardState} />
-      )}
-
-      {/* ========================================================================= */}
-      {/* 5. TAB 3: LIVE ECONOMIC CALENDAR & MACRO RISK                             */}
-      {/* ========================================================================= */}
-      {activeTab === 'ECONOMIC_CALENDAR' && (
-        <EconomicCalendarWidget
-          events={economicEvents}
-          language={isMalay ? 'ms' : 'en'}
-          onRefresh={fetchDashboardState}
-        />
-      )}
-
-      {/* ========================================================================= */}
-      {/* 6. TAB 4: BROKER INTEGRATION & CLIENT PROFILE SETTINGS                     */}
-      {/* ========================================================================= */}
-      {activeTab === 'BROKER_CONNECT' && (
-        <CTraderBrokerConnectionHub
-          language={isMalay ? 'ms' : 'en'}
-          onOpenBrokerModal={onOpenBrokerModal}
+          onComplete={(cfg) => {
+            fetchDashboardState();
+            setActiveTab('TERMINAL');
+          }}
           onNavigateTab={(tab) => setActiveTab(tab)}
         />
-      )}
-    </div>
-  );
-};
+      </div>
+    );
+  };
