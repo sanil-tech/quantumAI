@@ -16,6 +16,60 @@ export class ExecutionRouter {
   public orderManager = new OrderManager();
   public defaultBrokerId = DEFAULT_BROKER_ID;
 
+  // Global & Per-Tenant Kill Switch Governance
+  private isArmed: boolean = true;
+  private disarmReason?: string;
+  private disarmedAt?: Date;
+  private tenantKillSwitches: Map<string, { isArmed: boolean; disarmedAt?: Date; reason?: string }> = new Map();
+
+  public arm(tenantId?: string): void {
+    if (tenantId) {
+      this.tenantKillSwitches.set(tenantId, { isArmed: true });
+      logger.info(`[ExecutionRouter] Tenant ${tenantId} execution engine ARMED.`);
+    } else {
+      this.isArmed = true;
+      this.disarmReason = undefined;
+      this.disarmedAt = undefined;
+      logger.info(`[ExecutionRouter] Global execution engine ARMED.`);
+    }
+  }
+
+  public disarm(tenantId?: string, reason?: string): void {
+    const disarmTimestamp = new Date();
+    const disarmMsg = reason || 'Administrative kill switch triggered';
+    if (tenantId) {
+      this.tenantKillSwitches.set(tenantId, {
+        isArmed: false,
+        disarmedAt: disarmTimestamp,
+        reason: disarmMsg
+      });
+      logger.warn(`[ExecutionRouter] ⚠️ KILL SWITCH ACTIVATED: Tenant ${tenantId} DISARMED. Reason: ${disarmMsg}`);
+    } else {
+      this.isArmed = false;
+      this.disarmReason = disarmMsg;
+      this.disarmedAt = disarmTimestamp;
+      logger.warn(`[ExecutionRouter] 🚨 GLOBAL KILL SWITCH ACTIVATED: Execution router DISARMED. Reason: ${disarmMsg}`);
+    }
+  }
+
+  public getKillSwitchState(): {
+    isGlobalArmed: boolean;
+    disarmedAt?: Date;
+    reason?: string;
+    tenantStates: Record<string, { isArmed: boolean; disarmedAt?: Date; reason?: string }>;
+  } {
+    const tenantStates: Record<string, { isArmed: boolean; disarmedAt?: Date; reason?: string }> = {};
+    for (const [tId, state] of this.tenantKillSwitches.entries()) {
+      tenantStates[tId] = state;
+    }
+    return {
+      isGlobalArmed: this.isArmed,
+      disarmedAt: this.disarmedAt,
+      reason: this.disarmReason,
+      tenantStates
+    };
+  }
+
   constructor() {
     const paperAdapter = new PaperBrokerAdapter();
     const ctraderAdapter = new CTraderAdapter();
@@ -75,6 +129,18 @@ export class ExecutionRouter {
     });
 
     try {
+      // 0. MANDATORY KILL SWITCH CHECK: Reject immediately if disarmed
+      if (!this.isArmed) {
+        observabilityService.metrics.incCounter('execution_failure_total');
+        throw new Error(`Execution Router Violation: KILL_SWITCH_ACTIVE. Global execution router is DISARMED (${this.disarmReason || 'Emergency halt'}).`);
+      }
+      const tenantId = (payload as any).tenantId || (payload as any).tenant_id || (token as any)?.tenantId;
+      if (tenantId && this.tenantKillSwitches.get(tenantId)?.isArmed === false) {
+        observabilityService.metrics.incCounter('execution_failure_total');
+        const tReason = this.tenantKillSwitches.get(tenantId)?.reason || 'Tenant execution halted';
+        throw new Error(`Execution Router Violation: KILL_SWITCH_ACTIVE. Tenant ${tenantId} is DISARMED (${tReason}).`);
+      }
+
       // MANDATORY EXECUTION INVARIANT: NO VALID RiskApprovalToken = NO EXECUTION
       if (!token) {
         observabilityService.metrics.incCounter('execution_failure_total');

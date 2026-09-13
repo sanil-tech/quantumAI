@@ -3,9 +3,11 @@ import {
   Zap, ShieldCheck, AlertTriangle, Activity, Bot, Cpu, Key, UserCheck, 
   BarChart3, RefreshCw, Layers, CheckCircle, XCircle, Terminal, Play, Pause,
   DollarSign, Sliders, Server, Lock, TrendingUp, TrendingDown, History,
-  Flame, Target, Award, BookOpen, Cloud, ArrowUpRight, ArrowDownRight, PieChart, Database, Filter
+  Flame, Target, Award, BookOpen, Cloud, ArrowUpRight, ArrowDownRight, PieChart, Database, Filter,
+  ShieldAlert, Users
 } from 'lucide-react';
 import { AdminTradingCenter } from './AdminTradingCenter';
+import { SuperAdminDashboard } from './SuperAdminDashboard';
 
 interface AdminDeveloperDashboardProps {
   isMalay: boolean;
@@ -16,7 +18,7 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
   isMalay,
   onOpenBrokerModal
 }) => {
-  const [adminSection, setAdminSection] = useState<'GOVERNANCE' | 'BRIDGE_DIAGNOSTICS'>('GOVERNANCE');
+  const [adminSection, setAdminSection] = useState<'SUPER_ADMIN' | 'GOVERNANCE' | 'BRIDGE_DIAGNOSTICS'>('SUPER_ADMIN');
   // Admin Global States
   const [maxGlobalLot, setMaxGlobalLot] = useState(1.00);
   const [maxDailyLoss, setMaxDailyLoss] = useState(500);
@@ -183,7 +185,18 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
       </div>
 
       {/* Admin Sub-Section Switcher Bar */}
-      <div className="flex items-center gap-2 p-1.5 bg-slate-900 border border-slate-800 rounded-xl shadow">
+      <div className="flex items-center gap-2 p-1.5 bg-slate-900 border border-slate-800 rounded-xl shadow flex-wrap">
+        <button
+          onClick={() => setAdminSection('SUPER_ADMIN')}
+          className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 ${
+            adminSection === 'SUPER_ADMIN'
+              ? 'bg-indigo-600 text-white shadow-lg'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800'
+          }`}
+        >
+          <ShieldAlert className="w-4 h-4" />
+          <span>{isMalay ? 'Pusat Kawalan Super-Admin (Multi-Tenant & Telemetri)' : 'Super-Admin Multi-Tenant Hub & Telemetry'}</span>
+        </button>
         <button
           onClick={() => setAdminSection('GOVERNANCE')}
           className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 ${
@@ -208,7 +221,9 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
         </button>
       </div>
 
-      {adminSection === 'GOVERNANCE' ? (
+      {adminSection === 'SUPER_ADMIN' ? (
+        <SuperAdminDashboard isMalay={isMalay} onOpenBrokerModal={onOpenBrokerModal} />
+      ) : adminSection === 'GOVERNANCE' ? (
         <AdminTradingCenter isMalay={isMalay} />
       ) : (
         <>
