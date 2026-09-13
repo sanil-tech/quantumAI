@@ -153,7 +153,9 @@ export class CTraderMarketDataFeedService extends EventEmitter {
     super();
     this.initDefaultSpots();
     this.setupTransportListeners();
-    this.startHealthWatchdog();
+    if (process.env.NODE_ENV !== 'test') {
+      this.startHealthWatchdog();
+    }
   }
 
   public static getInstance(): CTraderMarketDataFeedService {
@@ -303,6 +305,9 @@ export class CTraderMarketDataFeedService extends EventEmitter {
     this.watchdogTimer = setInterval(() => {
       this.evaluateFeedHealth();
     }, 3000);
+    if (this.watchdogTimer.unref) {
+      this.watchdogTimer.unref();
+    }
   }
 
   public stopHealthWatchdog(): void {

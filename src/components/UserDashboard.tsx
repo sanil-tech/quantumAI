@@ -402,6 +402,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
         <CTraderBrokerConnectionHub
           language={isMalay ? 'ms' : 'en'}
           onOpenBrokerModal={onOpenBrokerModal}
+          onNavigateTab={(tab) => setActiveTab(tab)}
         />
       )}
     </div>

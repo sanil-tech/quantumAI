@@ -46,9 +46,14 @@ ctraderMarketDataFeedService.on('liveAccountUpdate', (status) => {
 });
 
 // Start continuous 3-second live account sync loop
-setInterval(() => {
-  ctraderMarketDataFeedService.fetchLiveAccountStatus().catch(() => {});
-}, 3000);
+if (process.env.NODE_ENV !== 'test') {
+  const syncInterval = setInterval(() => {
+    ctraderMarketDataFeedService.fetchLiveAccountStatus().catch(() => {});
+  }, 3000);
+  if (syncInterval.unref) {
+    syncInterval.unref();
+  }
+}
 
 export const serverBridgeHeartbeat = {
   lastHeartbeatAt: Date.now(),
