@@ -1,6 +1,63 @@
 import { pgTable, varchar, text, numeric, integer, boolean, timestamp, jsonb, bigint, index, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
-// 0. Multi-Tenant Broker Connections Table (Secure Encrypted Credential Vault)
+// 0a. Multi-Tenant Tenants Table
+export const tenants = pgTable('tenants', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: varchar('name', { length: 255 }).notNull(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  status: varchar('status', { length: 32 }).notNull().default('ACTIVE'), // 'ACTIVE' | 'SUSPENDED' | 'CANCELLED' | 'PENDING'
+  tier: varchar('tier', { length: 32 }).notNull().default('PRO'),      // 'STARTER' | 'PRO' | 'ENTERPRISE'
+  maxAccounts: integer('max_accounts').notNull().default(1),
+  maxRiskCap: numeric('max_risk_cap', { precision: 5, scale: 2 }).notNull().default('2.00'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow()
+}, (table) => {
+  return {
+    emailIdx: index('idx_tenants_email').on(table.email),
+    statusIdx: index('idx_tenants_status').on(table.status)
+  };
+});
+
+// 0b. Subscriptions Table
+export const subscriptions = pgTable('subscriptions', {
+  id: varchar('id', { length: 64 }).primaryKey(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  stripeCustomerId: varchar('stripe_customer_id', { length: 128 }).notNull(),
+  stripeSubscriptionId: varchar('stripe_subscription_id', { length: 128 }).unique(),
+  planId: varchar('plan_id', { length: 64 }).notNull(),
+  status: varchar('status', { length: 32 }).notNull().default('ACTIVE'), // 'ACTIVE' | 'TRIALING' | 'PAST_DUE' | 'CANCELLED' | 'UNPAID'
+  currentPeriodEnd: timestamp('current_period_end', { withTimezone: true }),
+  cancelAtPeriodEnd: boolean('cancel_at_period_end').default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow()
+}, (table) => {
+  return {
+    tenantIdx: index('idx_subscriptions_tenant').on(table.tenantId),
+    stripeCustIdx: index('idx_subscriptions_stripe_cust').on(table.stripeCustomerId),
+    stripeSubIdx: index('idx_subscriptions_stripe_sub').on(table.stripeSubscriptionId)
+  };
+});
+
+// 0c. Webhook Inbox Table (Idempotent Event Log)
+export const webhookInbox = pgTable('webhook_inbox', {
+  id: varchar('id', { length: 64 }).primaryKey(),
+  eventId: varchar('event_id', { length: 128 }).notNull(),
+  provider: varchar('provider', { length: 32 }).notNull().default('STRIPE'),
+  eventType: varchar('event_type', { length: 128 }).notNull(),
+  payload: jsonb('payload').notNull(),
+  status: varchar('status', { length: 32 }).notNull().default('PENDING'), // 'PENDING' | 'PROCESSED' | 'FAILED' | 'DUPLICATE'
+  processedAt: timestamp('processed_at', { withTimezone: true }),
+  errorMessage: text('error_message'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow()
+}, (table) => {
+  return {
+    providerEventIdx: uniqueIndex('uq_webhook_inbox_provider_event').on(table.provider, table.eventId),
+    statusIdx: index('idx_webhook_inbox_status').on(table.status),
+    createdAtIdx: index('idx_webhook_inbox_created_at').on(table.createdAt)
+  };
+});
+
+// 0d. Multi-Tenant Broker Connections Table (Secure Encrypted Credential Vault)
 export const brokerConnections = pgTable('broker_connections', {
   id: varchar('id', { length: 64 }).primaryKey(),
   tenantId: uuid('tenant_id').notNull().default('00000000-0000-0000-0000-000000000000'),

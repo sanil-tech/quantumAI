@@ -26,6 +26,7 @@ import { brokerRouter, serverBrokerConnection } from "./src/server/routes/broker
 import { executionRouter as executionApiRouter, sharedAutoTraderState } from "./src/server/routes/execution";
 import { observabilityRouter } from "./src/server/routes/observability";
 import { adminRouter } from "./src/server/routes/admin";
+import { billingRouter } from "./src/server/routes/billing";
 import shadowTestRouter from "./src/server/routes/shadowTest";
 import { copierRouter } from "./src/server/routes/copier";
 import { backtestEngine } from "./apps/decision-agent/src/services/backtestEngine";
@@ -77,12 +78,13 @@ async function startServer() {
   app.use("/api/forex", decisionRouter);
   app.use("/api", decisionRouter);
 
-  // Risk Governance, Broker Integration, Execution, Observability, and Admin Data Governance Routers
+  // Risk Governance, Broker Integration, Execution, Observability, Admin, and Billing Routers
   app.use("/api", riskRouter);
   app.use("/api", brokerRouter);
   app.use("/api", executionApiRouter);
   app.use("/api", observabilityRouter);
   app.use("/api/admin", adminRouter);
+  app.use("/api/billing", billingRouter);
   app.use("/api/shadow", shadowTestRouter);
   app.use("/api", copierRouter);
 
