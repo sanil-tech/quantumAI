@@ -298,7 +298,7 @@ export const CTraderBrokerConnectionHub: React.FC<CTraderBrokerConnectionHubProp
                 </span>
               </h3>
               <p className="text-xs text-slate-300 mt-0.5">
-                cTrader ialah platform dagangan ECN profesional. Anda boleh membuka akaun demo percuma tanpa sebarang deposit dalam 3 langkah:
+                cTrader ialah platform dagangan ECN profesional terpantas. Anda boleh membuka akaun demo percuma tanpa sebarang deposit dalam 3 langkah mudah:
               </p>
             </div>
           </div>
@@ -321,28 +321,72 @@ export const CTraderBrokerConnectionHub: React.FC<CTraderBrokerConnectionHubProp
               <span>Daftar / Buka cTrader</span>
             </div>
             <p className="text-[11px] text-slate-300 leading-relaxed">
-              Layari <strong className="text-white">app.ctrader.com</strong> atau muat turun aplikasi cTrader daripada broker pilihan anda (cth: Pepperstone / IC Markets).
+              Layari <strong className="text-white">app.ctrader.com</strong> atau aplikasi broker (Pepperstone, IC Markets, FxPro). Daftar menggunakan email anda dalam 30 saat.
             </p>
           </div>
 
           <div className="p-3.5 bg-slate-950/80 border border-slate-800 rounded-xl space-y-1.5">
             <div className="flex items-center gap-2 text-indigo-400 font-bold">
               <span className="w-5 h-5 rounded-full bg-indigo-500/20 flex items-center justify-center text-xs">2</span>
-              <span>Dapatkan No. Akaun &amp; cID</span>
+              <span>Salin Kredensial Akaun</span>
             </div>
             <p className="text-[11px] text-slate-300 leading-relaxed">
-              Buka akaun Demo percuma. Salin nombor akaun anda di sudut atas kiri (contoh: <strong className="text-emerald-400">#5881460</strong>).
+              Buka akaun Demo. Pergi ke <strong className="text-white">Settings ⚙️ ➔ FIX API</strong> dan tekan butang hijau <strong className="text-emerald-400 font-bold">"Copy"</strong>.
             </p>
           </div>
 
           <div className="p-3.5 bg-slate-950/80 border border-slate-800 rounded-xl space-y-1.5">
             <div className="flex items-center gap-2 text-emerald-400 font-bold">
               <span className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center text-xs">3</span>
-              <span>Sambungkan ke QuantumAI</span>
+              <span>Tampal &amp; Mula Dagang</span>
             </div>
             <p className="text-[11px] text-slate-300 leading-relaxed">
-              Masukkan nombor akaun pada Wizard di bawah. Selesai! Isyarat AI dan analitik akan disegerakkan secara langsung.
+              Tampal pada kotak <strong className="text-purple-300">Auto-Fill Pintar</strong> di bawah. QuantumAI akan menghubungkan akaun dan memulakan analisa AI secara langsung.
             </p>
+          </div>
+        </div>
+      </div>
+
+      {/* INTERACTIVE VISUAL LOCATOR: DI MANA NAK CARI KREDENSIAL PADA CTRADER ANDA */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2.5">
+            <HelpCircle className="w-5 h-5 text-amber-400" />
+            <h3 className="text-sm font-bold text-white">
+              Panduan Bergambar: Di Mana Nak Cari Maklumat Kredensial Ini Pada Aplikasi cTrader Anda?
+            </h3>
+          </div>
+          <span className="text-[10px] font-mono bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded font-bold">
+            PANDUAN LANGKAH DEMI LANGKAH
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-mono">
+          <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+            <span className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+              <span>📍 Langkah A: Buka Tetapan (Settings)</span>
+            </span>
+            <div className="p-2.5 bg-slate-900/90 rounded-lg text-[11px] text-slate-300 border border-slate-800 space-y-1">
+              <p>Pada aplikasi cTrader anda (Desktop / Web), cari ikon <strong className="text-white">Settings ⚙️</strong> di bar sisi kiri bahagian paling bawah.</p>
+            </div>
+          </div>
+
+          <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+            <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+              <span>📍 Langkah B: Pilih Tab "FIX API"</span>
+            </span>
+            <div className="p-2.5 bg-slate-900/90 rounded-lg text-[11px] text-slate-300 border border-slate-800 space-y-1">
+              <p>Klik pada menu <strong className="text-white">"FIX API"</strong> di bawah kategori <em>Account</em>. Anda akan melihat tetingkap <em>FIX API (a/c 5912914 Hedging)</em>.</p>
+            </div>
+          </div>
+
+          <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+            <span className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+              <span>📍 Langkah C: Tekan Butang Hijau "Copy"</span>
+            </span>
+            <div className="p-2.5 bg-slate-900/90 rounded-lg text-[11px] text-slate-300 border border-slate-800 space-y-1">
+              <p>Tekan butang hijau <strong className="text-emerald-400">"Copy"</strong> pada bahagian <em>Trade Connection</em> dan tampal teks tersebut terus ke kotak ungu di bawah!</p>
+            </div>
           </div>
         </div>
       </div>
