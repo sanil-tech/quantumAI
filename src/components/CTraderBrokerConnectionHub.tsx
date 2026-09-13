@@ -133,12 +133,16 @@ export const CTraderBrokerConnectionHub: React.FC<CTraderBrokerConnectionHubProp
     setFeedbackMsg(null);
     try {
       const payload = {
-        platform: 'CTRADER',
-        brokerName: CTRADER_BROKERS.find(b => b.id === selectedBroker)?.name || 'Spotware cTrader Open API',
+        platform: connectionMethod === 'FIX_PROTOCOL' ? 'CTRADER_FIX' : 'CTRADER',
+        connectionMethod,
+        brokerName: connectionMethod === 'FIX_PROTOCOL' ? 'Spotware cTrader FIX API' : (CTRADER_BROKERS.find(b => b.id === selectedBroker)?.name || 'Spotware cTrader Open API'),
         accountNumber: inputAccountId || '5881460',
+        ctidTraderAccountId: inputCtidId || inputAccountId || '48282756',
+        fixSenderCompId,
+        fixPassword,
         environment: accountEnvironment,
-        serverHost: accountEnvironment === 'REAL_LIVE' ? 'live.ctraderapi.com:5035' : 'demo.ctraderapi.com:5035',
-        customBalance: brokerData.liveBalance || 1225.43
+        serverHost: connectionMethod === 'FIX_PROTOCOL' ? 'demo-uk-eqx-01.p.c-trader.com:5212' : (accountEnvironment === 'REAL_LIVE' ? 'live.ctraderapi.com:5035' : 'demo.ctraderapi.com:5035'),
+        customBalance: brokerData.liveBalance || 1000.00
       };
 
       const res = await fetch('/api/broker/connect', {
@@ -151,7 +155,7 @@ export const CTraderBrokerConnectionHub: React.FC<CTraderBrokerConnectionHubProp
       if (data && data.success) {
         setFeedbackMsg({
           type: 'success',
-          text: `Berjaya menghubungkan Akaun cTrader #${inputAccountId || '5881460'}! Suapan langsung aktif.`
+          text: data.message || `Berjaya menghubungkan Akaun cTrader #${inputAccountId || '5881460'}! Suapan langsung aktif.`
         });
         setConnectionLogs(prev => [
           `[${new Date().toLocaleTimeString('ms-MY')}] Sambungan Baharu Ditetapkan: cTrader #${inputAccountId || '5881460'} (${accountEnvironment})`,
@@ -658,11 +662,18 @@ export const CTraderBrokerConnectionHub: React.FC<CTraderBrokerConnectionHubProp
                   const senderMatch = val.match(/SenderCompID:\s*([^\r\n]+)/i);
                   if (senderMatch && senderMatch[1]) {
                     setFixSenderCompId(senderMatch[1].trim());
+                    setConnectionMethod('FIX_PROTOCOL');
+                  }
+
+                  // Parse Password
+                  const passMatch = val.match(/Password:\s*\(([^)]+)\)/i) || val.match(/Password:\s*([^\r\n]+)/i);
+                  if (passMatch && passMatch[1] && !passMatch[1].includes('password')) {
+                    setFixPassword(passMatch[1].trim());
                   }
 
                   setFeedbackMsg({
                     type: 'success',
-                    text: `Berjaya mengekstrak No. Akaun #${accMatch ? accMatch[1] : '5912914'} daripada teks cTrader anda! Sila tekan Sahkan di bawah.`
+                    text: `✅ Kredensial FIX API Berjaya Dikesan! Akaun #${accMatch ? accMatch[1] : '5912914'}. Sila tekan butang hijau 'Sahkan & Hubungkan Akaun cTrader' di bawah.`
                   });
                 }}
                 className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-500"
