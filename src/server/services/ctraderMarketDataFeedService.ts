@@ -125,16 +125,16 @@ export class CTraderMarketDataFeedService extends EventEmitter {
 
   private initDefaultSpots(): void {
     const defaults: Record<CurrencyPair, number> = {
-      'EUR/USD': 1.08520,
-      'GBP/USD': 1.26400,
-      'EUR/JPY': 178.302,
-      'USD/JPY': 155.450,
-      'AUD/USD': 0.65200,
-      'USD/CHF': 0.88450,
-      'GBP/JPY': 196.420,
-      'USD/CAD': 1.39850,
-      'NZD/USD': 0.58900,
-      'XAU/USD': 2652.50,
+      'EUR/USD': 1.15380,
+      'GBP/USD': 1.34760,
+      'EUR/JPY': 178.680,
+      'USD/JPY': 154.850,
+      'AUD/USD': 0.71260,
+      'USD/CHF': 0.81690,
+      'GBP/JPY': 208.700,
+      'USD/CAD': 1.39000,
+      'NZD/USD': 0.57726,
+      'XAU/USD': 4270.00,
       'NASDAQ': 20850.0,
       'BTC/USD': 92450.0
     };
@@ -177,6 +177,37 @@ export class CTraderMarketDataFeedService extends EventEmitter {
     this.transport.on('spotEvent', (spotRecord) => {
       this.lastTransportActivityAt = Date.now();
       this.handleInboundSpot(spotRecord);
+    });
+
+    this.transport.on('executionEvent', async (eventRecord) => {
+      this.lastTransportActivityAt = Date.now();
+      this.logStructuredEvent('CTRADER_EXECUTION_EVENT_RECEIVED', {
+        executionType: eventRecord?.executionTypeName || eventRecord?.executionType,
+        symbol: eventRecord?.position?.symbolId || eventRecord?.order?.symbolId
+      });
+      try {
+        await this.fetchRawOpenPositions();
+        const { brokerReconciliationService } = await import('../../../apps/execution-router/src/services/brokerReconciliationService');
+        await brokerReconciliationService.reconcile(String(process.env.CTRADER_ACCOUNT_ID || '48282756'));
+      } catch (err: any) {
+        console.warn('[CTRADER-FEED] Auto-reconciliation on executionEvent warning:', err.message);
+      }
+    });
+
+    this.transport.on('orderFilled', async () => {
+      try {
+        await this.fetchRawOpenPositions();
+        const { brokerReconciliationService } = await import('../../../apps/execution-router/src/services/brokerReconciliationService');
+        await brokerReconciliationService.reconcile(String(process.env.CTRADER_ACCOUNT_ID || '48282756'));
+      } catch (_) {}
+    });
+
+    this.transport.on('orderCancelled', async () => {
+      try {
+        await this.fetchRawOpenPositions();
+        const { brokerReconciliationService } = await import('../../../apps/execution-router/src/services/brokerReconciliationService');
+        await brokerReconciliationService.reconcile(String(process.env.CTRADER_ACCOUNT_ID || '48282756'));
+      } catch (_) {}
     });
 
     this.transport.on('disconnect', () => {
@@ -299,6 +330,8 @@ export class CTraderMarketDataFeedService extends EventEmitter {
     }
   }
 
+  private reconciliationTimer: NodeJS.Timeout | null = null;
+
   public startHealthWatchdog(): void {
     if (this.watchdogTimer) return;
 
@@ -308,12 +341,31 @@ export class CTraderMarketDataFeedService extends EventEmitter {
     if (this.watchdogTimer.unref) {
       this.watchdogTimer.unref();
     }
+
+    if (!this.reconciliationTimer) {
+      this.reconciliationTimer = setInterval(async () => {
+        if (this.isFeedActive && this.isAccountAuthenticated) {
+          try {
+            await this.fetchRawOpenPositions();
+            const { brokerReconciliationService } = await import('../../../apps/execution-router/src/services/brokerReconciliationService');
+            await brokerReconciliationService.reconcile(String(process.env.CTRADER_ACCOUNT_ID || '48282756'));
+          } catch (_) {}
+        }
+      }, 10000);
+      if (this.reconciliationTimer.unref) {
+        this.reconciliationTimer.unref();
+      }
+    }
   }
 
   public stopHealthWatchdog(): void {
     if (this.watchdogTimer) {
       clearInterval(this.watchdogTimer);
       this.watchdogTimer = null;
+    }
+    if (this.reconciliationTimer) {
+      clearInterval(this.reconciliationTimer);
+      this.reconciliationTimer = null;
     }
   }
 
@@ -415,7 +467,7 @@ export class CTraderMarketDataFeedService extends EventEmitter {
       this.isAccountAuthenticated = true;
 
       // 4. Resubscribe spots for all supported symbols
-      const spotSymbolIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 41];
+      const spotSymbolIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 41];
       await this.transport.subscribeSpots(Number(accountId), spotSymbolIds, true, 7000);
       this.logStructuredEvent('CTRADER_SPOT_SUBSCRIBED', { symbols: spotSymbolIds });
 
@@ -493,7 +545,7 @@ export class CTraderMarketDataFeedService extends EventEmitter {
         });
         this.isAccountAuthenticated = true;
 
-        const spotSymbolIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 41];
+        const spotSymbolIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 41];
         await this.transport.subscribeSpots(Number(accountId), spotSymbolIds, true, 7000);
         this.logStructuredEvent('CTRADER_SPOT_SUBSCRIBED', { symbols: spotSymbolIds });
 

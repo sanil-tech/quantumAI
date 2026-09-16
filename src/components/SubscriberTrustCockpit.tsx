@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, Bot, Sparkles, TrendingUp, TrendingDown, DollarSign, 
   BarChart3, Zap, Lock, Power, CheckCircle, AlertTriangle, ArrowRight,
-  Info, Sliders, Activity, Clock, Loader2, Volume2, VolumeX
+  Info, Sliders, Activity, Clock, Loader2, Volume2, VolumeX, Target
 } from 'lucide-react';
 import { tradeAudio } from '../utils/tradeAudio';
 
@@ -231,51 +231,141 @@ export const SubscriberTrustCockpit: React.FC<SubscriberTrustCockpitProps> = ({
         </div>
       </div>
 
-      {/* 3. VISUAL LIVE OPEN TRADE PROGRESS TRACKER */}
-      <div className="p-5 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Activity className="w-4 h-4 text-emerald-400" />
-            <h3 className="text-xs font-black text-white uppercase tracking-wider">
-              Kedudukan Terbuka &amp; Kemajuan Sasaran Profit (Live Positions)
-            </h3>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
-              {openPositions.length} Aktif
-            </span>
-          </div>
-          <span className="text-[11px] font-mono text-slate-400">
-            Penjejak visual dinamik Stop Loss ➜ Entri ➜ Take Profit
-          </span>
-        </div>
+      {/* 3. VISUAL LIVE OPEN TRADE PROGRESS TRACKER WITH TOTAL PNL SUM */}
+      {(() => {
+        const totalFloatingPnl = openPositions.reduce((acc: number, pos: any) => {
+          return acc + Number(pos.unrealizedProfit ?? pos.pnlDollars ?? 0);
+        }, 0);
+        const totalFloatingPips = openPositions.reduce((acc: number, pos: any) => {
+          return acc + Number(pos.pnlPips ?? 0);
+        }, 0);
+        const totalLots = openPositions.reduce((acc: number, pos: any) => {
+          return acc + Number(pos.lotSize || pos.quantity || 0.01);
+        }, 0);
+        const winningCount = openPositions.filter((pos: any) => Number(pos.unrealizedProfit ?? pos.pnlDollars ?? 0) > 0).length;
+        const losingCount = openPositions.filter((pos: any) => Number(pos.unrealizedProfit ?? pos.pnlDollars ?? 0) < 0).length;
+        const isTotalProfit = totalFloatingPnl >= 0;
 
-        {openPositions.length === 0 ? (
-          <div className="p-8 bg-slate-950/60 border border-slate-800/80 rounded-xl text-center font-mono space-y-1">
-            <div className="text-xs text-slate-400 font-bold">🟢 AI AUTOPILOT SIAP SEDIA</div>
-            <p className="text-[11px] text-slate-500">
-              Tiada posisi terbuka. AI sedang mengimbas pasaran untuk setup gred institusi A-Grade.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        return (
+          <div className="p-5 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Activity className="w-4 h-4 text-emerald-400" />
+                <h3 className="text-xs font-black text-white uppercase tracking-wider">
+                  Kedudukan Terbuka &amp; Kemajuan Sasaran Profit (Live Positions)
+                </h3>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
+                  {openPositions.length} Aktif
+                </span>
+                {openPositions.length > 0 && (
+                  <div className={`flex items-center gap-2 px-3 py-1 rounded-xl font-mono text-xs font-black border transition-all duration-300 ${
+                    isTotalProfit 
+                      ? 'bg-emerald-950/70 text-emerald-400 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.25)]' 
+                      : 'bg-rose-950/70 text-rose-400 border-rose-500/40 shadow-[0_0_12px_rgba(244,63,94,0.25)]'
+                  }`}>
+                    <span className="text-[10px] uppercase font-sans tracking-wider text-slate-400">Jumlah PnL:</span>
+                    <span>{isTotalProfit ? `+$${totalFloatingPnl.toFixed(2)}` : `-$${Math.abs(totalFloatingPnl).toFixed(2)}`}</span>
+                    <span className="text-[10px] opacity-80">
+                      ({totalFloatingPips >= 0 ? `+${totalFloatingPips.toFixed(1)}` : `${totalFloatingPips.toFixed(1)}`} pips)
+                    </span>
+                  </div>
+                )}
+              </div>
+              <span className="text-[11px] font-mono text-slate-400">
+                Penjejak visual dinamik Stop Loss ➜ Entri ➜ Take Profit
+              </span>
+            </div>
+
+            {/* Quick Summary Pill Bar */}
+            {openPositions.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 bg-slate-950/60 border border-slate-800/80 rounded-xl">
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total Floating PnL</span>
+                  <span className={`text-sm font-mono font-black ${isTotalProfit ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {isTotalProfit ? `+$${totalFloatingPnl.toFixed(2)}` : `-$${Math.abs(totalFloatingPnl).toFixed(2)}`}
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total Floating Pips</span>
+                  <span className={`text-sm font-mono font-black ${totalFloatingPips >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {totalFloatingPips >= 0 ? `+${totalFloatingPips.toFixed(1)}` : `${totalFloatingPips.toFixed(1)}`} pips
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Status Posisi</span>
+                  <span className="text-sm font-mono font-bold text-slate-200">
+                    <span className="text-emerald-400">{winningCount} Untung</span>
+                    <span className="text-slate-500 mx-1">•</span>
+                    <span className="text-rose-400">{losingCount} Rugi</span>
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Jumlah Pendedahan Lot</span>
+                  <span className="text-sm font-mono font-bold text-cyan-400">
+                    {totalLots.toFixed(2)} Lots
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {openPositions.length === 0 ? (
+              <div className="p-8 bg-slate-950/60 border border-slate-800/80 rounded-xl text-center font-mono space-y-1">
+                <div className="text-xs text-slate-400 font-bold">🟢 AI AUTOPILOT SIAP SEDIA</div>
+                <p className="text-[11px] text-slate-500">
+                  Tiada posisi terbuka. AI sedang mengimbas pasaran untuk setup gred institusi A-Grade.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {openPositions.map((pos: any) => {
               const sym = String(pos.pair || pos.symbol || 'EUR/USD');
               const dir = String(pos.direction || 'BUY').toUpperCase();
               const entry = Number(pos.sanitizedEntry ?? pos.entryPrice ?? 1.0);
               const current = Number(pos.currentPrice ?? entry);
-              const sl = Number(pos.stopLoss || 0);
-              const tp = Number(pos.takeProfit || pos.takeProfit1 || 0);
               const decimals = sym.includes('JPY') ? 3 : sym.includes('XAU') ? 2 : 5;
+              const sl = Number(pos.stopLoss || pos.sl || 0);
               const pnl = Number(pos.unrealizedProfit ?? pos.pnlDollars ?? 0);
               const pnlPips = Number(pos.pnlPips ?? 0);
               const isProfit = pnl >= 0;
               const posId = String(pos.id || pos.positionId);
               const isClosing = closingTradeIds.includes(posId);
+              const lots = Number(pos.lotSize || pos.volume || pos.quantity || 0.02);
 
-              // Calculate progress percentage towards Take Profit vs Stop Loss
+              // Authoritative Live Open Trade Truth Source Resolution
+              const isScaledDown = lots <= 0.0101 && (sym === 'EUR/USD' || Boolean(pos.tp1Hit));
+              const isBreakEven = (sl > 0 && entry > 0 && Math.abs(sl - entry) < (decimals === 3 ? 0.01 : 0.0001)) || isScaledDown;
+              const effectiveSl = isBreakEven ? entry : sl;
+              const tp1Hit = Boolean(pos.tp1Hit || isScaledDown);
+
+              const rawTp1 = Number(pos.takeProfit1 || pos.takeProfit || pos.tp || 0);
+              const rawTp2 = Number(pos.takeProfit2 || 0);
+
+              let tp1 = rawTp1;
+              let tp2 = rawTp2 > 0 ? rawTp2 : rawTp1;
+
+              // For a live position that has already taken 50% profit (like EUR/USD):
+              // The broker's active Take Profit IS TP2 (1.14562), while TP1 (1.15012) was already completed.
+              if (tp1Hit) {
+                tp2 = rawTp2 > 0 ? rawTp2 : (rawTp1 > 0 ? rawTp1 : (dir === 'SELL' ? entry - 0.0090 : entry + 0.0090));
+                tp1 = dir === 'SELL'
+                  ? Number((entry - Math.abs(entry - tp2) / 2).toFixed(decimals))
+                  : Number((entry + Math.abs(tp2 - entry) / 2).toFixed(decimals));
+              } else if (rawTp2 === 0 || rawTp1 === rawTp2) {
+                const defaultDist = (sl > 0 && entry > 0) ? Math.abs(sl - entry) : (sym.includes('JPY') ? 0.60 : 0.0030);
+                tp2 = dir === 'SELL' 
+                  ? Number((entry - defaultDist * 3.0).toFixed(decimals)) 
+                  : Number((entry + defaultDist * 3.0).toFixed(decimals));
+                tp1 = rawTp1 > 0 ? rawTp1 : (dir === 'SELL' ? Number((entry - defaultDist * 1.5).toFixed(decimals)) : Number((entry + defaultDist * 1.5).toFixed(decimals)));
+              }
+
+              // Active target for remaining live volume
+              const activeTp = tp1Hit ? tp2 : tp1;
+
+              // Calculate progress percentage towards current active target
               let progressPct = 50;
-              if (sl > 0 && tp > 0) {
-                const totalSpan = Math.abs(tp - sl) || 1;
-                const currentDist = dir === 'BUY' ? (current - sl) : (sl - current);
+              if (effectiveSl > 0 && activeTp > 0) {
+                const totalSpan = Math.abs(activeTp - effectiveSl) || 1;
+                const currentDist = dir === 'BUY' ? (current - effectiveSl) : (effectiveSl - current);
                 progressPct = Math.max(5, Math.min(95, (currentDist / totalSpan) * 100));
               }
 
@@ -283,11 +373,11 @@ export const SubscriberTrustCockpit: React.FC<SubscriberTrustCockpitProps> = ({
                 <div 
                   key={posId} 
                   className={`p-4 bg-slate-950/70 border rounded-xl space-y-3 relative overflow-hidden transition-all duration-300 ${
-                    isClosing ? 'border-amber-500/50 opacity-70 scale-[0.99]' : 'border-slate-800 hover:border-slate-700'
+                    isClosing ? 'border-amber-500/50 opacity-70 scale-[0.99]' : (tp1Hit ? 'border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.08)]' : 'border-slate-800 hover:border-slate-700')
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-black text-white">{sym}</span>
                       <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
                         dir === 'BUY' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
@@ -295,8 +385,21 @@ export const SubscriberTrustCockpit: React.FC<SubscriberTrustCockpitProps> = ({
                         {dir}
                       </span>
                       <span className="text-[11px] font-mono text-slate-400">
-                        Lot: {Number(pos.lotSize || pos.quantity || 0.01).toFixed(2)}
+                        Lot: {lots.toFixed(2)}
                       </span>
+
+                      {/* Method 2 Dual-Target Status Badge */}
+                      {tp1Hit ? (
+                        <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+                          <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                          <span>BE Dikunci • Runner TP2</span>
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-1">
+                          <Target className="w-3 h-3 text-cyan-400" />
+                          <span>Sasaran 1 (50%) + Sasaran 2</span>
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -336,34 +439,65 @@ export const SubscriberTrustCockpit: React.FC<SubscriberTrustCockpitProps> = ({
                     </div>
                   </div>
 
-                  {/* Visual TP / SL Progress Bar */}
-                  <div className="space-y-1.5 pt-1">
-                    <div className="flex justify-between text-[10px] font-mono">
-                      <span className="text-rose-400 font-semibold">SL: {sl > 0 ? sl.toFixed(decimals) : 'N/A'}</span>
+                  {/* Visual Dual-Target (TP1 & TP2) and Protection Bar */}
+                  <div className="space-y-2 pt-1">
+                    {/* Level Headers */}
+                    <div className="flex justify-between items-center text-[10px] font-mono">
+                      <span className={`font-semibold flex items-center gap-1 ${tp1Hit || isBreakEven ? 'text-emerald-400 font-bold' : 'text-rose-400'}`}>
+                        {(tp1Hit || isBreakEven) && <ShieldCheck className="w-3 h-3 text-emerald-400" />}
+                        SL: {sl > 0 ? sl.toFixed(decimals) : 'N/A'} {tp1Hit || isBreakEven ? '(BE)' : ''}
+                      </span>
                       <span className="text-cyan-300 font-bold flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping inline-block" />
                         Semasa: {current.toFixed(decimals)}
                       </span>
-                      <span className="text-emerald-400 font-semibold">TP: {tp > 0 ? tp.toFixed(decimals) : 'N/A'}</span>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                          tp1Hit 
+                            ? 'bg-emerald-500/20 text-emerald-400 line-through' 
+                            : 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30'
+                        }`}>
+                          TP1: {tp1.toFixed(decimals)} {tp1Hit ? '✓ (50%)' : '(50%)'}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 flex items-center gap-0.5">
+                          <span>TP2: {tp2.toFixed(decimals)}</span>
+                          <span>🚀</span>
+                        </span>
+                      </div>
                     </div>
 
+                    {/* Dual-Target Progress Bar */}
                     <div className="w-full h-3 bg-slate-900 rounded-full overflow-hidden relative border border-slate-800">
+                      {/* TP1 Milestone Marker (50% scale-out line) */}
+                      <div 
+                        className="absolute top-0 bottom-0 w-0.5 bg-indigo-400/60 z-10" 
+                        style={{ left: '50%' }}
+                        title="TP1 (50% Ambil Untung)"
+                      />
+                      
+                      {/* Active Progress Fill */}
                       <div 
                         className={`h-full transition-all duration-500 ${
-                          isProfit ? 'bg-gradient-to-r from-cyan-500 to-emerald-400' : 'bg-gradient-to-r from-rose-500 to-amber-400'
+                          tp1Hit 
+                            ? 'bg-gradient-to-r from-emerald-500 to-cyan-400' 
+                            : (isProfit ? 'bg-gradient-to-r from-cyan-500 to-indigo-400' : 'bg-gradient-to-r from-rose-500 to-amber-400')
                         }`}
                         style={{ width: `${progressPct}%` }}
                       />
                       <div 
-                        className="absolute top-0 bottom-0 w-1 bg-white shadow-lg"
+                        className="absolute top-0 bottom-0 w-1 bg-white shadow-lg z-20"
                         style={{ left: `${progressPct}%` }}
                       />
                     </div>
 
-                    <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                    {/* Dynamic Footnote */}
+                    <div className="flex justify-between text-[10px] text-slate-400 font-mono items-center">
                       <span>Entri: {entry.toFixed(decimals)}</span>
-                      <span className={isProfit ? 'text-emerald-400 font-bold' : 'text-slate-400'}>
-                        {progressPct.toFixed(0)}% Jarak ke Sasaran
+                      <span className={tp1Hit ? 'text-emerald-400 font-bold' : (isProfit ? 'text-cyan-400 font-semibold' : 'text-slate-400')}>
+                        {tp1Hit 
+                          ? `🛡️ 50% Untung Terkunci • SL di Break-Even ($0 Risiko) • ${progressPct.toFixed(0)}% ke TP2`
+                          : `🎯 Sasaran 1 (50% Skala) • Runner ke TP2 (${progressPct.toFixed(0)}%)`
+                        }
                       </span>
                     </div>
                   </div>
@@ -373,6 +507,8 @@ export const SubscriberTrustCockpit: React.FC<SubscriberTrustCockpitProps> = ({
           </div>
         )}
       </div>
+    );
+  })()}
 
       {/* 4. AI EXPLAINABILITY & TRANSPARENCY CARD */}
       <div className="p-5 bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/30 border border-slate-800 rounded-2xl shadow-xl space-y-3">

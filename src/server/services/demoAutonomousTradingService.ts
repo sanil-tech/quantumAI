@@ -7,12 +7,15 @@ import { SignalIntelligenceService } from '../../../apps/decision-agent/src/serv
 import { StrategyEngineService, StrategyDefinition, TechnicalFeatures, MarketCandle } from './strategyEngineService';
 import { PortfolioRiskEngine, ProposedTradeRisk } from './portfolioRiskService';
 import { FinalExecutionGateService, ExecutionGateDecision } from './finalExecutionGateService';
+import { CTraderTransport } from '../../integrations/ctrader/ctraderTransport';
 import { CTraderDemoLifecycleHarness, ControlledDemoOrderConfig, DemoOrderExecutionResult } from '../../integrations/ctrader/ctraderDemoLifecycleHarness';
 import { learningJournalService } from './learningJournalService';
 import { continuousLearningObservatoryService } from './continuousLearningObservatoryService';
 import { aiDecisionEngine } from '../../../apps/decision-agent/src/services/aiDecisionEngine';
 import { calculateAllIndicators } from '../../lib/indicators';
 import { analyzeSmcStructures } from '../../lib/smcEngine';
+import { PairDailyRangeService } from './pairDailyRangeService';
+import { telegramNotificationService } from './telegramNotificationService';
 
 export interface DemoAutonomousStatus {
   isAutoPilotEnabled: boolean;
@@ -39,11 +42,16 @@ export interface DemoOpenPosition {
   positionId: number;
   symbol: string;
   tradeSide: 'BUY' | 'SELL';
-  volume: number; // lots, e.g. 0.01
+  volume: number; // lots, e.g. 0.01 or 0.02
+  initialVolume?: number;
   entryPrice: number;
   currentPrice: number;
   sl: number;
   tp: number;
+  takeProfit1?: number;
+  takeProfit2?: number;
+  tp1Hit?: boolean;
+  isMultiTarget?: boolean;
   unrealizedPnL: number;
   entryTime: string;
   proposalId: string;
@@ -62,7 +70,7 @@ export interface DemoClosedTrade {
   realizedPnL: number;
   openTime: string;
   closeTime: string;
-  exitReason: 'TAKE_PROFIT' | 'STOP_LOSS' | 'MANUAL' | 'SAFETY_GATE' | 'BROKER_CLOSE';
+  exitReason: 'TAKE_PROFIT' | 'TAKE_PROFIT_1' | 'TAKE_PROFIT_2' | 'PARTIAL_CLOSE' | 'BREAKEVEN' | 'STOP_LOSS' | 'MANUAL' | 'SAFETY_GATE' | 'BROKER_CLOSE';
   proposalId: string;
 }
 
@@ -75,8 +83,8 @@ export class DemoAutonomousTradingService extends EventEmitter {
   private minConfidenceThreshold: number = 75; // >= 75%
   private maxAllowedSpreadPips: number = 3.0; // <= 3.0 pips
   private staleDataThresholdMs: number = 30000; // < 30s
-  private maxLotsLimit: number = 0.01; // Capped at 0.01 lot micro
-  private maxConcurrentPositions: number = 10; // Strict 1 position
+  private maxLotsLimit: number = 0.04; // Method 2: 0.04 lots per setup (Split 2x0.02 lots for TP1 and TP2)
+  private maxConcurrentPositions: number = 2; // Strict cap of 2 concurrent positions for controlled risk (<1.6% total)
 
   private portfolioRiskEngine: PortfolioRiskEngine;
   private openPositions: Map<number, DemoOpenPosition> = new Map();
@@ -222,8 +230,11 @@ export class DemoAutonomousTradingService extends EventEmitter {
     // 1. Update Open Positions PnL & Monitor SL/TP
     this.updatePositionsAndCheckExits(mappedTick);
 
-    // 2. If Auto-Pilot is enabled, evaluate trading loop
+    // 2. If Auto-Pilot is enabled, evaluate trading loop (Exclude quarantined XAU/USD)
     if (this.isAutoPilotEnabled && !this.killSwitchActive) {
+      if (tick.symbol === 'XAU/USD' || (tick.symbol as string).includes('XAU') || (tick.symbol as string).includes('GOLD')) {
+        return; // Strict quarantine: never evaluate or open XAUUSD trades
+      }
       this.evaluateAutonomousCycle(tick.symbol, tick.bid, tick.ask, tick.timestamp).catch(err => {
         console.error(`[DemoAutonomousTradingService] Evaluation Error on ${tick.symbol}:`, err.message);
       });
@@ -250,20 +261,165 @@ export class DemoAutonomousTradingService extends EventEmitter {
       const pips = priceDiff * pipMultiplier;
       
       const pipValuePer001Lot = pos.symbol === 'XAU/USD' ? 1.0 : pos.symbol.includes('JPY') ? 0.065 : 0.10;
-      pos.unrealizedPnL = parseFloat((pips * pipValuePer001Lot).toFixed(2));
+      const lotMultiplier = pos.volume / 0.01;
+      pos.unrealizedPnL = parseFloat((pips * pipValuePer001Lot * lotMultiplier).toFixed(2));
 
       // MFE / MAE tracking
       if (pos.unrealizedPnL > pos.mfe) pos.mfe = pos.unrealizedPnL;
       if (pos.unrealizedPnL < pos.mae) pos.mae = pos.unrealizedPnL;
 
+      // ----------------------------------------------------
+      // METHOD 2: STAGE 1 (TP1 Scale-Out & SL -> Break-Even)
+      // ----------------------------------------------------
+      const tp1Target = pos.takeProfit1 || (pos.isMultiTarget ? pos.tp : null);
+      if (pos.isMultiTarget && pos.takeProfit2 && !pos.tp1Hit && tp1Target) {
+        const tp1Hit = isBuy ? currentPrice >= tp1Target : currentPrice <= tp1Target;
+        if (tp1Hit) {
+          this.executeMethod2ScaleOut(posId, tp1Target);
+          continue;
+        }
+      }
+
       // Check SL hit (BUY: BID <= SL; SELL: ASK >= SL)
       if ((isBuy && currentPrice <= pos.sl) || (!isBuy && currentPrice >= pos.sl)) {
-        this.closePosition(posId, pos.sl, 'STOP_LOSS');
+        const isBreakEven = pos.tp1Hit && Math.abs(pos.sl - pos.entryPrice) <= (pos.symbol.includes('JPY') ? 0.05 : 0.0005);
+        this.closePosition(posId, pos.sl, isBreakEven ? 'BREAKEVEN' : 'STOP_LOSS');
       }
       // Check TP hit (BUY: BID >= TP; SELL: ASK <= TP)
       else if ((isBuy && currentPrice >= pos.tp) || (!isBuy && currentPrice <= pos.tp)) {
-        this.closePosition(posId, pos.tp, 'TAKE_PROFIT');
+        const exitReason = pos.tp1Hit ? 'TAKE_PROFIT_2' : 'TAKE_PROFIT';
+        this.closePosition(posId, pos.tp, exitReason);
       }
+    }
+  }
+
+  /**
+   * Method 2: Scale-Out Execution Handler
+   * - Closes 50% lot volume at TP1
+   * - Realizes partial profit
+   * - Adjusts Stop Loss to Break-Even (entryPrice)
+   * - Sets Take Profit to TP2
+   * - Marks position as tp1Hit = true
+   */
+  public executeMethod2ScaleOut(positionId: number, tp1Price: number): void {
+    const pos = this.openPositions.get(positionId);
+    if (!pos || pos.tp1Hit) return;
+
+    const initialLots = pos.initialVolume || pos.volume;
+    const closedLots = Number((pos.volume >= 0.02 ? pos.volume / 2 : pos.volume * 0.5).toFixed(3));
+    const remainingLots = Number((pos.volume - closedLots).toFixed(3));
+
+    const isBuy = pos.tradeSide === 'BUY';
+    const pipMultiplier = pos.symbol.includes('JPY') ? 100 : (pos.symbol === 'XAU/USD' || pos.symbol === 'BTC/USD') ? 1 : 10000;
+    const priceDiff = isBuy ? (tp1Price - pos.entryPrice) : (pos.entryPrice - tp1Price);
+    const pips = priceDiff * pipMultiplier;
+    const pipValuePer001Lot = pos.symbol === 'XAU/USD' ? 1.0 : pos.symbol.includes('JPY') ? 0.065 : 0.10;
+    const realizedPartialPnL = parseFloat((pips * pipValuePer001Lot * (closedLots / 0.01)).toFixed(2));
+
+    console.log(`🎯 [METHOD 2 SCALE-OUT] Position #${positionId} (${pos.symbol} ${pos.tradeSide}) hit TP1 @ ${tp1Price}!`);
+    console.log(`   - 50% Volume Scaled Out: ${closedLots} lots (Realized: +$${realizedPartialPnL} / +${pips.toFixed(1)} pips)`);
+    console.log(`   - Risk Removed: Moving SL from ${pos.sl} -> ${pos.entryPrice} (Break-Even)`);
+    console.log(`   - Runner Activated: Setting TP from ${pos.tp} -> ${pos.takeProfit2} (TP2 Target)`);
+
+    // Record partial closed trade entry
+    const partialRecord: DemoClosedTrade = {
+      tradeId: positionId,
+      symbol: pos.symbol,
+      side: pos.tradeSide,
+      lots: closedLots,
+      entryPrice: pos.entryPrice,
+      closePrice: tp1Price,
+      realizedPnL: realizedPartialPnL,
+      openTime: pos.entryTime,
+      closeTime: new Date().toISOString(),
+      exitReason: 'TAKE_PROFIT_1',
+      proposalId: pos.proposalId
+    };
+    this.closedTrades.unshift(partialRecord);
+
+    // Update open position state for Stage 2 (Runner)
+    pos.tp1Hit = true;
+    pos.volume = remainingLots > 0 ? remainingLots : closedLots;
+    pos.sl = pos.entryPrice;
+    if (pos.takeProfit2) {
+      pos.tp = pos.takeProfit2;
+    }
+
+    // Add log
+    this.executionLogs.unshift({
+      id: `scaleout_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      pair: pos.symbol,
+      direction: pos.tradeSide,
+      confidence: 90,
+      price: tp1Price,
+      status: 'PARTIAL_SCALE_OUT',
+      reason: `Method 2 TP1 reached. 50% closed (+${pips.toFixed(1)} pips). SL moved to Break-Even (${pos.entryPrice}). Runner tracking TP2 (${pos.takeProfit2}).`
+    });
+
+    this.saveLedgerToDisk();
+    this.emit('partialCloseExecuted', { position: pos, partialRecord });
+
+    // Broadcast live TP1 Scale-Out event to Telegram
+    telegramNotificationService.broadcastTradeEvent({
+      pair: pos.symbol,
+      direction: pos.tradeSide,
+      timeframe: 'M1',
+      entryPrice: pos.entryPrice,
+      stopLoss: pos.entryPrice,
+      takeProfit1: tp1Price,
+      confidence: 90,
+      reasons: [`Method 2 TP1 Hit: +${pips.toFixed(1)} pips dikunci`, `SL dialihkan ke Break-Even (${pos.entryPrice})`, `Runner sedang memburu TP2 (${pos.takeProfit2})`],
+      lotSize: closedLots,
+      pnlDollars: realizedPartialPnL,
+      pnlPips: pips,
+      status: 'PROFIT_LOCKED',
+      brokerOrderId: String(positionId)
+    }).catch(() => {});
+
+    // Asynchronously relay partial close and BE amendment to cTrader broker if configured
+    if (process.env.CTRADER_CLIENT_ID && process.env.CTRADER_ACCOUNT_ID) {
+      this.relayBrokerScaleOut(positionId, pos.entryPrice, pos.takeProfit2, closedLots).catch(err => {
+        console.warn(`[DemoAutonomousTradingService] Broker scale-out relay notice for #${positionId}:`, err.message);
+      });
+    }
+  }
+
+  /**
+   * Relay Method 2 Scale-Out to live Spotware cTrader broker
+   */
+  private async relayBrokerScaleOut(positionId: number, breakEvenSl: number, tp2Price?: number, closedLots: number = 0.02): Promise<void> {
+    try {
+      const transport = new CTraderTransport();
+      await transport.connect('demo.ctraderapi.com', 5035);
+      await transport.sendRequest(2100, {
+        clientId: process.env.CTRADER_CLIENT_ID,
+        clientSecret: process.env.CTRADER_CLIENT_SECRET
+      });
+      await transport.sendRequest(2102, {
+        cTraderAccountId: Number(process.env.CTRADER_ACCOUNT_ID),
+        accessToken: process.env.CTRADER_ACCESS_TOKEN
+      });
+
+      const volumeCents = Math.round(closedLots * 10000000);
+      await transport.sendRequest(2111, {
+        ctidTraderAccountId: Number(process.env.CTRADER_ACCOUNT_ID),
+        positionId,
+        volume: volumeCents
+      });
+
+      if (tp2Price && tp2Price > 0) {
+        await transport.sendRequest(2110, {
+          ctidTraderAccountId: Number(process.env.CTRADER_ACCOUNT_ID),
+          positionId,
+          stopLoss: breakEvenSl,
+          takeProfit: tp2Price
+        });
+      }
+      await transport.disconnect();
+      console.log(`[BrokerSync] Successfully relayed Method 2 scale-out to cTrader for position #${positionId}`);
+    } catch (e: any) {
+      console.warn(`[BrokerSync] Notice: could not relay scale-out to broker for #${positionId}: ${e.message}`);
     }
   }
 
@@ -301,6 +457,27 @@ export class DemoAutonomousTradingService extends EventEmitter {
 
     this.closedTrades.unshift(closedRecord);
     this.openPositions.delete(positionId);
+
+    // Broadcast exit event to Telegram subscribers
+    telegramNotificationService.broadcastTradeEvent({
+      pair: pos.symbol,
+      direction: pos.tradeSide,
+      timeframe: 'M1',
+      entryPrice: pos.entryPrice,
+      stopLoss: pos.sl,
+      takeProfit1: pos.tp,
+      confidence: 85,
+      reasons: [
+        reason === 'TAKE_PROFIT' || reason === 'TAKE_PROFIT_2'
+          ? `Sasaran Take Profit tercapai (+${pips.toFixed(1)} pips)`
+          : (reason === 'BREAKEVEN' ? 'Keluar pada paras Break-Even (Sifar Kerugian)' : `Stop Loss dikenakan (${pips.toFixed(1)} pips)`)
+      ],
+      lotSize: pos.volume,
+      pnlDollars: realizedPnL,
+      pnlPips: pips,
+      status: reason === 'BREAKEVEN' ? 'PROFIT_LOCKED' : (realizedPnL >= 0 ? 'TP_HIT' : 'SL_HIT'),
+      brokerOrderId: String(positionId)
+    }).catch(() => {});
 
     // Record Post-Mortem in Learning Systems
     try {
@@ -390,13 +567,14 @@ export class DemoAutonomousTradingService extends EventEmitter {
 
       const midPrice = (bid + ask) / 2;
 
-      // 8. Strategy & AI Signal Evaluation with real market data
+      // 8. Strategy & AI Signal Evaluation with real market data and candlestick confirmation
       const signal = SignalIntelligenceService.getInstance().evaluateCandidateSetup({
         pair: pair as any,
         timeframe: 'M1',
         currentPrice: midPrice,
         indicators,
-        smc
+        smc,
+        candles
       });
 
       this.lastEvaluatedSignal = `${signal.action} ${pair} (Confidence: ${signal.confidence ?? 'N/A'}%)`;
@@ -427,17 +605,16 @@ export class DemoAutonomousTradingService extends EventEmitter {
       // BUY executes at ASK. SELL executes at BID.
       const isBuy = signal.action === 'BUY';
       const executableEntryPrice = isBuy ? ask : bid;
-      const decimals = pair.includes('JPY') ? 3 : (pair === 'XAU/USD' || pair === 'BTC/USD') ? 2 : 5;
-      // Use REAL ATR from indicators, not hardcoded constant
-      const atr = indicators.atr || (pair.includes('JPY') ? 0.280 : pair === 'XAU/USD' ? 4.50 : 0.0015);
+      // Calibrate SL, TP1, TP2 using Pair ADR for guaranteed Intraday (Same-Day) trade completion
+      const intraday = PairDailyRangeService.calculateIntradayTargets(
+        pair,
+        signal.action as 'BUY' | 'SELL',
+        executableEntryPrice
+      );
 
-      const calculatedSL = isBuy
-        ? Number((executableEntryPrice - atr * 1.4).toFixed(decimals))
-        : Number((executableEntryPrice + atr * 1.4).toFixed(decimals));
-
-      const calculatedTP = isBuy
-        ? Number((executableEntryPrice + atr * 2.1).toFixed(decimals))
-        : Number((executableEntryPrice - atr * 2.1).toFixed(decimals));
+      const calculatedSL = intraday.slPrice;
+      const calculatedTP1 = intraday.tp1Price;
+      const calculatedTP2 = intraday.tp2Price;
 
       // 8. Risk Governance: PortfolioRiskEngine Evaluation
       const proposalId = `prop-demo-auto-${Date.now()}`;
@@ -452,7 +629,7 @@ export class DemoAutonomousTradingService extends EventEmitter {
         proposedRiskPercent: 0.10,
         entryPrice: executableEntryPrice,
         slPrice: calculatedSL,
-        tpPrice: calculatedTP
+        tpPrice: calculatedTP1
       };
 
       const riskDecision = this.portfolioRiskEngine.evaluateAndReserveRisk(proposedTrade);
@@ -475,7 +652,7 @@ export class DemoAutonomousTradingService extends EventEmitter {
           regime: 'TRENDING',
           entryPrice: executableEntryPrice,
           stopLossPrice: calculatedSL,
-          takeProfitPrice: calculatedTP,
+          takeProfitPrice: calculatedTP1,
           maxRiskPercent: 0.10,
           generatedTimestamp: Date.now(),
           expirationTimestamp: Date.now() + 60000,
@@ -507,7 +684,7 @@ export class DemoAutonomousTradingService extends EventEmitter {
         side: signal.action,
         lots: safeLots,
         stopLoss: calculatedSL,
-        takeProfit: calculatedTP,
+        takeProfit: calculatedTP1,
         comment: proposalId
       };
 
@@ -521,10 +698,15 @@ export class DemoAutonomousTradingService extends EventEmitter {
         symbol: pair,
         tradeSide: signal.action,
         volume: safeLots,
+        initialVolume: safeLots,
         entryPrice: executableEntryPrice,
         currentPrice: executableEntryPrice,
         sl: calculatedSL,
-        tp: calculatedTP,
+        tp: calculatedTP1,
+        takeProfit1: calculatedTP1,
+        takeProfit2: calculatedTP2,
+        tp1Hit: false,
+        isMultiTarget: true,
         unrealizedPnL: 0.00,
         entryTime: new Date().toISOString(),
         proposalId,
@@ -550,6 +732,21 @@ export class DemoAutonomousTradingService extends EventEmitter {
       });
       this.saveLedgerToDisk();
       this.emit('orderExecuted', openPos);
+
+      // Broadcast live order entry to Telegram subscribers
+      telegramNotificationService.broadcastTradeEvent({
+        pair,
+        direction: signal.action,
+        timeframe: 'M1',
+        entryPrice: executableEntryPrice,
+        stopLoss: calculatedSL,
+        takeProfit1: calculatedTP1,
+        confidence: signal.confidence || 85,
+        reasons: signal.reasons || ['SMC Fair Value Gap & EMA Trend Confluence', 'Pengesahan Candlestick Rejection'],
+        lotSize: safeLots,
+        status: 'ENTRY_DISPATCHED',
+        brokerOrderId: String(positionId)
+      }).catch(() => {});
     } finally {
       this.isEvaluating = false;
     }

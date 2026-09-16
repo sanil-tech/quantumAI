@@ -12,6 +12,8 @@ import {
   ConfidenceBreakdown,
   PostMortemReview
 } from "../../../../src/types";
+import { PairDailyRangeService } from "../../../../src/server/services/pairDailyRangeService";
+import { detectCandlestickPatterns, SmcCandlestickPattern } from "@iati/core";
 
 export interface CandidateEvaluationInput {
   pair: CurrencyPair;
@@ -25,6 +27,7 @@ export interface CandidateEvaluationInput {
   postMortemReviews?: PostMortemReview[];
   envelope?: any;
   dataMode?: string;
+  candles?: any[];
 }
 
 export class SignalIntelligenceService {
@@ -100,7 +103,51 @@ export class SignalIntelligenceService {
     } = input;
 
     const isJpy = pair.includes('JPY');
-    const isGold = pair === 'XAU/USD' || pair.includes('GOLD');
+    const isGold = pair === 'XAU/USD' || pair.includes('XAU') || pair.includes('GOLD');
+
+    // ── XAU/USD (GOLD) STRICT QUARANTINE GATE ───────────────────────────────
+    // Commodity XAUUSD has 10x higher pip volatility than Forex. To protect account
+    // capital from extreme volatility and anomalous drawdowns, XAU/USD is strictly quarantined.
+    if (isGold) {
+      const proposalId = `prop-veto-xau-${Date.now()}`;
+      return {
+        pair,
+        timestamp: Date.now(),
+        bias: 'NEUTRAL',
+        confidence: 0,
+        action: 'VETO',
+        status: 'VETOED',
+        setupType: 'NONE',
+        entryType: 'NONE',
+        marketRegime: 'HIGH_VOLATILITY',
+        reasons: ['[QUARANTINE_VETO] XAU/USD (Gold) is quarantined from autonomous bot trading to preserve account capital from extreme commodity volatility.'],
+        technicalEvidence: [],
+        learningEvidence: ['[SAFETY RULE] Commodity XAUUSD quarantine enforced across autonomous pipeline.'],
+        learningRuleIds: ['RULE-XAUUSD-QUARANTINE'],
+        vetoReasons: ['XAU/USD (Gold) is quarantined and excluded from autonomous scan bot.'],
+        confirmationRequirements: [],
+        confidenceBreakdown: { technicalScore: 0, structureScore: 0, mtfScore: 0, regimeScore: 0, learningAdjustment: -50, finalScore: 0 },
+        entryZone: null,
+        stopLoss: null,
+        takeProfit1: null,
+        takeProfit2: null,
+        riskRewardRatio: null,
+        invalidationLevel: null,
+        tradingStyle: input.style || 'DAY_TRADER',
+        probabilityNotes: 'XAU/USD trading disabled by safety policy.',
+        disclaimer: 'This analysis is probability-based. Manage risk responsibly.',
+        proposalId,
+        id: proposalId,
+        strategyId: 'SMC_QUANT_V2',
+        strategyVersion: '2.4.1',
+        provenanceSource: 'AI_DECISION_ENGINE',
+        tradeProposal: { id: proposalId, symbol: pair, direction: 'NEUTRAL', confidence: 0, evidence: [], agent_votes: [], why_direction: 'XAUUSD_QUARANTINED', invalidate_conditions: [], timestamp: new Date() },
+        dataMode: input.dataMode || 'LIVE',
+        executable: false,
+        decisionProvider: 'DETERMINISTIC'
+      } as any;
+    }
+
     const isNas = pair === 'NASDAQ' || pair.includes('TECH') || pair.includes('USTEC');
     const isBtc = pair === 'BTC/USD' || pair.includes('BTC');
     const decimals = isJpy ? 3 : (isGold || isNas || isBtc) ? 2 : 5;
@@ -229,6 +276,29 @@ export class SignalIntelligenceService {
       entryType = 'MARKET_ENTRY';
     }
 
+    // 3.5 Candlestick Pattern Recognition & Confirmation Trigger
+    const inputCandles = input.candles || [];
+    const candlePatterns: SmcCandlestickPattern[] = inputCandles.length >= 3
+      ? detectCandlestickPatterns(inputCandles)
+      : [];
+
+    const hasBullishRejection = candlePatterns.some(
+      p => p.type === 'BULLISH' && (p.name.includes('Pin Bar') || p.name.includes('Hammer') || p.name.includes('Engulfing'))
+    );
+    const hasBearishRejection = candlePatterns.some(
+      p => p.type === 'BEARISH' && (p.name.includes('Shooting Star') || p.name.includes('Engulfing'))
+    );
+    const isDoji = candlePatterns.some(p => p.name === 'Doji');
+    const matchedBullishPattern = candlePatterns.find(p => p.type === 'BULLISH')?.name;
+    const matchedBearishPattern = candlePatterns.find(p => p.type === 'BEARISH')?.name;
+
+    if (hasBullishRejection) {
+      bullStructureScore += 20;
+    }
+    if (hasBearishRejection) {
+      bearStructureScore += 20;
+    }
+
     // 4. MTF & Momentum Scoring
     let mtfScore = 0;
     if (adx >= 25) mtfScore += 15;
@@ -326,6 +396,11 @@ export class SignalIntelligenceService {
       learningEvidence.push(`[ADAPTIVE LEARNING MEMORY] Strategy ${realWinReviews[0].strategyId || 'SMC_QUANT_V1'} has ${realWinReviews.length} verified win(s) for ${setupType} on ${pair}. Source: REAL_TRADE.`);
     }
 
+    // --- STEP 5D: CANDLESTICK INDECISION (DOJI) PENALTY ---
+    if (isDoji) {
+      learningAdjustment = Math.max(-25, learningAdjustment - 15);
+      confirmationRequirements.push(`Current candle on ${timeframe} is Doji (indecision). Awaiting clear expansion close.`);
+    }
 
     // --- STEP 5B: ADVISORY 1-YEAR BACKTEST WARNING (NON-BLOCKING) ---
     if (!isVetoed && backtestLossReviews.length >= 3) {
@@ -352,8 +427,6 @@ export class SignalIntelligenceService {
     }
 
     const slMultiplier = (realLossReviews.length > 0 || backtestLossReviews.length > 0 || allSymbolLosses.length > 0) ? 1.8 : 1.4;
-
-
 
     // 6. Confluence Decision Logic
     const isBullishCandidate = bullTechScore >= 25 && bullTechScore > bearTechScore && priceNum >= ema50;
@@ -414,35 +487,59 @@ export class SignalIntelligenceService {
       confirmationRequirements.push(`Awaiting clear Order Block or FVG confirmation on ${timeframe}.`);
       if (adx < 20) confirmationRequirements.push('Awaiting trend expansion (ADX > 20) to confirm breakout momentum.');
     } else if (isBullishCandidate && finalConfidence >= 45) {
-      // Valid Bullish Trade Proposal
-      action = 'BUY';
-      status = 'VALID_PROPOSAL';
-      bias = 'BULLISH';
+      if (inputCandles.length >= 3 && !hasBullishRejection) {
+        // Enforce Candlestick Close Confirmation: Do NOT buy into a falling red knife
+        action = 'WAIT_FOR_CONFIRMATION';
+        status = 'WAIT_FOR_CONFIRMATION';
+        bias = 'BULLISH';
+        confirmationRequirements.push(`Awaiting Bullish Pin Bar / Hammer or Bullish Engulfing close on ${timeframe} before entering BUY.`);
+      } else {
+        // Valid Bullish Trade Proposal
+        action = 'BUY';
+        status = 'VALID_PROPOSAL';
+        bias = 'BULLISH';
 
-      const entryMin = Number((priceNum - atr * 0.2).toFixed(decimals));
-      const entryMax = Number((priceNum + atr * 0.1).toFixed(decimals));
-      entryZone = { min: entryMin, max: entryMax };
+        const entryMin = Number((priceNum - atr * 0.2).toFixed(decimals));
+        const entryMax = Number((priceNum + atr * 0.1).toFixed(decimals));
+        entryZone = { min: entryMin, max: entryMax };
 
-      sl = Number((priceNum - atr * slMultiplier).toFixed(decimals));
-      tp1 = Number((priceNum + atr * 2.1).toFixed(decimals));
-      tp2 = Number((priceNum + atr * 3.8).toFixed(decimals));
-      invalidation = Number((priceNum - atr * (slMultiplier + 0.1)).toFixed(decimals));
-      riskRewardRatio = `1:${(2.1 / slMultiplier).toFixed(1)}`;
+        const adrTargets = PairDailyRangeService.calculateIntradayTargets(pair, 'BUY', priceNum);
+        sl = adrTargets.slPrice;
+        tp1 = adrTargets.tp1Price;
+        tp2 = adrTargets.tp2Price;
+        invalidation = Number((priceNum - (adrTargets.slPips + 2) * PairDailyRangeService.getProfile(pair).pipMultiplier).toFixed(decimals));
+        riskRewardRatio = adrTargets.riskRewardTp1;
+        if (hasBullishRejection && matchedBullishPattern) {
+          technicalEvidence.push(`[CANDLE CONFIRMATION] ${matchedBullishPattern} confirmed on closed candle.`);
+        }
+      }
     } else if (isBearishCandidate && finalConfidence >= 45) {
-      // Valid Bearish Trade Proposal
-      action = 'SELL';
-      status = 'VALID_PROPOSAL';
-      bias = 'BEARISH';
+      if (inputCandles.length >= 3 && !hasBearishRejection) {
+        // Enforce Candlestick Close Confirmation: Do NOT sell into a spiking green breakout candle
+        action = 'WAIT_FOR_CONFIRMATION';
+        status = 'WAIT_FOR_CONFIRMATION';
+        bias = 'BEARISH';
+        confirmationRequirements.push(`Awaiting Bearish Shooting Star or Bearish Engulfing close on ${timeframe} before entering SELL.`);
+      } else {
+        // Valid Bearish Trade Proposal
+        action = 'SELL';
+        status = 'VALID_PROPOSAL';
+        bias = 'BEARISH';
 
-      const entryMin = Number((priceNum - atr * 0.1).toFixed(decimals));
-      const entryMax = Number((priceNum + atr * 0.2).toFixed(decimals));
-      entryZone = { min: entryMin, max: entryMax };
+        const entryMin = Number((priceNum - atr * 0.1).toFixed(decimals));
+        const entryMax = Number((priceNum + atr * 0.2).toFixed(decimals));
+        entryZone = { min: entryMin, max: entryMax };
 
-      sl = Number((priceNum + atr * slMultiplier).toFixed(decimals));
-      tp1 = Number((priceNum - atr * 2.1).toFixed(decimals));
-      tp2 = Number((priceNum - atr * 3.8).toFixed(decimals));
-      invalidation = Number((priceNum + atr * (slMultiplier + 0.1)).toFixed(decimals));
-      riskRewardRatio = `1:${(2.1 / slMultiplier).toFixed(1)}`;
+        const adrTargets = PairDailyRangeService.calculateIntradayTargets(pair, 'SELL', priceNum);
+        sl = adrTargets.slPrice;
+        tp1 = adrTargets.tp1Price;
+        tp2 = adrTargets.tp2Price;
+        invalidation = Number((priceNum + (adrTargets.slPips + 2) * PairDailyRangeService.getProfile(pair).pipMultiplier).toFixed(decimals));
+        riskRewardRatio = adrTargets.riskRewardTp1;
+        if (hasBearishRejection && matchedBearishPattern) {
+          technicalEvidence.push(`[CANDLE CONFIRMATION] ${matchedBearishPattern} confirmed on closed candle.`);
+        }
+      }
     } else {
       action = 'NO_SETUP';
       status = 'NO_SETUP';

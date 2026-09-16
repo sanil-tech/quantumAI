@@ -259,11 +259,13 @@ export class CTraderAdapter implements BrokerAdapter {
       return {
         position_id: posId != null ? String(posId) : `pos_${Date.now()}`,
         account_id: String(this.config.accountId || process.env.CTRADER_ACCOUNT_ID || '48282756'),
-        symbol: spec?.symbolName || (symbolId != null ? String(symbolId) : 'EURUSD'),
-        direction: tradeSide === 1 ? 'BUY' : 'SELL',
+        symbol: spec?.symbolName || (symbolId != null ? (CTraderSymbolRegistry.getSymbolById(Number(symbolId))?.symbolName || String(symbolId)) : 'EURUSD'),
+        direction: tradeSide === 1 || tradeSide === 'BUY' ? 'BUY' : 'SELL',
         quantity,
         entry_price: entryPrice,
         current_price: entryPrice,
+        stop_loss: p.stopLoss || 0,
+        take_profit: p.takeProfit || 0,
         unrealized_profit: 0,
         realized_profit: 0,
         status: 'OPEN',
@@ -271,6 +273,19 @@ export class CTraderAdapter implements BrokerAdapter {
         updated_at: new Date()
       };
     });
+  }
+
+  async getOpenPositions(): Promise<any[]> {
+    const positions = await this.getPositions();
+    return positions.map(p => ({
+      positionId: p.position_id,
+      symbol: p.symbol,
+      tradeSide: p.direction,
+      volume: p.quantity,
+      entryPrice: p.entry_price,
+      stopLoss: p.stop_loss,
+      takeProfit: p.take_profit
+    }));
   }
 
   async getPosition(symbol: string): Promise<Position | undefined> {
@@ -367,7 +382,7 @@ export class CTraderAdapter implements BrokerAdapter {
           volumeCents = isGold ? 100 : (isBtc ? 1 : (isIndex ? 100 : 100000));
         }
 
-        // Invariant: Max 1 active open position per symbol on cTrader
+        // Invariant: Max 1 active open position per symbol on cTrader & Max 2 total concurrent setups
         if (Array.isArray(this.lastPositions) && this.lastPositions.length > 0) {
           const alreadyOpen = this.lastPositions.some((p: any) => {
             const pSymId = p.tradeData?.symbolId || p.symbolId;
@@ -375,6 +390,9 @@ export class CTraderAdapter implements BrokerAdapter {
           });
           if (alreadyOpen && !order.order_id?.includes('test_') && !order.proposal_id?.includes('test_')) {
             throw new Error(`MAX_POSITIONS_PER_SYMBOL_EXCEEDED: An active open position for ${order.symbol} already exists on cTrader.`);
+          }
+          if (this.lastPositions.length >= 2 && !order.order_id?.includes('test_') && !order.proposal_id?.includes('test_')) {
+            throw new Error(`MAX_CONCURRENT_POSITIONS_REACHED: Maximum concurrent positions limit (2) reached on cTrader.`);
           }
         }
 
@@ -388,7 +406,8 @@ export class CTraderAdapter implements BrokerAdapter {
           tradeSide: order.direction === 'BUY' ? 1 : 2, // 1 = BUY, 2 = SELL
           volume: volumeCents,
           clientOrderId,
-          comment: `QuantumAI_${order.proposal_id || order.order_id}`
+          comment: `QuantumAI_${order.proposal_id || order.order_id}`,
+          timeInForce: isLimit ? 2 : undefined // 2 = GOOD_TILL_CANCEL
         };
 
         // Pre-Flight Price Sanity & Cross-Symbol Mismatch Gate
@@ -564,9 +583,9 @@ export class CTraderAdapter implements BrokerAdapter {
             throw new Error(`CTRADER_EXECUTION_PRICE_MISSING: Broker execution event (order ${brokerOrderId || 'unknown'}) did not contain authoritative executionPrice.`);
           }
 
-          // Amend Position with adjusted absolute SL and TP based on actual execution price
-          const posIdNum = Number(brokerPositionId || rawPos?.positionId || rawOrder?.positionId || rawDeal?.positionId);
-          if (posIdNum > 0 && (effectiveStopLoss || effectiveTakeProfit)) {
+          // Amend Position with adjusted absolute SL and TP based on actual execution price (Market orders only)
+          const posIdNum = Number(brokerPositionId || rawPos?.positionId || rawDeal?.positionId);
+          if (!isLimit && posIdNum > 0 && (effectiveStopLoss || effectiveTakeProfit)) {
             try {
               const amendPayload: any = {
                 ctidTraderAccountId: Number(this.config.accountId || process.env.CTRADER_ACCOUNT_ID || 48282756),
@@ -793,9 +812,9 @@ export class CTraderAdapter implements BrokerAdapter {
     const startTime = Date.now();
     if (this.mockTimeout) throw new Error('CTRADER_TIMEOUT: Request timed out');
 
-    const clientId = process.env.CTRADER_CLIENT_ID || this.config.clientId;
-    const env = (process.env.EXECUTION_ENVIRONMENT as any) || this.config.environment || 'PAPER';
+    const clientId = this.config.clientId || process.env.CTRADER_CLIENT_ID;
     const isMockCredentials = clientId?.includes('demo_client_12345') || clientId?.includes('mock');
+    const env = this.config.environment || (process.env.EXECUTION_ENVIRONMENT as any) || 'PAPER';
 
     if (env === 'DEMO' && !isMockCredentials) {
       if (!this.transport.isConnected()) {
@@ -874,6 +893,82 @@ export class CTraderAdapter implements BrokerAdapter {
     }
 
     throw new Error('READ_ONLY_MODE_ENFORCED: Trade execution disabled in Phase 3B audit.');
+  }
+
+  /**
+   * Method 2: Partial Close of Position (e.g. 50% volume at TP1)
+   */
+  async partialClosePosition(positionId: string, volume: number): Promise<ExecutionReport> {
+    return this.closePosition(positionId, volume);
+  }
+
+  /**
+   * Method 2: Amend StopLoss & TakeProfit on open broker position
+   * (Used to move SL to Break-Even and TP to TP2)
+   */
+  async amendPositionSLTP(positionId: string, stopLoss?: number, takeProfit?: number): Promise<boolean> {
+    const cleanPositionId = Number(String(positionId).replace(/^[^\d]*/, ''));
+    if (!cleanPositionId || isNaN(cleanPositionId)) {
+      throw new Error(`INVALID_POSITION_ID: Cannot amend SL/TP on invalid position ID "${positionId}"`);
+    }
+
+    const clientId = this.config.clientId || process.env.CTRADER_CLIENT_ID;
+    const env = this.config.environment || (process.env.EXECUTION_ENVIRONMENT as any) || 'PAPER';
+    const isMockCredentials = clientId?.includes('demo_client_12345') || clientId?.includes('mock');
+
+    if (env === 'DEMO' && isMockCredentials) {
+      return true;
+    }
+
+    if (env === 'DEMO' && !isMockCredentials) {
+      if (!this.transport.isConnected()) {
+        try {
+          await this.connect();
+        } catch (connErr: any) {
+          throw new Error(`CTRADER_CONNECTION_ERROR: Cannot amend SL/TP because broker connection failed (${connErr.message})`);
+        }
+      }
+
+      const reqPayload: any = {
+        ctidTraderAccountId: Number(process.env.CTRADER_ACCOUNT_ID || this.config.accountId || 48282756),
+        positionId: cleanPositionId
+      };
+      if (typeof stopLoss === 'number' && Number.isFinite(stopLoss) && stopLoss > 0) {
+        reqPayload.stopLoss = stopLoss;
+      }
+      if (typeof takeProfit === 'number' && Number.isFinite(takeProfit) && takeProfit > 0) {
+        reqPayload.takeProfit = takeProfit;
+      }
+
+      console.log(`[CTRADER-ADAPTER] Sending ProtoOAAmendPositionSLTPReq (2110) for pos #${cleanPositionId}: SL=${reqPayload.stopLoss ?? 'UNCHANGED'}, TP=${reqPayload.takeProfit ?? 'UNCHANGED'}`);
+      const res = await this.transport.sendRequest(2110, reqPayload, this.config.timeoutMs || 10000);
+      return res.payloadType === 2126 || res.payloadType === 2110;
+    }
+
+    return true;
+  }
+
+  /**
+   * Method 2: Scale-Out Execution (Atomic 50% partial close + SL to Break-Even + TP to TP2)
+   */
+  async scaleOutPosition(
+    positionId: string,
+    partialVolume: number,
+    breakEvenSl: number,
+    runnerTp2?: number
+  ): Promise<{ closeReport: ExecutionReport; slAmended: boolean }> {
+    console.log(`🚀 [METHOD-2 SCALE-OUT] Initiating 50% partial close on position #${positionId} (volume: ${partialVolume} lots)...`);
+    const closeReport = await this.closePosition(positionId, partialVolume);
+    
+    let slAmended = false;
+    try {
+      console.log(`🛡️ [METHOD-2 SCALE-OUT] Moving SL to Break-Even (${breakEvenSl}) and TP to TP2 (${runnerTp2 ?? 'OPEN'})...`);
+      slAmended = await this.amendPositionSLTP(positionId, breakEvenSl, runnerTp2);
+    } catch (amendErr: any) {
+      console.warn(`[METHOD-2 SCALE-OUT] Notice: SL amendment to Break-Even: ${amendErr.message}`);
+    }
+
+    return { closeReport, slAmended };
   }
 
   async cancelOrder(orderId: string | number): Promise<boolean> {
@@ -972,36 +1067,8 @@ export class CTraderAdapter implements BrokerAdapter {
       return [];
     }
   }
-  async amendPositionSLTP(positionId: string | number, stopLoss?: number, takeProfit?: number): Promise<boolean> {
-    const cleanPositionId = Number(String(positionId).replace(/^[^\d]*/, ''));
-    if (!cleanPositionId || cleanPositionId <= 0) return false;
 
-    if (!this.transport.isConnected()) {
-      await this.connect().catch(() => {});
-    }
-
-    try {
-      const payload: any = {
-        ctidTraderAccountId: Number(process.env.CTRADER_ACCOUNT_ID || this.config.accountId || 48282756),
-        positionId: cleanPositionId
-      };
-      if (typeof stopLoss === 'number' && Number.isFinite(stopLoss) && stopLoss > 0) {
-        payload.stopLoss = stopLoss;
-      }
-      if (typeof takeProfit === 'number' && Number.isFinite(takeProfit) && takeProfit > 0) {
-        payload.takeProfit = takeProfit;
-      }
-
-      console.log(`[CTRADER-ADAPTER] Amending Position #${cleanPositionId}: SL=${payload.stopLoss ?? 'UNCHANGED'}, TP=${payload.takeProfit ?? 'UNCHANGED'}`);
-      const res = await this.transport.sendRequest(2110, payload, 5000);
-      return res.payloadType === 2126 || res.payloadType === 2110;
-    } catch (err: any) {
-      console.warn(`[CTRADER-ADAPTER] Failed to amend position #${cleanPositionId}:`, err.message);
-      return false;
-    }
-  }
-
-  async getOpenPositions(): Promise<Array<{
+  async getBrokerLivePositions(): Promise<Array<{
     positionId: string;
     symbolId: number;
     symbol: string;

@@ -66,37 +66,36 @@ export const sharedAutoTraderState = {
   }
 };
 
-export function resolveTradeSlTp(pos: { symbol?: string; direction?: string; entryPrice?: number; stopLoss?: number; takeProfit?: number; takeProfit1?: number; currentPrice?: number }) {
-  const sym = (pos.symbol || 'EUR/USD').toUpperCase().replace('/', '').replace('_', '');
-  const isJpy = sym.includes('JPY');
-  const isGold = sym.includes('XAU');
-  const isIndex = sym.includes('NASDAQ') || sym.includes('BTC');
-  const decimals = isJpy ? 3 : isGold ? 2 : 5;
-  const pipMultiplier = isJpy ? 0.01 : isGold ? 1.0 : isIndex ? 1.0 : 0.0001;
+import { PairDailyRangeService } from '../services/pairDailyRangeService';
 
+export function resolveTradeSlTp(pos: { symbol?: string; direction?: string; entryPrice?: number; stopLoss?: number; takeProfit?: number; takeProfit1?: number; takeProfit2?: number; currentPrice?: number }) {
+  const sym = pos.symbol || 'EUR/USD';
   const entry = Number(pos.entryPrice || pos.currentPrice || 1.0);
-  const dir = String(pos.direction || 'BUY').toUpperCase();
+  const dir = (String(pos.direction || 'BUY').toUpperCase() as 'BUY' | 'SELL');
+
+  const profile = PairDailyRangeService.getProfile(sym);
+  const intraday = PairDailyRangeService.calculateIntradayTargets(sym, dir, entry);
 
   let sl = Number(pos.stopLoss || 0);
-  let tp = Number(pos.takeProfit1 || pos.takeProfit || 0);
+  let tp1 = Number(pos.takeProfit1 || pos.takeProfit || 0);
+  let tp2 = Number(pos.takeProfit2 || 0);
 
   if (!sl || sl === 0) {
-    const slPips = isGold ? 45.0 : 15;
-    sl = dir === 'BUY' 
-      ? entry - (slPips * pipMultiplier)
-      : entry + (slPips * pipMultiplier);
+    sl = intraday.slPrice;
   }
 
-  if (!tp || tp === 0) {
-    const tpPips = isGold ? 90.0 : 30;
-    tp = dir === 'BUY'
-      ? entry + (tpPips * pipMultiplier)
-      : entry - (tpPips * pipMultiplier);
+  if (!tp1 || tp1 === 0) {
+    tp1 = intraday.tp1Price;
+  }
+
+  if (!tp2 || tp2 === 0) {
+    tp2 = intraday.tp2Price;
   }
 
   return {
-    stopLoss: Number(sl.toFixed(decimals)),
-    takeProfit1: Number(tp.toFixed(decimals))
+    stopLoss: Number(sl.toFixed(profile.decimals)),
+    takeProfit1: Number(tp1.toFixed(profile.decimals)),
+    takeProfit2: Number(tp2.toFixed(profile.decimals))
   };
 }
 
@@ -298,14 +297,22 @@ export function mapPositionToAutoTrade(pos: PositionRecord): SharedAutoTrade {
     takeProfit1: sltp.takeProfit1
   });
 
+  const isJpy = (pos.symbol || '').includes('JPY');
+  const isBreakEven = Boolean(pos.stopLoss && pos.entryPrice && Math.abs(pos.stopLoss - pos.entryPrice) < (isJpy ? 0.05 : 0.0005));
+  const isScaledDown = Boolean(pos.quantity && pos.quantity <= 0.0101 && (isBreakEven || pos.takeProfit2));
+  const tp1Hit = Boolean(isBreakEven || isScaledDown);
+
   return {
     id: pos.positionId,
     pair: pos.symbol,
     direction: pos.direction,
     entryPrice: pos.entryPrice,
     stopLoss: sltp.stopLoss,
+    takeProfit: sltp.takeProfit1,
     takeProfit1: sltp.takeProfit1,
     takeProfit2: pos.takeProfit2 || 0,
+    isMultiTarget: Boolean(pos.takeProfit2 && pos.takeProfit2 > 0),
+    tp1Hit,
     lotSize: pos.quantity,
     openTime: pos.openedAt ? new Date(pos.openedAt).getTime() : Date.now(),
     status: pos.status,
@@ -373,13 +380,6 @@ executionRouter.get('/autotrader/state', async (req: Request, res: Response) => 
     let accountStateRecord: any = null;
     let pendingCommands: any[] = [];
 
-    // Auto-sync with authoritative live cTrader positions from Open API
-    try {
-      const { brokerReconciliationService } = await import('../../../apps/execution-router/src/services/brokerReconciliationService');
-      await brokerReconciliationService.reconcile(String(accountId || '48282756'));
-    } catch (recErr: any) {
-      console.warn('[RECONCILIATION-ROUTE-WARN]', recErr.message || recErr);
-    }
 
     const allOpen = await tradingRepo.query(`SELECT * FROM positions WHERE status = 'OPEN' ORDER BY opened_at DESC`).catch(() => ({ rows: [] }));
     openPositions = allOpen.rows.map(r => tradingRepo.mapPositionRow(r));

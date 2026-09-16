@@ -1646,17 +1646,43 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
                               )}
                             </div>
 
-                            <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-3 flex-wrap">
-                              <span>Entri: <strong className="text-slate-200">{setup.entryPrice}</strong></span>
-                              <span>SL: <strong className="text-rose-400">{setup.stopLoss}</strong></span>
-                              <span>TP1: <strong className="text-emerald-400">{setup.takeProfit1}</strong></span>
+                            {/* Price Parameters with TP1, TP2 (Runner), and Break-Even (BE) */}
+                            {(() => {
+                              const isJpy = setup.pair?.includes('JPY');
+                              const decimals = isJpy ? 3 : 5;
+                              const tp2Calculated = setup.takeProfit2 || (
+                                setup.direction === 'BUY'
+                                  ? +(setup.entryPrice + (setup.takeProfit1 - setup.entryPrice) * 1.8).toFixed(decimals)
+                                  : +(setup.entryPrice - (setup.entryPrice - setup.takeProfit1) * 1.8).toFixed(decimals)
+                              );
+                              const beTrigger = setup.breakEvenPrice || setup.entryPrice;
 
-                              {/* TIMESTAMP WHEN SIGNAL WAS LAST FOUND */}
-                              <span className="text-[10px] text-indigo-300/90 font-mono flex items-center gap-1 bg-indigo-950/50 px-2 py-0.5 rounded border border-indigo-500/30">
-                                <Clock className="w-3 h-3 text-indigo-400" />
-                                Dikesan: {foundTimeFormatted}
-                              </span>
-                            </div>
+                              return (
+                                <div className="text-[11px] text-slate-400 mt-1.5 flex items-center gap-2 flex-wrap">
+                                  <span className="bg-slate-900/90 px-2 py-0.5 rounded border border-slate-700/60">
+                                    Entri: <strong className="text-slate-100">{setup.entryPrice}</strong>
+                                  </span>
+                                  <span className="bg-rose-950/40 px-2 py-0.5 rounded border border-rose-800/40">
+                                    SL: <strong className="text-rose-400">{setup.stopLoss}</strong>
+                                  </span>
+                                  <span className="bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-800/40">
+                                    TP1 (50%): <strong className="text-emerald-300 font-bold">{setup.takeProfit1}</strong>
+                                  </span>
+                                  <span className="bg-teal-950/40 px-2 py-0.5 rounded border border-teal-800/40">
+                                    TP2 (Runner): <strong className="text-teal-300 font-bold">{tp2Calculated}</strong>
+                                  </span>
+                                  <span className="bg-indigo-950/40 px-2 py-0.5 rounded border border-indigo-800/40 text-[10px]" title="Stop Loss dialihkan ke Entri secara automatik sebaik sahaja TP1 tercapai">
+                                    BE: <strong className="text-indigo-300">Auto @ {beTrigger}</strong>
+                                  </span>
+
+                                  {/* TIMESTAMP WHEN SIGNAL WAS LAST FOUND */}
+                                  <span className="text-[10px] text-indigo-300/90 font-mono flex items-center gap-1 bg-indigo-950/50 px-2 py-0.5 rounded border border-indigo-500/30">
+                                    <Clock className="w-3 h-3 text-indigo-400" />
+                                    Dikesan: {foundTimeFormatted}
+                                  </span>
+                                </div>
+                              );
+                            })()}
 
                             {/* Invalidation Reason Banner */}
                             {(!isValid || setup.status === 'INVALID') && setup.invalidationReason && (

@@ -7,4 +7,7 @@ coverage/
 .env*
 !.env.example
 data/shadow-write-ahead/
+data/telegram_config.json
+data/telegram_news_alerts.json
+data/vip_subscribers.json
 scratch/

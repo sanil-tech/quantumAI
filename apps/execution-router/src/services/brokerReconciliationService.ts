@@ -76,33 +76,74 @@ export class BrokerReconciliationService {
     this.isReconciling = true;
 
     try {
-      // 1. Fetch broker positions directly from live authenticated cTrader adapter
+      // 1. Fetch broker positions directly from live singleton feed or cTrader adapter
       let brokerPositions: any[] = [];
       let brokerInstance: CTraderAdapter | undefined;
       try {
-        const broker = (this.executionRouter.getBroker('ctrader-broker-01') as CTraderAdapter | undefined) 
-          || new CTraderAdapter({ accountId: accountId || '48282756' });
-        brokerInstance = broker;
-        if (!broker.isConnected()) {
-          await broker.connect().catch(() => {});
+        const rawFeedPositions = await ctraderMarketDataFeedService.fetchRawOpenPositions().catch(() => []);
+        if (Array.isArray(rawFeedPositions) && rawFeedPositions.length > 0) {
+          brokerPositions = rawFeedPositions.map((p: any) => {
+            const symId = Number(p.tradeData?.symbolId ?? p.symbolId ?? 1);
+            const symSpec = CTraderSymbolRegistry.getSymbolById(symId);
+            const rawName = symSpec?.symbolName || (
+              symId === 1 ? 'EURUSD' :
+              symId === 2 ? 'GBPUSD' :
+              symId === 3 ? 'EURJPY' :
+              symId === 4 ? 'USDJPY' :
+              symId === 5 ? 'AUDUSD' :
+              symId === 6 ? 'USDCHF' :
+              symId === 7 ? 'GBPJPY' :
+              symId === 8 ? 'USDCAD' :
+              symId === 12 ? 'NZDUSD' :
+              symId === 41 ? 'XAUUSD' : 'EURUSD'
+            );
+            const formattedSymbol = rawName.includes('/') ? rawName : (rawName.length === 6 ? `${rawName.slice(0, 3)}/${rawName.slice(3)}` : rawName);
+            const rawVol = Number(p.tradeData?.volume ?? p.volume ?? 100000);
+            const quantity = rawVol >= 100000 ? Number((rawVol / 10000000).toFixed(2)) : (rawVol >= 10 ? Number((rawVol / 100000).toFixed(2)) : rawVol);
+            const tradeSide = (p.tradeData?.tradeSide ?? p.tradeSide) === 1 ? 'BUY' : 'SELL';
+            const entryPrice = Number(p.price ?? p.tradeData?.entryPrice ?? p.entryPrice ?? 0);
+            const posId = String(p.positionId ?? p.tradeData?.positionId);
+
+            return {
+              position_id: posId,
+              ticketId: posId,
+              brokerPositionId: posId,
+              symbol: formattedSymbol,
+              direction: tradeSide,
+              quantity: quantity || 0.01,
+              entry_price: entryPrice,
+              stop_loss: Number(p.stopLoss || 0),
+              take_profit: Number(p.takeProfit || 0),
+              status: 'OPEN'
+            };
+          });
         }
-        const livePositions = await broker.getOpenPositions();
-        if (Array.isArray(livePositions)) {
-          brokerPositions = livePositions.map(p => ({
-            position_id: String(p.positionId),
-            ticketId: String(p.positionId),
-            brokerPositionId: String(p.positionId),
-            symbol: p.symbol,
-            direction: p.tradeSide,
-            quantity: typeof p.volume === 'number' ? p.volume : 0.01,
-            entry_price: p.entryPrice,
-            stop_loss: p.stopLoss || 0,
-            take_profit: p.takeProfit || 0,
-            status: 'OPEN'
-          }));
+
+        if (brokerPositions.length === 0) {
+          const broker = (this.executionRouter.getBroker('ctrader-broker-01') as CTraderAdapter | undefined) 
+            || new CTraderAdapter({ accountId: accountId || '48282756' });
+          brokerInstance = broker;
+          if (!broker.isConnected()) {
+            await broker.connect().catch(() => {});
+          }
+          const livePositions = await broker.getPositions();
+          if (Array.isArray(livePositions)) {
+            brokerPositions = livePositions.map(p => ({
+              position_id: String(p.position_id),
+              ticketId: String(p.position_id),
+              brokerPositionId: String(p.position_id),
+              symbol: p.symbol,
+              direction: p.direction,
+              quantity: typeof p.quantity === 'number' ? p.quantity : 0.01,
+              entry_price: p.entry_price,
+              stop_loss: p.stop_loss || 0,
+              take_profit: p.take_profit || 0,
+              status: 'OPEN'
+            }));
+          }
         }
       } catch (adapterErr: any) {
-        console.warn('[BrokerReconciliation] cTrader getOpenPositions error:', adapterErr.message);
+        console.warn('[BrokerReconciliation] cTrader getPositions error:', adapterErr.message);
       }
 
       // Query database open positions across demo accounts
@@ -200,6 +241,15 @@ export class BrokerReconciliationService {
             } catch (healErr: any) {
               console.warn(`[BrokerReconciliation-AutoHeal] Error healing position #${match.position_id}:`, healErr.message);
             }
+          }
+
+          // DB volume parity check: if cTrader volume differs from DB, sync DB
+          if (match.quantity > 0 && Math.abs(Number(dbPos.quantity) - match.quantity) > 0.001) {
+            await this.tradingRepo.query(
+              `UPDATE positions SET quantity = $1, updated_at = NOW() WHERE position_id = $2 OR ticket_id = $2`,
+              [match.quantity, dbPos.positionId]
+            ).catch(() => {});
+            dbPos.quantity = match.quantity;
           }
 
           // DB TP parity check: if cTrader has valid TP but DB still holds contaminated TP, sync DB

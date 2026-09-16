@@ -18,6 +18,10 @@ CREATE TABLE IF NOT EXISTS broker_webhook_events (
   processed_at TIMESTAMP WITH TIME ZONE
 );
 
+ALTER TABLE broker_webhook_events ADD COLUMN IF NOT EXISTS status VARCHAR(32) NOT NULL DEFAULT 'RECEIVED';
+ALTER TABLE broker_webhook_events ADD COLUMN IF NOT EXISTS error TEXT;
+ALTER TABLE broker_webhook_events ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+
 CREATE INDEX IF NOT EXISTS idx_broker_webhook_status ON broker_webhook_events(status);
 CREATE INDEX IF NOT EXISTS idx_broker_webhook_order ON broker_webhook_events(order_id);
 

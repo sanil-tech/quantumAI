@@ -8,7 +8,7 @@ export const PAIR_CONFIGS: Record<CurrencyPair, { basePrice: number; decimals: n
   'USD/JPY': { basePrice: 159.280, decimals: 3, pipValue: 6.5, pipMultiplier: 100 },
   'AUD/USD': { basePrice: 0.71500, decimals: 5, pipValue: 10, pipMultiplier: 10000 },
   'USD/CHF': { basePrice: 0.88500, decimals: 5, pipValue: 10, pipMultiplier: 10000 },
-  'NZD/USD': { basePrice: 0.58500, decimals: 5, pipValue: 10, pipMultiplier: 10000 },
+  'NZD/USD': { basePrice: 0.57726, decimals: 5, pipValue: 10, pipMultiplier: 10000 },
   'USD/CAD': { basePrice: 1.39500, decimals: 5, pipValue: 10, pipMultiplier: 10000 },
   'EUR/JPY': { basePrice: 185.700, decimals: 3, pipValue: 6.5, pipMultiplier: 100 },
   'GBP/JPY': { basePrice: 217.100, decimals: 3, pipValue: 6.5, pipMultiplier: 100 },

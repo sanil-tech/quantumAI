@@ -70,6 +70,7 @@ export class CTraderTransport extends EventEmitter {
   private static readonly EVENT_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
   async connect(host: string, port: number, timeoutMs: number = 10000): Promise<boolean> {
+    this.buffer = Buffer.alloc(0);
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         if (this.socket) this.socket.destroy();
@@ -78,21 +79,25 @@ export class CTraderTransport extends EventEmitter {
 
       this.socket = tls.connect({ host, port, servername: host, rejectUnauthorized: false }, () => {
         clearTimeout(timer);
+        this.buffer = Buffer.alloc(0);
         resolve(true);
       });
 
       this.socket.on('data', (chunk: Buffer) => this.handleData(chunk));
       this.socket.on('error', (err) => {
         clearTimeout(timer);
+        this.buffer = Buffer.alloc(0);
         this.rejectAll(err);
       });
       this.socket.on('close', () => {
+        this.buffer = Buffer.alloc(0);
         this.rejectAll(new Error('CTRADER_SOCKET_CLOSED: Socket connection closed.'));
       });
     });
   }
 
   async disconnect(): Promise<void> {
+    this.buffer = Buffer.alloc(0);
     if (this.socket) {
       this.socket.destroy();
       this.socket = null;

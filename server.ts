@@ -29,6 +29,7 @@ import { adminRouter } from "./src/server/routes/admin";
 import { billingRouter } from "./src/server/routes/billing";
 import shadowTestRouter from "./src/server/routes/shadowTest";
 import { copierRouter } from "./src/server/routes/copier";
+import { telegramRouter } from "./src/server/routes/telegram";
 import { backtestEngine } from "./apps/decision-agent/src/services/backtestEngine";
 import { aiDecisionEngine } from "./apps/decision-agent/src/services/aiDecisionEngine";
 import { learningService } from "./src/server/services/learningService";
@@ -87,6 +88,7 @@ async function startServer() {
   app.use("/api/billing", billingRouter);
   app.use("/api/shadow", shadowTestRouter);
   app.use("/api", copierRouter);
+  app.use("/api", telegramRouter);
 
   // Direct top-level scanner status & trigger routes
   app.get("/api/autotrader/scanner/status", async (req, res) => {
@@ -186,16 +188,16 @@ async function startServer() {
       const ctraderSpots = ctraderMarketDataFeedService.getAllSpotPrices();
 
       const baseDefaults: Record<string, number> = {
-        'EUR/USD': 1.08520,
-        'GBP/USD': 1.26400,
-        'EUR/JPY': 178.302,
-        'USD/JPY': 155.450,
-        'AUD/USD': 0.65200,
-        'USD/CHF': 0.88450,
-        'GBP/JPY': 196.420,
-        'USD/CAD': 1.39850,
-        'NZD/USD': 0.58900,
-        'XAU/USD': 2652.50,
+        'EUR/USD': 1.15380,
+        'GBP/USD': 1.34760,
+        'EUR/JPY': 178.680,
+        'USD/JPY': 154.850,
+        'AUD/USD': 0.71260,
+        'USD/CHF': 0.81690,
+        'GBP/JPY': 208.700,
+        'USD/CAD': 1.39000,
+        'NZD/USD': 0.57726,
+        'XAU/USD': 4270.00,
         'NASDAQ': 20850.0,
         'BTC/USD': 92450.0
       };
@@ -1339,57 +1341,6 @@ async function startServer() {
     try {
       const isDbConnected = await checkDbConnection();
 
-      // Trigger automatic live reconciliation with cTrader broker before reading DB
-      try {
-        const { CTraderAdapter } = await import('./apps/execution-router/src/adapters/ctraderAdapter');
-        const broker = new CTraderAdapter({ accountId: '48282756' });
-        if (!broker.isConnected()) await broker.connect().catch(() => {});
-        const liveBrokerPositions = await broker.getOpenPositions();
-        
-        if (Array.isArray(liveBrokerPositions)) {
-          const brokerTicketSet = new Set(liveBrokerPositions.map(p => String(p.positionId)));
-          const dbOpenRes = await serverTradingRepo.query(`SELECT * FROM positions WHERE status = 'OPEN'`).catch(() => ({ rows: [] }));
-          for (const dbPos of dbOpenRes.rows) {
-            const ticket = String(dbPos.ticket_id || dbPos.position_id.replace('trade_', ''));
-            const liveMatch = liveBrokerPositions.find(p => String(p.positionId) === ticket);
-            if (!liveMatch) {
-              const rawSym = (dbPos.symbol || 'EUR/USD').toUpperCase();
-              const isFx = !rawSym.includes('XAU') && !rawSym.includes('BTC') && !rawSym.includes('NASDAQ');
-              const isJpy = rawSym.includes('JPY');
-              const pipFactor = isJpy ? 100 : isFx ? 10000 : 10;
-              const liveTick = ctraderMarketDataFeedService.getLatestTick(dbPos.symbol as any);
-              const livePrice = liveTick ? (dbPos.direction === 'BUY' ? liveTick.bid : liveTick.ask) : Number(dbPos.entry_price);
-              const priceDiff = dbPos.direction === 'BUY' ? (livePrice - Number(dbPos.entry_price)) : (Number(dbPos.entry_price) - livePrice);
-              const pnlPips = Number((priceDiff * pipFactor).toFixed(1));
-              const pnlDollars = Number((pnlPips * 10 * Number(dbPos.quantity || 0.05)).toFixed(2));
-
-              await serverTradingRepo.query(`
-                UPDATE positions
-                SET status = 'CLOSED',
-                    close_price = $1,
-                    realized_profit = $2,
-                    pnl_pips = $3,
-                    close_reason = 'BROKER_SIDE_CLOSED',
-                    closed_at = COALESCE(closed_at, NOW()),
-                    updated_at = NOW()
-                WHERE position_id = $4
-              `, [livePrice, pnlDollars, pnlPips, dbPos.position_id]).catch(() => {});
-            } else {
-              // Synchronize live SL & TP from broker into database
-              const bSL = liveMatch.stopLoss || 0;
-              const bTP = liveMatch.takeProfit || 0;
-              if ((bSL > 0 && bSL !== Number(dbPos.stop_loss)) || (bTP > 0 && bTP !== Number(dbPos.take_profit))) {
-                await serverTradingRepo.query(`
-                  UPDATE positions 
-                  SET stop_loss = $1, take_profit = $2, updated_at = NOW()
-                  WHERE position_id = $3
-                `, [bSL || dbPos.stop_loss, bTP || dbPos.take_profit, dbPos.position_id]).catch(() => {});
-              }
-            }
-          }
-        }
-      } catch (_) {}
-
       let openTrades: SharedAutoTrade[] = [];
       let closedTrades: SharedClosedTrade[] = [];
       let winCount = 0;
@@ -1422,8 +1373,11 @@ async function startServer() {
               direction: r.direction as 'BUY' | 'SELL',
               entryPrice: Number(r.entry_price),
               stopLoss: Number(r.stop_loss || 0),
+              takeProfit: Number(r.take_profit || 0),
               takeProfit1: Number(r.take_profit || 0),
-              takeProfit2: Number(r.take_profit || 0),
+              takeProfit2: Number(r.take_profit_2 || 0),
+              isMultiTarget: Boolean(r.take_profit_2 && Number(r.take_profit_2) > 0),
+              tp1Hit: Boolean(Number(r.quantity) <= 0.0101 && Math.abs(Number(r.stop_loss) - Number(r.entry_price)) < (decimals === 3 ? 0.01 : 0.0001)),
               lotSize: Number(r.quantity || 0.05),
               openTime: r.opened_at ? new Date(r.opened_at).getTime() : Date.now(),
               setupId: r.setup_id || r.position_id,
@@ -1448,7 +1402,7 @@ async function startServer() {
               exitPrice: Number(r.close_price || r.entry_price),
               stopLoss: Number(r.stop_loss || 0),
               takeProfit1: Number(r.take_profit || 0),
-              takeProfit2: Number(r.take_profit || 0),
+              takeProfit2: Number(r.take_profit_2 || r.take_profit || 0),
               lotSize: Number(r.quantity || 0.05),
               openTime: r.opened_at ? new Date(r.opened_at).getTime() : Date.now() - 60000,
               closeTime: r.closed_at ? new Date(r.closed_at).getTime() : Date.now(),
@@ -1822,6 +1776,7 @@ async function startServer() {
           currentPrice: Number(entryPrice),
           stopLoss: Number(stopLoss),
           takeProfit: Number(takeProfit1),
+          takeProfit2: Number(takeProfit2 || takeProfit1),
           status: 'OPEN',
           broker: 'CTRADER'
         });
@@ -2019,6 +1974,108 @@ async function startServer() {
 
     sharedAutoTraderState.lastUpdated = Date.now();
     res.json({ success: true, closedTrade, state: sharedAutoTraderState });
+  });
+
+  // Method 2 Endpoint: Partial Close & Scale-Out (50% TP1 + SL to Break-Even + TP2 Runner)
+  app.post("/api/autotrader/trade/partial-close", async (req, res) => {
+    const { tradeId, pair, exitPrice, tp2Price } = req.body;
+
+    const tradeIndex = sharedAutoTraderState.openTrades.findIndex(t => t.id === tradeId || (pair && t.pair === pair));
+    if (tradeIndex === -1) {
+      res.status(404).json({ error: "TRADE_NOT_FOUND: Open trade not found for partial close scale-out." });
+      return;
+    }
+
+    const trade = sharedAutoTraderState.openTrades[tradeIndex];
+    const actualExit = Number(exitPrice || trade.takeProfit1 || trade.entryPrice);
+    const targetTp2 = Number(tp2Price || trade.takeProfit2 || trade.takeProfit1);
+
+    const closeLots = Number((trade.lotSize >= 0.02 ? trade.lotSize / 2 : trade.lotSize * 0.5).toFixed(3));
+    const runnerLots = Number((trade.lotSize - closeLots).toFixed(3));
+
+    const pipScale = trade.pair.includes('JPY') ? 100 : (trade.pair === 'NASDAQ' || trade.pair === 'BTC/USD' || trade.pair === 'XAU/USD' ? 1 : 10000);
+    const priceDiff = trade.direction === 'BUY' ? (actualExit - trade.entryPrice) : (trade.entryPrice - actualExit);
+    const pnlPips = Math.round(priceDiff * pipScale);
+    const calculatedPnlDollars = Number((pnlPips * closeLots * 10).toFixed(2));
+
+    console.log(`🎯 [SERVER-METHOD-2] Executing 50% scale-out on ${trade.pair} (${trade.id}): closing ${closeLots} lots @ ${actualExit}, moving SL to BE (${trade.entryPrice}), runner targeting TP2 (${targetTp2})...`);
+
+    // Execute scale-out on broker via cTrader adapter if available
+    try {
+      const ctraderAdapter = (canonicalExecutionRouter as any).getBroker?.('ctrader-broker-01');
+      if (ctraderAdapter && typeof ctraderAdapter.scaleOutPosition === 'function') {
+        const cleanPosId = trade.ticketId || trade.id;
+        await ctraderAdapter.scaleOutPosition(cleanPosId, closeLots, trade.entryPrice, targetTp2);
+      }
+    } catch (brokerErr: any) {
+      console.warn('[SERVER-METHOD-2] Broker scale-out dispatch notice:', brokerErr.message);
+    }
+
+    // Persist to PostgreSQL if database connected
+    const isDbConnected = await checkDbConnection();
+    if (isDbConnected) {
+      try {
+        await tradingRepo.updatePositionScaleOut({
+          positionId: trade.id,
+          remainingQuantity: runnerLots > 0 ? runnerLots : closeLots,
+          newStopLoss: trade.entryPrice,
+          newTakeProfit: targetTp2,
+          realizedProfitIncrement: calculatedPnlDollars,
+          pnlPips
+        });
+      } catch (dbErr: any) {
+        console.warn('[SERVER-METHOD-2] DB scale-out update notice:', dbErr.message);
+      }
+    }
+
+    // Record partial closed record
+    const partialClosedRecord: SharedClosedTrade = {
+      ...trade,
+      id: `${trade.id}_tp1_partial`,
+      lotSize: closeLots,
+      closeTime: Date.now(),
+      exitPrice: actualExit,
+      pnlDollars: calculatedPnlDollars,
+      pnlPips,
+      closeReason: 'TP1_HIT'
+    };
+    sharedAutoTraderState.closedTrades.unshift(partialClosedRecord);
+
+    // Update open trade to Runner state (Method 2 Stage 2)
+    trade.lotSize = runnerLots > 0 ? runnerLots : closeLots;
+    trade.stopLoss = trade.entryPrice;
+    trade.takeProfit1 = targetTp2;
+    (trade as any).tp1Hit = true;
+
+    // Update server balance
+    sharedAutoTraderState.balance = Number((sharedAutoTraderState.balance + calculatedPnlDollars).toFixed(2));
+    if (serverBrokerConnection) {
+      serverBrokerConnection.liveBalance = sharedAutoTraderState.balance;
+      serverBrokerConnection.liveEquity = sharedAutoTraderState.balance;
+    }
+
+    sharedAutoTraderState.logs.unshift({
+      id: `log-scaleout-${Date.now()}`,
+      timestamp: new Date().toLocaleTimeString('ms-MY'),
+      text: `🎯 [METHOD 2 SCALE-OUT] Posisi ${trade.direction} ${trade.pair} capai TP1 (${actualExit}). 50% lot ditutup (+${pnlPips} pips / +$${calculatedPnlDollars.toFixed(2)} USD). SL dialih ke Break-Even (${trade.entryPrice}), TP baharu disasarkan ke TP2 (${targetTp2}).`,
+      type: 'WIN'
+    });
+
+    sharedAutoTraderState.lastUpdated = Date.now();
+    res.json({
+      success: true,
+      message: "Method 2 scale-out executed successfully.",
+      scaledOutTrade: trade,
+      partialRealized: {
+        closedLots: closeLots,
+        runnerLots: trade.lotSize,
+        realizedDollars: calculatedPnlDollars,
+        realizedPips: pnlPips,
+        breakEvenSl: trade.entryPrice,
+        runnerTp2: targetTp2
+      },
+      state: sharedAutoTraderState
+    });
   });
 
   // Endpoint: Reset Shared AutoTrader

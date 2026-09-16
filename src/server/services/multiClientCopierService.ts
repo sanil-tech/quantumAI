@@ -34,6 +34,8 @@ export interface CopiedExecutionEvent {
   entryPrice: number;
   stopLoss: number;
   takeProfit: number;
+  takeProfit2?: number;
+  isMultiTarget?: boolean;
   lotSize: number;
   riskPercent: number;
   status: 'SUCCESS' | 'FAILED' | 'SKIPPED_PAUSED' | 'SKIPPED_RISK';
@@ -241,6 +243,8 @@ class MultiClientCopierService extends EventEmitter {
     entryPrice: number;
     stopLoss: number;
     takeProfit1: number;
+    takeProfit2?: number;
+    isMultiTarget?: boolean;
     confidence?: number;
     strategyId?: string;
   }): Promise<{ dispatchedCount: number; results: CopiedExecutionEvent[] }> {
@@ -277,6 +281,8 @@ class MultiClientCopierService extends EventEmitter {
           entryPrice: tradeProposal.entryPrice,
           stopLoss: tradeProposal.stopLoss,
           takeProfit: tradeProposal.takeProfit1,
+          takeProfit2: tradeProposal.takeProfit2,
+          isMultiTarget: tradeProposal.isMultiTarget,
           lotSize: 0,
           riskPercent: sub.riskPercent,
           status: 'SKIPPED_PAUSED',
@@ -294,15 +300,17 @@ class MultiClientCopierService extends EventEmitter {
       const riskAmountUsd = sub.balance * (sub.riskPercent / 100);
       let calculatedLot = (riskAmountUsd / (Math.max(10, slPips) * 10));
 
-      // Asset-specific lot boundaries
+      // Asset-specific lot boundaries (ensure >= 0.02 if multi-target to permit 50% scale-out)
+      const minLot = tradeProposal.isMultiTarget || (tradeProposal.takeProfit2 && tradeProposal.takeProfit2 > 0) ? 0.02 : 0.01;
+
       if (isNas) {
         calculatedLot = Math.max(0.10, Math.min(10.0, Number(calculatedLot.toFixed(2))));
       } else if (isGold) {
-        calculatedLot = Math.max(0.01, Math.min(5.0, Number(calculatedLot.toFixed(2))));
+        calculatedLot = Math.max(minLot, Math.min(5.0, Number(calculatedLot.toFixed(2))));
       } else if (isBtc) {
         calculatedLot = Math.max(0.01, Math.min(1.0, Number(calculatedLot.toFixed(2))));
       } else {
-        calculatedLot = Math.max(0.01, Math.min(5.0, Number(calculatedLot.toFixed(2))));
+        calculatedLot = Math.max(minLot, Math.min(5.0, Number(calculatedLot.toFixed(2))));
       }
 
       const executionLatency = sub.latencyMs + Math.floor(Math.random() * 5);
@@ -323,6 +331,8 @@ class MultiClientCopierService extends EventEmitter {
           entryPrice: tradeProposal.entryPrice,
           stopLoss: tradeProposal.stopLoss,
           takeProfit: tradeProposal.takeProfit1,
+          takeProfit2: tradeProposal.takeProfit2,
+          isMultiTarget: Boolean(tradeProposal.takeProfit2 && tradeProposal.takeProfit2 > 0),
           lotSize: calculatedLot,
           riskPercent: sub.riskPercent,
           status: 'SUCCESS',
@@ -346,6 +356,8 @@ class MultiClientCopierService extends EventEmitter {
           entryPrice: tradeProposal.entryPrice,
           stopLoss: tradeProposal.stopLoss,
           takeProfit: tradeProposal.takeProfit1,
+          takeProfit2: tradeProposal.takeProfit2,
+          isMultiTarget: Boolean(tradeProposal.takeProfit2 && tradeProposal.takeProfit2 > 0),
           lotSize: calculatedLot,
           riskPercent: sub.riskPercent,
           status: 'FAILED',

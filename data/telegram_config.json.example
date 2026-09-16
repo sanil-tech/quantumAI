@@ -1,0 +1,8 @@
+{
+  "botToken": "YOUR_TELEGRAM_BOT_TOKEN_HERE",
+  "channelId": "-100XXXXXXXXXX",
+  "freeChannelId": "-100YYYYYYYYYY",
+  "defaultLanguage": "en",
+  "userLanguagePreferences": {},
+  "isEnabled": true
+}

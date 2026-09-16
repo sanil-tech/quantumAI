@@ -27,13 +27,17 @@ export interface DiscoveredSetup {
   entryPrice: number;
   stopLoss: number;
   takeProfit1: number;
+  takeProfit2?: number;
+  breakEvenPrice?: number;
   reasons: string[];
   pattern?: DetectedChartPattern;
-  status: 'EXECUTED' | 'SKIPPED_ALREADY_OPEN' | 'SKIPPED_PENDING_ORDER_EXISTS' | 'SKIPPED_COOLDOWN' | 'SKIPPED_RISK' | 'SKIPPED_ECONOMIC_EVENT' | 'SKIPPED_MARKET_CLOSED' | 'FAILED' | 'DISCOVERED' | 'INVALID' | 'EXPIRED';
+  status: 'EXECUTED' | 'SKIPPED_ALREADY_OPEN' | 'SKIPPED_PENDING_ORDER_EXISTS' | 'SKIPPED_COOLDOWN' | 'SKIPPED_RISK' | 'SKIPPED_ECONOMIC_EVENT' | 'SKIPPED_MARKET_CLOSED' | 'FAILED' | 'DISCOVERED' | 'DISCOVERED_BROADCAST_ONLY' | 'INVALID' | 'EXPIRED';
   executionDetails?: any;
   isValid?: boolean;
   invalidatedAt?: number;
   invalidationReason?: string;
+  telegramBroadcastSent?: boolean;
+  cancellationAlertSent?: boolean;
 }
 
 export class AutonomousMarketScannerService extends EventEmitter {
@@ -47,15 +51,16 @@ export class AutonomousMarketScannerService extends EventEmitter {
   private cacheFilePath: string = path.resolve(process.cwd(), 'data', 'scanner_discovered_setups.json');
 
   private watchlist: CurrencyPair[] = [
-    'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CHF',
-    'NZD/USD', 'USD/CAD', 'EUR/JPY', 'GBP/JPY', 'XAU/USD', 'NASDAQ', 'BTC/USD'
+    'EUR/USD', 'GBP/USD', 'EUR/JPY', 'GBP/JPY', 'USD/CHF',
+    'NZD/USD', 'USD/CAD', 'AUD/USD'
   ];
 
   private timeframes: Timeframe[] = ['M15', 'H1', 'H4'];
   private cooldownLedger: Map<string, number> = new Map(); // pairKey -> last executed timestamp
+  private pushedSignalLedger: Map<string, number> = new Map(); // pairKey -> last pushed signal timestamp
   private discoveredSetups: DiscoveredSetup[] = [];
   private activeEvaluatingSymbols: Set<string> = new Set(); // Symbol-level mutex
-  private maxAccountConcurrentOrders: number = 5; // Strict cap on total concurrent active + pending orders
+  private maxAccountConcurrentOrders: number = 2; // Strict cap on total concurrent active + pending orders
   private totalScanEvaluations: number = 0;
   private gradeACandidatesFound: number = 0;
   private secondOpinionsRequested: number = 0;
@@ -171,6 +176,36 @@ export class AutonomousMarketScannerService extends EventEmitter {
   }
 
   /**
+   * Broadcast signal cancellation notification to Telegram subscribers
+   */
+  private notifySignalCancellation(setup: DiscoveredSetup, reason: string): void {
+    if (setup.cancellationAlertSent) return;
+    const wasBroadcast = setup.telegramBroadcastSent || setup.confidence >= 75;
+    if (!wasBroadcast) return;
+
+    setup.cancellationAlertSent = true;
+    setup.invalidationReason = reason;
+
+    telegramNotificationService.broadcastTradeEvent({
+      pair: setup.pair,
+      direction: setup.direction,
+      timeframe: setup.timeframe,
+      entryPrice: setup.entryPrice,
+      stopLoss: setup.stopLoss,
+      takeProfit1: setup.takeProfit1,
+      takeProfit2: setup.takeProfit2,
+      confidence: setup.confidence,
+      status: 'SIGNAL_CANCELLED',
+      cancellationReason: reason,
+      tier: setup.confidence >= 85 ? 'FREE' : 'VIP'
+    }).catch(err => {
+      console.warn(`[AutonomousMarketScanner] Invalidation alert dispatch warning:`, err.message);
+    });
+
+    console.log(`🚫 [AutonomousMarketScanner] Dispatched SIGNAL CANCELLED alert to Telegram for ${setup.pair} (${reason}).`);
+  }
+
+  /**
    * Evaluates all currently stored setups and prunes any that are:
    * 1. Expired by Time-To-Live (TTL): M15=2h, H1=6h, H4=24h
    * 2. Invalidation Break (Price breaches SL before entry)
@@ -230,6 +265,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
         setup.isValid = false;
         setup.invalidatedAt = now;
         setup.invalidationReason = `Tamat tempoh sah (> ${ttlMs / 3600000} jam)`;
+        this.notifySignalCancellation(setup, `Setup expired (> ${ttlMs / 3600000}h without fill)`);
         this.cooldownLedger.set(pairKey, now + INVALIDATION_COOLDOWN_MS);
 
         if (setup.executionDetails?.brokerOrderId) {
@@ -258,6 +294,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
           setup.isValid = false;
           setup.invalidatedAt = now;
           setup.invalidationReason = `Harga pasaran (${currentPrice}) melepasi SL (${setup.stopLoss}) sebelum entri`;
+          this.notifySignalCancellation(setup, `Market price (${currentPrice}) breached SL (${setup.stopLoss}) before entry fill`);
           this.cooldownLedger.set(pairKey, now + INVALIDATION_COOLDOWN_MS);
 
           // CANCEL any pending order at cTrader immediately
@@ -280,6 +317,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
           setup.isValid = false;
           setup.invalidatedAt = now;
           setup.invalidationReason = `Harga pasaran (${currentPrice}) mencecah TP1 (${setup.takeProfit1}) sebelum sempat entri`;
+          this.notifySignalCancellation(setup, `Market price (${currentPrice}) reached TP1 (${setup.takeProfit1}) before entry fill`);
           this.cooldownLedger.set(pairKey, now + INVALIDATION_COOLDOWN_MS);
 
           // CANCEL any pending order at cTrader immediately
@@ -530,25 +568,10 @@ export class AutonomousMarketScannerService extends EventEmitter {
         }
       }
 
-      // 6. Enforce Account-Wide Concurrent Exposure Limit
-      if (totalActiveAndPending >= this.maxAccountConcurrentOrders) {
-        const item: DiscoveredSetup = {
-          id: setupId,
-          timestamp: Date.now(),
-          pair,
-          timeframe: best.timeframe,
-          direction: best.direction,
-          confidence: best.confidence,
-          entryPrice: best.entryPrice,
-          stopLoss: best.stopLoss,
-          takeProfit1: best.takeProfit1,
-          reasons: best.reasons,
-          pattern: best.pattern,
-          status: 'SKIPPED_RISK'
-        };
-        if (existingIdx >= 0) this.discoveredSetups[existingIdx] = item;
-        else this.recordDiscoveredSetup(item);
-        return;
+      // 6. Check Account-Wide Concurrent Exposure Limit
+      const isMasterAccountFull = totalActiveAndPending >= this.maxAccountConcurrentOrders;
+      if (isMasterAccountFull) {
+        console.log(`ℹ️ [AutonomousMarketScanner] Note: Master account currently at max capacity (${totalActiveAndPending}/${this.maxAccountConcurrentOrders}). Scanner will continue discovering Grade-A signals for Telegram subscribers.`);
       }
 
       // 7. Enforce In-Memory Micro Cooldown (2 minutes between consecutive executions or invalidation cooling off)
@@ -608,6 +631,20 @@ export class AutonomousMarketScannerService extends EventEmitter {
         };
         if (existingIdx >= 0) this.discoveredSetups[existingIdx] = item;
         else this.recordDiscoveredSetup(item);
+
+        // Alert subscribers that capital was protected from high-impact news
+        telegramNotificationService.broadcastNewsAlert({
+          eventId: `veto-${pair}-${Date.now()}`,
+          title: econEval.reason || 'High-Impact Economic News Active',
+          currency: pairKey.slice(0, 3),
+          impact: 'HIGH',
+          timeStr: new Date().toUTCString(),
+          timestamp: Date.now(),
+          affectedPairs: [pair],
+          type: 'TRADE_VETO',
+          reason: econEval.reason
+        }).catch(() => {});
+
         return;
       }
 
@@ -640,6 +677,11 @@ export class AutonomousMarketScannerService extends EventEmitter {
 
       console.log(`🎯 [AutonomousMarketScanner] Discovered Best A-Grade setup on ${pair} ${best.timeframe} (${best.direction} Limit @ ${best.entryPrice}, SL: ${best.stopLoss}, TP: ${best.takeProfit1}, Conf: ${best.confidence}%, Lot: ${best.lotSize}).`);
 
+      // Calculate runner TP2 (2x risk:reward)
+      const tp2Runner = best.direction === 'BUY'
+        ? +(best.entryPrice + (best.takeProfit1 - best.entryPrice) * 1.8).toFixed(pair.includes('JPY') ? 3 : 5)
+        : +(best.entryPrice - (best.entryPrice - best.takeProfit1) * 1.8).toFixed(pair.includes('JPY') ? 3 : 5);
+
       const discovered: DiscoveredSetup = {
         id: setupId,
         timestamp: Date.now(),
@@ -650,6 +692,8 @@ export class AutonomousMarketScannerService extends EventEmitter {
         entryPrice: best.entryPrice,
         stopLoss: best.stopLoss,
         takeProfit1: best.takeProfit1,
+        takeProfit2: tp2Runner,
+        breakEvenPrice: best.entryPrice,
         reasons: best.reasons,
         pattern: best.pattern,
         status: 'DISCOVERED',
@@ -660,9 +704,42 @@ export class AutonomousMarketScannerService extends EventEmitter {
       else this.recordDiscoveredSetup(discovered);
       this.emit('tradeExecuted', discovered);
 
+      // PUSH TO TELEGRAM IMMEDIATELY UPON GRADE-A SIGNAL DISCOVERY!
+      const lastPushed = this.pushedSignalLedger.get(pairKey);
+      const PUSH_DEBOUNCE_MS = 15 * 60 * 1000; // 15 mins debounce per pair
+      const canPushTelegram = !lastPushed || (Date.now() - lastPushed > PUSH_DEBOUNCE_MS);
+
+      if (canPushTelegram && best.confidence >= 75) {
+        discovered.telegramBroadcastSent = true;
+        this.pushedSignalLedger.set(pairKey, Date.now());
+        telegramNotificationService.broadcastTradeEvent({
+          pair: best.pair || pair,
+          direction: best.direction,
+          timeframe: best.timeframe,
+          entryPrice: best.entryPrice,
+          stopLoss: best.stopLoss,
+          takeProfit1: best.takeProfit1,
+          takeProfit2: tp2Runner,
+          confidence: best.confidence,
+          reasons: best.reasons,
+          lotSize: best.lotSize,
+          tier: best.confidence >= 85 ? 'FREE' : 'VIP',
+          status: 'ENTRY_DISPATCHED'
+        }).catch(() => {});
+        this.saveToDisk();
+        console.log(`📡 [AutonomousMarketScanner] PUSHED Grade-A Signal on ${pair} (${best.direction} @ ${best.entryPrice}, Conf: ${best.confidence}%) directly to Telegram upon discovery!`);
+      }
+
       // Guard: Never dispatch to cTrader if status is INVALID, not valid, or confidence < 70
       if (discovered.status === 'INVALID' || discovered.isValid === false || best.confidence < 70) {
         console.warn(`🛑 [AutonomousMarketScanner] Pending order to cTrader BLOCKED: Signal is INVALID or confidence < 70% (${best.confidence}%).`);
+        return;
+      }
+
+      // Guard: Check if Master account is full
+      if (isMasterAccountFull) {
+        console.log(`🛡️ [AutonomousMarketScanner] Master account position limit reached (${totalActiveAndPending}/${this.maxAccountConcurrentOrders}). Grade-A Signal was successfully pushed to Telegram subscribers, but master cTrader broker order skipped.`);
+        discovered.status = 'DISCOVERED_BROADCAST_ONLY';
         return;
       }
 
@@ -696,21 +773,6 @@ export class AutonomousMarketScannerService extends EventEmitter {
           this.discoveredSetups[updatedIdx] = discovered;
         }
         this.saveToDisk();
-
-        // Broadcast live institutional alert to Telegram / Webhook subscribers
-        telegramNotificationService.broadcastTradeEvent({
-          pair: best.pair || pair,
-          direction: best.direction,
-          timeframe: best.timeframe,
-          entryPrice: best.entryPrice,
-          stopLoss: best.stopLoss,
-          takeProfit1: best.takeProfit1,
-          confidence: best.confidence,
-          reasons: best.reasons,
-          brokerOrderId: orderResult.broker_order_id || orderResult.report_id,
-          lotSize: best.lotSize,
-          status: 'ENTRY_DISPATCHED'
-        }).catch(() => {});
       } catch (autoErr: any) {
         console.warn(`[AutonomousMarketScanner] Auto-dispatch notice for ${pair}:`, autoErr.message);
       }
@@ -781,7 +843,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
         ? `⚠️ HIGH IMPACT ECONOMIC EVENT ACTIVE (±30m blackout): ${activeEventsSummary || econEval.reason}`
         : (activeEventsSummary ? `Upcoming events: ${activeEventsSummary}` : 'No immediate high impact news scheduled.');
 
-      // PASS 1: Fast local quantitative SMC evaluation (0 Gemini API calls)
+      // PASS 1: Fast local quantitative SMC evaluation with candlestick confirmation
       const candidateSetup = SignalIntelligenceService.getInstance().evaluateCandidateSetup({
         pair,
         timeframe: tf,
@@ -790,7 +852,8 @@ export class AutonomousMarketScannerService extends EventEmitter {
         indicators,
         smc: smcData,
         newsContext: newsContextStr,
-        postMortemReviews: aiDecisionEngine.getPostMortemReviews()
+        postMortemReviews: aiDecisionEngine.getPostMortemReviews(),
+        candles
       });
 
       if (!candidateSetup) return null;

@@ -1,0 +1,15 @@
+{
+  "subscribers": {
+    "1234567": {
+      "accountNumber": "1234567",
+      "telegramId": "123456789",
+      "telegramUsername": "TraderUsername",
+      "name": "Sample Subscriber",
+      "tier": "VIP_INSTITUTIONAL",
+      "status": "ACTIVE",
+      "activatedAt": 1789539423477,
+      "expiresAt": 1792131423477,
+      "notes": "Registered via Telegram Bot"
+    }
+  }
+}

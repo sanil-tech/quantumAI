@@ -496,6 +496,52 @@ export class TradingRepository {
     return res.rows.map(r => this.mapPositionRow(r));
   }
 
+  /**
+   * Method 2: Update position following TP1 50% scale-out.
+   * Atomically cuts remaining quantity in half, updates SL to Break-Even and TP to TP2,
+   * and records partial realized profit.
+   */
+  async updatePositionScaleOut(params: {
+    positionId: string;
+    remainingQuantity: number;
+    newStopLoss: number;
+    newTakeProfit: number;
+    realizedProfitIncrement: number;
+    pnlPips: number;
+  }, client?: PoolClient): Promise<PositionRecord | null> {
+    const text = `
+      UPDATE positions
+      SET
+        quantity = $1,
+        stop_loss = $2,
+        take_profit = $3,
+        realized_profit = COALESCE(realized_profit, 0) + $4,
+        pnl_pips = COALESCE(pnl_pips, 0) + $5,
+        updated_at = NOW()
+      WHERE position_id = $6 OR ticket_id = $6
+      RETURNING *;
+    `;
+    const values = [
+      params.remainingQuantity,
+      params.newStopLoss,
+      params.newTakeProfit,
+      params.realizedProfitIncrement,
+      params.pnlPips,
+      params.positionId
+    ];
+
+    try {
+      const res = await this.query(text, values, client);
+      if (res && res.rows && res.rows.length) {
+        return this.mapPositionRow(res.rows[0]);
+      }
+      return null;
+    } catch (err: any) {
+      logger.error(`[DB-REPOSITORY] Failed to update scale-out on position ${params.positionId}: ${err.message}`);
+      throw new Error(`DATABASE_ERROR: Failed to update position scale-out: ${err.message}`);
+    }
+  }
+
   async getClosedPositions(accountId: string = 'DEFAULT', limit: number = 100, offset: number = 0): Promise<PositionRecord[]> {
     const res = await this.query(
       `SELECT * FROM positions 

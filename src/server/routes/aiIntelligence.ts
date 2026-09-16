@@ -252,7 +252,7 @@ aiIntelligenceRouter.get('/forex/live-rates', (req: Request, res: Response) => {
     'USD/CHF': 0.88450,
     'GBP/JPY': 196.420,
     'USD/CAD': 1.39850,
-    'NZD/USD': 0.58900,
+    'NZD/USD': 0.57726,
     'XAU/USD': 2652.50,
     'NASDAQ': 20850.0,
     'BTC/USD': 92450.0

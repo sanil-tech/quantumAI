@@ -3,7 +3,8 @@ import { EconomicEvent } from '../types';
 import {
   Calendar, Clock, ShieldAlert, Cpu, Filter, Search, CheckCircle, Zap,
   ChevronDown, ChevronUp, ExternalLink, Globe, AlertTriangle, ShieldCheck,
-  TrendingUp, TrendingDown, RefreshCw, BarChart2, Radio
+  TrendingUp, TrendingDown, RefreshCw, BarChart2, Radio, Lightbulb, Compass,
+  Sparkles, ArrowUpRight, ArrowDownRight, Info, HelpCircle
 } from 'lucide-react';
 import { Language, translations } from '../lib/translations';
 import { TradingViewEconomicCalendar } from './TradingViewEconomicCalendar';
@@ -17,6 +18,195 @@ interface EconomicCalendarWidgetProps {
 type DateFilter = 'ALL' | 'TODAY' | 'TOMORROW' | 'THIS_WEEK';
 type ImpactFilter = 'ALL' | 'HIGH' | 'MEDIUM' | 'LOW';
 type Timezone = 'UTC+8' | 'UTC' | 'EST';
+
+export interface MarketReactionGuide {
+  higherIsBetter: boolean;
+  actualVsForecastBias: 'BULLISH' | 'BEARISH' | 'NEUTRAL' | 'UPCOMING';
+  actualVsPreviousTrend: 'IMPROVING' | 'DETERIORATING' | 'NEUTRAL' | 'UPCOMING';
+  summaryBadge: {
+    label: string;
+    subLabel: string;
+    bgClass: string;
+    textClass: string;
+    borderClass: string;
+    icon: 'UP' | 'DOWN' | 'NEUTRAL' | 'PENDING';
+  };
+  bullishScenario: {
+    condition: string;
+    currencyImpact: string;
+    marketBehavior: string;
+    samplePairs: string;
+  };
+  bearishScenario: {
+    condition: string;
+    currencyImpact: string;
+    marketBehavior: string;
+    samplePairs: string;
+  };
+  previousComparisonText: string;
+}
+
+export const parseNumericVal = (valStr?: string): number | null => {
+  if (!valStr || valStr === '—' || valStr === 'N/A') return null;
+  const cleaned = valStr.replace(/[%kKMmBb+,\s]/g, '');
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? null : n;
+};
+
+export const getMarketReactionGuide = (ev: EconomicEvent): MarketReactionGuide => {
+  const titleLower = (ev.title || '').toLowerCase();
+  const curr = ev.currency || 'USD';
+
+  // Determine if higher value is generally bullish for the currency
+  let higherIsBetter = true;
+  if (
+    titleLower.includes('unemployment') ||
+    titleLower.includes('jobless') ||
+    titleLower.includes('claimant count')
+  ) {
+    higherIsBetter = false;
+  }
+
+  const actualNum = parseNumericVal(ev.actual);
+  const forecastNum = parseNumericVal(ev.forecast);
+  const prevNum = parseNumericVal(ev.previous);
+
+  let actualVsForecastBias: 'BULLISH' | 'BEARISH' | 'NEUTRAL' | 'UPCOMING' = 'UPCOMING';
+  let actualVsPreviousTrend: 'IMPROVING' | 'DETERIORATING' | 'NEUTRAL' | 'UPCOMING' = 'UPCOMING';
+
+  if (actualNum !== null && forecastNum !== null) {
+    if (actualNum > forecastNum) {
+      actualVsForecastBias = higherIsBetter ? 'BULLISH' : 'BEARISH';
+    } else if (actualNum < forecastNum) {
+      actualVsForecastBias = higherIsBetter ? 'BEARISH' : 'BULLISH';
+    } else {
+      actualVsForecastBias = 'NEUTRAL';
+    }
+  } else if (actualNum !== null && prevNum !== null) {
+    if (actualNum > prevNum) {
+      actualVsForecastBias = higherIsBetter ? 'BULLISH' : 'BEARISH';
+    } else if (actualNum < prevNum) {
+      actualVsForecastBias = higherIsBetter ? 'BEARISH' : 'BULLISH';
+    } else {
+      actualVsForecastBias = 'NEUTRAL';
+    }
+  }
+
+  if (actualNum !== null && prevNum !== null) {
+    if (actualNum > prevNum) {
+      actualVsPreviousTrend = higherIsBetter ? 'IMPROVING' : 'DETERIORATING';
+    } else if (actualNum < prevNum) {
+      actualVsPreviousTrend = higherIsBetter ? 'DETERIORATING' : 'IMPROVING';
+    } else {
+      actualVsPreviousTrend = 'NEUTRAL';
+    }
+  }
+
+  // Summary badge configuration
+  let summaryBadge = {
+    label: `💡 PANDUAN: Sebenar > Jangkaan = Bullish ${curr} • Sebenar < Jangkaan = Bearish ${curr}`,
+    subLabel: `Sebenar > Jangkaan = Bullish ${curr} | Sebenar < Jangkaan = Bearish ${curr}`,
+    bgClass: 'bg-slate-900/90',
+    textClass: 'text-slate-300',
+    borderClass: 'border-slate-800',
+    icon: 'PENDING' as const
+  };
+
+  if (actualVsForecastBias === 'BULLISH') {
+    summaryBadge = {
+      label: `🟢 KESAN HARGA: BULLISH ${curr} (KUKUH)`,
+      subLabel: `Sebenar (${ev.actual}) ${higherIsBetter ? '>' : '<'} Jangkaan (${ev.forecast || ev.previous}) • Pasaran cenderung BUY ${curr}`,
+      bgClass: 'bg-emerald-950/80',
+      textClass: 'text-emerald-300',
+      borderClass: 'border-emerald-500/40',
+      icon: 'UP'
+    };
+  } else if (actualVsForecastBias === 'BEARISH') {
+    summaryBadge = {
+      label: `🔴 KESAN HARGA: BEARISH ${curr} (LEMAH)`,
+      subLabel: `Sebenar (${ev.actual}) ${higherIsBetter ? '<' : '>'} Jangkaan (${ev.forecast || ev.previous}) • Pasaran cenderung SELL ${curr}`,
+      bgClass: 'bg-rose-950/80',
+      textClass: 'text-rose-300',
+      borderClass: 'border-rose-500/40',
+      icon: 'DOWN'
+    };
+  } else if (actualVsForecastBias === 'NEUTRAL') {
+    summaryBadge = {
+      label: `⚪ KESAN HARGA: NEUTRAL / SEJAJAR JANGKAAN`,
+      subLabel: `Sebenar (${ev.actual}) sepadan dengan Jangkaan • Impak pasaran sederhana`,
+      bgClass: 'bg-slate-900',
+      textClass: 'text-slate-300',
+      borderClass: 'border-slate-700',
+      icon: 'NEUTRAL'
+    };
+  }
+
+  // Scenario 1: Better than expected (Bullish for currency)
+  const bullishScenario = {
+    condition: `Jika Sebenar ${higherIsBetter ? '>' : '<'} Jangkaan (${ev.forecast || 'Konsensus'})`,
+    currencyImpact: `MENGUKUHKAN ${curr} (BULLISH)`,
+    marketBehavior: higherIsBetter
+      ? `Bacaan ${ev.title} mencatat angka lebih tinggi daripada unjuran, mencerminkan aktiviti ekonomi yang cergas dan meningkatkan tarikan pelaburan terhadap ${curr}.`
+      : `Kadar bacaan ${ev.title} jatuh lebih rendah daripada unjuran, menandakan pasaran buruh/ekonomi yang lebih kukuh daripada dijangkakan.`,
+    samplePairs: curr === 'USD'
+      ? `EUR/USD ⬇️ TURUN, GBP/USD ⬇️ TURUN, USD/JPY ⬆️ NAIK, XAU/USD (Emas) ⬇️ TURUN`
+      : curr === 'EUR'
+      ? `EUR/USD ⬆️ NAIK, EUR/JPY ⬆️ NAIK, EUR/GBP ⬆️ NAIK`
+      : curr === 'GBP'
+      ? `GBP/USD ⬆️ NAIK, GBP/JPY ⬆️ NAIK, EUR/GBP ⬇️ TURUN`
+      : curr === 'JPY'
+      ? `USD/JPY ⬇️ TURUN, GBP/JPY ⬇️ TURUN, EUR/JPY ⬇️ TURUN`
+      : curr === 'AUD'
+      ? `AUD/USD ⬆️ NAIK, AUD/JPY ⬆️ NAIK, EUR/AUD ⬇️ TURUN`
+      : `${curr}/USD ⬆️ NAIK, EUR/${curr} ⬇️ TURUN`
+  };
+
+  // Scenario 2: Worse than expected (Bearish for currency)
+  const bearishScenario = {
+    condition: `Jika Sebenar ${higherIsBetter ? '<' : '>'} Jangkaan (${ev.forecast || 'Konsensus'})`,
+    currencyImpact: `MELEMAHKAN ${curr} (BEARISH)`,
+    marketBehavior: higherIsBetter
+      ? `Bacaan ${ev.title} tersasar di bawah jangkaan, mencetuskan kebimbangan kelembapan ekonomi dan tekanan jualan terhadap ${curr}.`
+      : `Kadar bacaan ${ev.title} melonjak melebihi unjuran, mencerminkan kelemahan ekonomi dan risiko pengurangan aktiviti pasaran.`,
+    samplePairs: curr === 'USD'
+      ? `EUR/USD ⬆️ NAIK, GBP/USD ⬆️ NAIK, USD/JPY ⬇️ TURUN, XAU/USD (Emas) ⬆️ NAIK`
+      : curr === 'EUR'
+      ? `EUR/USD ⬇️ TURUN, EUR/JPY ⬇️ TURUN, EUR/GBP ⬇️ TURUN`
+      : curr === 'GBP'
+      ? `GBP/USD ⬇️ TURUN, GBP/JPY ⬇️ TURUN, EUR/GBP ⬆️ NAIK`
+      : curr === 'JPY'
+      ? `USD/JPY ⬆️ NAIK, GBP/JPY ⬆️ NAIK, EUR/JPY ⬆️ NAIK`
+      : curr === 'AUD'
+      ? `AUD/USD ⬇️ TURUN, AUD/JPY ⬇️ TURUN, EUR/AUD ⬆️ NAIK`
+      : `${curr}/USD ⬇️ TURUN, EUR/${curr} ⬆️ NAIK`
+  };
+
+  // Previous comparison note
+  let previousComparisonText = 'Tiada data sebelum untuk perbandingan.';
+  if (prevNum !== null) {
+    if (actualNum !== null) {
+      if (actualNum > prevNum) {
+        previousComparisonText = `Sebenar (${ev.actual}) lebih tinggi berbanding Sebelum (${ev.previous}) — Momentum makro menunjukkan arah ${higherIsBetter ? 'PENGEMBANGAN (Expansion)' : 'PENINGKATAN RISIKO'}.`;
+      } else if (actualNum < prevNum) {
+        previousComparisonText = `Sebenar (${ev.actual}) lebih rendah berbanding Sebelum (${ev.previous}) — Momentum makro menunjukkan arah ${higherIsBetter ? 'PENGUNCUPAN (Contraction)' : 'PEMULIHAN'}.`;
+      } else {
+        previousComparisonText = `Sebenar (${ev.actual}) tidak berubah berbanding Sebelum (${ev.previous}) — Trend mendatar (flat).`;
+      }
+    } else {
+      previousComparisonText = `Nilai sebelumnya adalah ${ev.previous}. Jika data sebenar melebihi ${ev.previous}, ia menandakan momentum ${higherIsBetter ? 'positif' : 'negatif'} bagi ${curr}.`;
+    }
+  }
+
+  return {
+    higherIsBetter,
+    actualVsForecastBias,
+    actualVsPreviousTrend,
+    summaryBadge,
+    bullishScenario,
+    bearishScenario,
+    previousComparisonText
+  };
+};
 
 export const EconomicCalendarWidget: React.FC<EconomicCalendarWidgetProps> = ({
   events = [],
@@ -390,6 +580,7 @@ export const EconomicCalendarWidget: React.FC<EconomicCalendarWidgetProps> = ({
                           const isExpanded = expandedEventId === ev.id;
                           const isLive = ev.status === 'LIVE_WINDOW';
                           const isReleased = ev.status === 'RELEASED';
+                          const guide = getMarketReactionGuide(ev);
 
                           return (
                             <React.Fragment key={ev.id}>
@@ -456,16 +647,24 @@ export const EconomicCalendarWidget: React.FC<EconomicCalendarWidgetProps> = ({
                                   </div>
                                 </td>
 
-                                {/* Event Title */}
+                                {/* Event Title with Market Price Bias Badge */}
                                 <td className="py-3 px-4">
                                   <div className="font-semibold text-white text-xs hover:text-amber-300 transition">
                                     {ev.title}
                                   </div>
-                                  {ev.category && (
-                                    <span className="text-[10px] font-mono text-slate-400 block mt-0.5">
-                                      Kategori: {ev.category.replace('_', ' ')}
+                                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                    {ev.category && (
+                                      <span className="text-[10px] font-mono text-slate-400">
+                                        Kategori: {ev.category.replace('_', ' ')}
+                                      </span>
+                                    )}
+                                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border ${guide.summaryBadge.bgClass} ${guide.summaryBadge.textClass} ${guide.summaryBadge.borderClass}`}>
+                                      {guide.summaryBadge.icon === 'UP' && <TrendingUp className="w-3 h-3 text-emerald-400 shrink-0" />}
+                                      {guide.summaryBadge.icon === 'DOWN' && <TrendingDown className="w-3 h-3 text-rose-400 shrink-0" />}
+                                      {guide.summaryBadge.icon === 'PENDING' && <Lightbulb className="w-3 h-3 text-amber-400 shrink-0" />}
+                                      <span>{guide.summaryBadge.label}</span>
                                     </span>
-                                  )}
+                                  </div>
                                 </td>
 
                                 {/* Actual Value */}
@@ -473,10 +672,10 @@ export const EconomicCalendarWidget: React.FC<EconomicCalendarWidgetProps> = ({
                                   {ev.actual ? (
                                     <span
                                       className={`px-1.5 py-0.5 rounded text-xs ${
-                                        ev.betterThanExpected === true
-                                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                                          : ev.betterThanExpected === false
-                                          ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40'
+                                        guide.actualVsForecastBias === 'BULLISH'
+                                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-[0_0_8px_rgba(16,185,129,0.3)]'
+                                          : guide.actualVsForecastBias === 'BEARISH'
+                                          ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40 shadow-[0_0_8px_rgba(244,63,94,0.3)]'
                                           : 'text-slate-200'
                                       }`}
                                     >
@@ -521,10 +720,94 @@ export const EconomicCalendarWidget: React.FC<EconomicCalendarWidgetProps> = ({
                                 </td>
                               </tr>
 
-                              {/* Expanded Row Drawer */}
+                              {/* Expanded Row Drawer with Market Price Reaction Dynamics */}
                               {isExpanded && (
                                 <tr className="bg-slate-900/90 border-b border-slate-800">
-                                  <td colSpan={9} className="p-4 space-y-3">
+                                  <td colSpan={9} className="p-4 space-y-4">
+                                    {/* Market Reaction Guidance Header */}
+                                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                                      <div className="flex items-center gap-2 text-xs font-black text-amber-300 uppercase tracking-wider">
+                                        <Compass className="w-4 h-4 text-amber-400" />
+                                        <span>Panduan Reaksi Harga &amp; Dinamik Pasaran (What You Should Know for Market Price)</span>
+                                      </div>
+                                      <span className="text-[11px] font-mono text-slate-400">
+                                        Mata Wang Asas: <strong className="text-white">{ev.currency}</strong>
+                                      </span>
+                                    </div>
+
+                                    {/* 3-Card Scenario Matrix */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 font-sans">
+                                      {/* 1. Bullish Scenario */}
+                                      <div className="p-3.5 bg-emerald-950/30 border border-emerald-500/30 rounded-xl space-y-2">
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                                            <ArrowUpRight className="w-4 h-4" />
+                                            <span>{guide.bullishScenario.condition}</span>
+                                          </div>
+                                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                                            BULLISH {ev.currency}
+                                          </span>
+                                        </div>
+                                        <p className="text-[11px] text-slate-300 leading-relaxed">
+                                          {guide.bullishScenario.marketBehavior}
+                                        </p>
+                                        <div className="pt-1 border-t border-emerald-500/20">
+                                          <div className="text-[10px] font-bold text-emerald-400/90 uppercase tracking-wider">Kesan Pasangan Forex:</div>
+                                          <div className="text-[11px] font-mono text-emerald-200 mt-0.5">
+                                            {guide.bullishScenario.samplePairs}
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {/* 2. Bearish Scenario */}
+                                      <div className="p-3.5 bg-rose-950/30 border border-rose-500/30 rounded-xl space-y-2">
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center gap-1.5 text-xs font-bold text-rose-400">
+                                            <ArrowDownRight className="w-4 h-4" />
+                                            <span>{guide.bearishScenario.condition}</span>
+                                          </div>
+                                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                                            BEARISH {ev.currency}
+                                          </span>
+                                        </div>
+                                        <p className="text-[11px] text-slate-300 leading-relaxed">
+                                          {guide.bearishScenario.marketBehavior}
+                                        </p>
+                                        <div className="pt-1 border-t border-rose-500/20">
+                                          <div className="text-[10px] font-bold text-rose-400/90 uppercase tracking-wider">Kesan Pasangan Forex:</div>
+                                          <div className="text-[11px] font-mono text-rose-200 mt-0.5">
+                                            {guide.bearishScenario.samplePairs}
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {/* 3. Historical Momentum vs Previous */}
+                                      <div className="p-3.5 bg-slate-950/80 border border-slate-800 rounded-xl space-y-2">
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center gap-1.5 text-xs font-bold text-cyan-400">
+                                            <TrendingUp className="w-4 h-4" />
+                                            <span>Sebenar vs Sebelum ({ev.previous || 'N/A'})</span>
+                                          </div>
+                                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-black ${
+                                            guide.actualVsPreviousTrend === 'IMPROVING'
+                                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                              : guide.actualVsPreviousTrend === 'DETERIORATING'
+                                              ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                                              : 'bg-slate-800 text-slate-300'
+                                          }`}>
+                                            {guide.actualVsPreviousTrend === 'IMPROVING' ? 'MOMENTUM POSITIF' : guide.actualVsPreviousTrend === 'DETERIORATING' ? 'MOMENTUM NEGATIF' : 'STABIL'}
+                                          </span>
+                                        </div>
+                                        <p className="text-[11px] text-slate-300 leading-relaxed">
+                                          {guide.previousComparisonText}
+                                        </p>
+                                        <div className="pt-1 border-t border-slate-800 text-[10px] font-mono text-slate-400">
+                                          Perbandingan ini menilai sama ada trend ekonomi sedang memecut (*accelerating*) atau mengendur (*slowing down*).
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* SMC Protocol & Affected Pairs Bottom Row */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 font-sans">
                                       {/* AI Adaptation Rule */}
                                       <div className="bg-indigo-950/40 border border-indigo-500/30 rounded-xl p-3 space-y-1.5">
