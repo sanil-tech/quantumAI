@@ -202,6 +202,60 @@ class VipSubscriptionService {
   public getAllSubscribers(): VipSubscriberRecord[] {
     return Array.from(this.subscribers.values());
   }
+
+  /**
+   * Get comprehensive subscriber statistics and telemetry for admin monitoring & promotion
+   */
+  public getSubscriberAnalytics() {
+    const all = Array.from(this.subscribers.values());
+    const now = Date.now();
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    const oneHourMs = 60 * 60 * 1000;
+
+    let activeCount = 0;
+    let expiredCount = 0;
+    let expiringSoonCount = 0; // <= 7 days
+    let onlineRecentlyCount = 0; // verified in last 2 hours
+
+    const expiringSoonList: Array<{
+      accountNumber: string;
+      telegramUsername?: string;
+      name?: string;
+      daysRemaining: number;
+    }> = [];
+
+    for (const sub of all) {
+      if (sub.status === 'ACTIVE' && sub.expiresAt > now) {
+        activeCount++;
+        const remaining = Math.ceil((sub.expiresAt - now) / oneDayMs);
+        if (remaining <= 7) {
+          expiringSoonCount++;
+          expiringSoonList.push({
+            accountNumber: sub.accountNumber,
+            telegramUsername: sub.telegramUsername,
+            name: sub.name,
+            daysRemaining: remaining
+          });
+        }
+      } else {
+        expiredCount++;
+      }
+
+      if (sub.lastVerifiedAt && (now - sub.lastVerifiedAt) <= 2 * oneHourMs) {
+        onlineRecentlyCount++;
+      }
+    }
+
+    return {
+      totalSubscribers: all.length,
+      activeCount,
+      expiredCount,
+      expiringSoonCount,
+      onlineRecentlyCount,
+      expiringSoonList,
+      lastUpdated: new Date().toISOString()
+    };
+  }
 }
 
 export const vipSubscriptionService = VipSubscriptionService.getInstance();

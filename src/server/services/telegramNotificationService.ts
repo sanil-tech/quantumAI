@@ -959,6 +959,7 @@ export class TelegramNotificationService {
             { command: 'start', description: 'Institutional Welcome & Hub' },
             { command: 'register', description: 'Register cTrader VIP Account /register <account>' },
             { command: 'status', description: 'VIP Subscription & Account Status' },
+            { command: 'stats', description: 'Subscribers Analytics & Telemetry 📊' },
             { command: 'strategy', description: 'Smart Money Concepts & Analysis Rules' },
             { command: 'risk', description: 'Method 2 Split-Ticket, TP1/TP2 & BE' },
             { command: 'services', description: 'Free Community Signals vs VIP Copier' },
@@ -1472,6 +1473,100 @@ export class TelegramNotificationService {
                     : `\n\n👑 *[Status VIP Copier]*\n• Belum ada akaun cTrader didaftarkan.\n• Daftarkan akaun anda sekarang dengan: \`/register <Nombor_Akaun_cTrader>\``;
                 }
                 await this.sendRawMessage(this.getStatusMessage(chatId, currentLang) + vipInfo, chatId, this.getOnboardingKeyboard(currentLang));
+              } else if (text === '/stats' || text === '/admin' || text === '/admin stats' || text === '/analytics') {
+                const { vipSubscriptionService } = await import('./vipSubscriptionService');
+                const analytics = vipSubscriptionService.getSubscriberAnalytics();
+                const totalSubs = analytics.totalSubscribers;
+                const activeSubs = analytics.activeCount;
+                const expiredSubs = analytics.expiredCount;
+                const expiringSoon = analytics.expiringSoonCount;
+                const onlineRecent = analytics.onlineRecentlyCount;
+
+                const message = currentLang === 'en'
+                  ? [
+                      `📊 *[QUANTUM AI - SUBSCRIBERS ANALYTICS & TELEMETRY]* 🏛️`,
+                      `📅 _Audit Timestamp: ${new Date().toUTCString()}_`,
+                      ``,
+                      `👥 *User & Account Overview:*`,
+                      `  • *Total Registered Accounts:* \`${totalSubs}\``,
+                      `  • *Active Subscriptions:* \`${activeSubs}\` (${totalSubs > 0 ? Math.round((activeSubs / totalSubs) * 100) : 0}%)`,
+                      `  • *Expired Subscriptions:* \`${expiredSubs}\``,
+                      `  • *cBots Online (Heartbeat in last 2h):* \`${onlineRecent}\``,
+                      ``,
+                      `⏳ *Renewal & Promotion Opportunities:*`,
+                      `  • *Expiring in <= 7 Days:* \`${expiringSoon}\` accounts`,
+                      expiringSoon > 0
+                        ? analytics.expiringSoonList.map(s => `    - Account \`${s.accountNumber}\` (${s.telegramUsername ? '@' + s.telegramUsername : s.name}): ${s.daysRemaining} days left`).join('\n')
+                        : `    _(All active accounts have > 7 days remaining)_`,
+                      ``,
+                      `📡 *Broadcast Infrastructure:*`,
+                      `  • *VIP Institutional Channel:* \`${this.channelId || 'Not Configured'}\` ✅`,
+                      `  • *Free Community Channel:* \`${this.freeChannelId || 'Not Configured'}\` ✅`,
+                      `  • *Execution Engine:* \`Method 2 Split-Ticket + GTC Pending Orders\``,
+                      ``,
+                      `💡 *Actionable Telemetry Tips:*`,
+                      `  1. Run promotion campaigns when accounts reach <= 3 days left.`,
+                      `  2. Check /admin users for full account breakdowns.`,
+                      ``,
+                      `⏰ _Quantum AI Institutional Intelligence_`
+                    ].join('\n')
+                  : [
+                      `📊 *[QUANTUM AI - STATISTIK & ANALITIK SUBSCRIBER]* 🏛️`,
+                      `📅 _Tarikh Audit: ${new Date().toUTCString()}_`,
+                      ``,
+                      `👥 *Ringkasan Pengguna & Akaun:*`,
+                      `  • *Jumlah Akaun Berdaftar:* \`${totalSubs} Akaun\``,
+                      `  • *Langganan Aktif:* \`${activeSubs} Akaun\` (${totalSubs > 0 ? Math.round((activeSubs / totalSubs) * 100) : 0}%)`,
+                      `  • *Langganan Tamat Tempoh:* \`${expiredSubs} Akaun\``,
+                      `  • *cBot Online (Aktif 2 Jam Lepas):* \`${onlineRecent} cBot\``,
+                      ``,
+                      `⏳ *Peluang Promosi & Pembaharuan:*`,
+                      `  • *Tamat Tempoh Dalam <= 7 Hari:* \`${expiringSoon} Akaun\``,
+                      expiringSoon > 0
+                        ? analytics.expiringSoonList.map(s => `    - Akaun \`${s.accountNumber}\` (${s.telegramUsername ? '@' + s.telegramUsername : s.name}): baki ${s.daysRemaining} hari`).join('\n')
+                        : `    _(Semua akaun aktif mempunyai baki melebihi 7 hari)_`,
+                      ``,
+                      `📡 *Infrastruktur Penyiaran:*`,
+                      `  • *Saluran VIP Disambungkan:* \`${this.channelId || 'Belum Dikonfigurasi'}\` ✅`,
+                      `  • *Saluran Komuniti Percuma:* \`${this.freeChannelId || 'Belum Dikonfigurasi'}\` ✅`,
+                      `  • *Protokol Eksekusi:* \`Method 2 Split-Ticket + GTC Pending Orders\``,
+                      ``,
+                      `💡 *Nasihat Pemasaran & Pemantauan:*`,
+                      `  1. Hantar tawaran diskaun pembaharuan bila baki <= 3 hari.`,
+                      `  2. Taip \`/admin users\` untuk melihat senarai penuh akaun pelanggan.`,
+                      ``,
+                      `⏰ _Quantum AI Institutional Intelligence_`
+                    ].join('\n');
+
+                await this.sendRawMessage(message, chatId, this.getOnboardingKeyboard(currentLang));
+              } else if (text === '/admin users' || text === '/admin list' || text === '/users' || text === '/subscribers') {
+                const { vipSubscriptionService } = await import('./vipSubscriptionService');
+                const subs = vipSubscriptionService.getAllSubscribers();
+                const now = Date.now();
+                const oneDayMs = 24 * 60 * 60 * 1000;
+
+                if (subs.length === 0) {
+                  await this.sendRawMessage(
+                    currentLang === 'en'
+                      ? `📋 *[SUBSCRIBERS LIST]*\n\nNo accounts registered yet.`
+                      : `📋 *[SENARAI AKAUN SUBSCRIBER]*\n\nBelum ada akaun didaftarkan.`,
+                    chatId
+                  );
+                } else {
+                  const lines = subs.map((s, idx) => {
+                    const daysLeft = Math.max(0, Math.ceil((s.expiresAt - now) / oneDayMs));
+                    const isOnline = s.lastVerifiedAt && (now - s.lastVerifiedAt) <= 2 * 3600 * 1000;
+                    const onlineIndicator = isOnline ? '🟢 Online' : '⚪ Idle';
+                    const userHandle = s.telegramUsername ? `@${s.telegramUsername}` : (s.name || 'Trader');
+                    return `${idx + 1}. Akaun \`${s.accountNumber}\` (${userHandle})\n   • Status: *${s.status}* (${daysLeft} hari baki)\n   • cBot: ${onlineIndicator}`;
+                  });
+
+                  const msgList = currentLang === 'en'
+                    ? `📋 *[VIP CTRADER SUBSCRIBERS LIST]*\n_Total: ${subs.length} accounts_\n\n` + lines.join('\n\n')
+                    : `📋 *[SENARAI AKAUN VIP CTRADER]*\n_Jumlah: ${subs.length} akaun berdaftar_\n\n` + lines.join('\n\n');
+
+                  await this.sendRawMessage(msgList, chatId, this.getOnboardingKeyboard(currentLang));
+                }
               } else if (text === '/strategy' || text === '/smc' || text === '/analisis') {
                 await this.sendRawMessage(this.getStrategyMessage(currentLang), chatId, this.getOnboardingKeyboard(currentLang));
               } else if (text === '/risk' || text === '/execution' || text === '/be' || text === '/tp') {

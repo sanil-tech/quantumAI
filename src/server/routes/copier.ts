@@ -28,6 +28,20 @@ copierRouter.get('/copier/subscribers', (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/copier/analytics
+ * Real-time aggregated statistics for subscriber growth, renewals and cBot telemetry
+ */
+copierRouter.get('/copier/analytics', async (req: Request, res: Response) => {
+  try {
+    const { vipSubscriptionService } = await import('../services/vipSubscriptionService');
+    const analytics = vipSubscriptionService.getSubscriberAnalytics();
+    res.json({ success: true, ...analytics });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
  * POST /api/copier/subscribers/add
  */
 copierRouter.post('/copier/subscribers/add', (req: Request, res: Response) => {
