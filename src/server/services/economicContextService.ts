@@ -1,5 +1,5 @@
 
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 
 export type EconomicImpact = 'HIGH' | 'MEDIUM' | 'LOW';
 export type EconomicEventStatus = 'SCHEDULED' | 'ACTIVE' | 'COMPLETED' | 'STALE' | 'UNKNOWN';

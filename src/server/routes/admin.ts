@@ -824,6 +824,49 @@ adminRouter.post('/learning/rebuild', adminAuthMiddleware, async (req: Request, 
   }
 });
 
+// Admin: OpenAI Independent Second Opinion Diagnostic Review Endpoint
+adminRouter.post('/second-opinion/review', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { secondOpinionService, evaluateSecondOpinionPolicy } = await import('../../../apps/decision-agent/src/services/secondOpinionService');
+    const input = req.body;
+
+    if (!input || !input.signalId || !input.pair) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: signalId and pair are mandatory.'
+      });
+    }
+
+    const review = await secondOpinionService.reviewSignal(input);
+    const policy = evaluateSecondOpinionPolicy(review);
+
+    res.json({
+      success: true,
+      review,
+      policy
+    });
+  } catch (err: any) {
+    logger.error(`Admin second-opinion review diagnostic failed: ${err.message}`);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Admin: Retrieve In-Memory Second Opinion Audit Ledger
+adminRouter.get('/second-opinion/audits', adminAuthMiddleware, async (_req: Request, res: Response) => {
+  try {
+    const { secondOpinionService } = await import('../../../apps/decision-agent/src/services/secondOpinionService');
+    const records = secondOpinionService.getAllAuditRecords();
+    res.json({
+      success: true,
+      count: records.length,
+      records
+    });
+  } catch (err: any) {
+    logger.error(`Admin second-opinion audits query failed: ${err.message}`);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 export default adminRouter;
 
 

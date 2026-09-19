@@ -1174,6 +1174,35 @@ export class AutonomousMarketScannerService extends EventEmitter {
 
       console.log(`🛡️ [SignalValidationGate] Passed (${validationResult.canonicalSignal.validationStatus}): ${pair} ${tf} ${direction} (${validationResult.canonicalSignal.entryMode}) | Effective Conf: ${validationResult.canonicalSignal.confidence}%`);
 
+      // ── PHASE 1: OPENAI INDEPENDENT SECOND OPINION (SHADOW OBSERVATION MODE) ──
+      import('../../../apps/decision-agent/src/services/secondOpinionService').then(({ secondOpinionService, buildEconomicContextForSymbol }) => {
+        secondOpinionService.reviewSignal({
+          signalId: validationResult.canonicalSignal.signalId,
+          pair,
+          timeframe: tf,
+          candidateDirection: direction,
+          candidateConfidence: validationResult.canonicalSignal.confidence,
+          entry: validationResult.canonicalSignal.entryPrice,
+          stopLoss: validationResult.canonicalSignal.stopLoss,
+          takeProfit1: validationResult.canonicalSignal.takeProfit1,
+          takeProfit2: validationResult.canonicalSignal.takeProfit2,
+          indicators: {
+            ema50: indicators.ema50,
+            ema200: indicators.ema200,
+            rsi14: indicators.rsi,
+            adx: indicators.adx?.adx,
+            plusDI: indicators.adx?.plusDI,
+            minusDI: indicators.adx?.minusDI,
+            superTrendDirection: indicators.superTrend?.trend
+          },
+          evidence: validationResult.canonicalSignal.reasoningEvidence,
+          economicContext: buildEconomicContextForSymbol(pair),
+          dataMode: 'LIVE_CTRADER'
+        }).catch((err) => {
+          console.debug(`[AutonomousMarketScanner] Shadow second opinion notice:`, err.message);
+        });
+      }).catch(() => {});
+
       return {
         timeframe: tf,
         direction,
