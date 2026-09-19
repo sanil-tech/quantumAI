@@ -990,6 +990,106 @@ adminRouter.get('/second-opinion/health', adminAuthMiddleware, async (_req: Requ
   }
 });
 
+// Admin: Full Descriptive Second-Opinion Evidence Analytics Report
+adminRouter.get('/second-opinion/analytics', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { secondOpinionAnalyticsService } = await import('../../../apps/decision-agent/src/services/secondOpinionAnalyticsService');
+    const filters = {
+      symbol: req.query.symbol as string | undefined,
+      timeframe: req.query.timeframe as string | undefined,
+      dataLineage: req.query.dataLineage as any,
+      agreement: req.query.agreement as any,
+      review: req.query.review as any,
+      economicRisk: req.query.economicRisk as any,
+      from: req.query.from as string | undefined,
+      to: req.query.to as string | undefined
+    };
+
+    const report = secondOpinionAnalyticsService.getAnalyticsReport(filters);
+    res.json({
+      success: true,
+      report
+    });
+  } catch (err: any) {
+    logger.error(`Admin second-opinion analytics failed: ${err.message}`);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Admin: Dedicated Disagreement Analytics
+adminRouter.get('/second-opinion/analytics/disagreement', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { secondOpinionAnalyticsService } = await import('../../../apps/decision-agent/src/services/secondOpinionAnalyticsService');
+    const filters = {
+      symbol: req.query.symbol as string | undefined,
+      timeframe: req.query.timeframe as string | undefined,
+      dataLineage: req.query.dataLineage as any,
+      economicRisk: req.query.economicRisk as any,
+      from: req.query.from as string | undefined,
+      to: req.query.to as string | undefined
+    };
+
+    const disagreement = secondOpinionAnalyticsService.getDisagreementAnalytics(filters);
+    res.json({
+      success: true,
+      disagreement
+    });
+  } catch (err: any) {
+    logger.error(`Admin second-opinion disagreement analytics failed: ${err.message}`);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Admin: Dedicated Economic Risk Analytics
+adminRouter.get('/second-opinion/analytics/economic-risk', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { secondOpinionAnalyticsService } = await import('../../../apps/decision-agent/src/services/secondOpinionAnalyticsService');
+    const filters = {
+      symbol: req.query.symbol as string | undefined,
+      timeframe: req.query.timeframe as string | undefined,
+      dataLineage: req.query.dataLineage as any,
+      agreement: req.query.agreement as any,
+      review: req.query.review as any,
+      from: req.query.from as string | undefined,
+      to: req.query.to as string | undefined
+    };
+
+    const economicRisk = secondOpinionAnalyticsService.getEconomicRiskAnalytics(filters);
+    res.json({
+      success: true,
+      economicRisk
+    });
+  } catch (err: any) {
+    logger.error(`Admin second-opinion economic-risk analytics failed: ${err.message}`);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Admin: Dedicated Confidence Bucket Analytics
+adminRouter.get('/second-opinion/analytics/confidence', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { secondOpinionAnalyticsService } = await import('../../../apps/decision-agent/src/services/secondOpinionAnalyticsService');
+    const filters = {
+      symbol: req.query.symbol as string | undefined,
+      timeframe: req.query.timeframe as string | undefined,
+      dataLineage: req.query.dataLineage as any,
+      agreement: req.query.agreement as any,
+      review: req.query.review as any,
+      from: req.query.from as string | undefined,
+      to: req.query.to as string | undefined
+    };
+
+    const confidence = secondOpinionAnalyticsService.getConfidenceAnalytics(filters);
+    res.json({
+      success: true,
+      confidence
+    });
+  } catch (err: any) {
+    logger.error(`Admin second-opinion confidence analytics failed: ${err.message}`);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 export default adminRouter;
 
 
