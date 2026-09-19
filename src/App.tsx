@@ -23,13 +23,14 @@ import { AdminDeveloperDashboard } from './components/AdminDeveloperDashboard';
 export default function App() {
   const isAdminMode = typeof window !== 'undefined' && (
     new URLSearchParams(window.location.search).get('mode') === 'admin' ||
-    new URLSearchParams(window.location.search).get('admin') === 'true'
+    new URLSearchParams(window.location.search).get('admin') === 'true' ||
+    window.location.pathname.startsWith('/admin')
   );
 
   const [portalMode, setPortalMode] = useState<'USER_DASHBOARD' | 'ADMIN_DEVELOPER'>(() => {
     if (typeof window !== 'undefined') {
       const mode = new URLSearchParams(window.location.search).get('mode');
-      if (mode === 'admin') return 'ADMIN_DEVELOPER';
+      if (mode === 'admin' || window.location.pathname.startsWith('/admin')) return 'ADMIN_DEVELOPER';
     }
     return 'USER_DASHBOARD';
   });

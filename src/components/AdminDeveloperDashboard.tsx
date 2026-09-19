@@ -4,10 +4,11 @@ import {
   BarChart3, RefreshCw, Layers, CheckCircle, XCircle, Terminal, Play, Pause,
   DollarSign, Sliders, Server, Lock, TrendingUp, TrendingDown, History,
   Flame, Target, Award, BookOpen, Cloud, ArrowUpRight, ArrowDownRight, PieChart, Database, Filter,
-  ShieldAlert, Users
+  ShieldAlert, Users, Eye
 } from 'lucide-react';
 import { AdminTradingCenter } from './AdminTradingCenter';
 import { SuperAdminDashboard } from './SuperAdminDashboard';
+import { SecondOpinionObservatory } from './SecondOpinionObservatory';
 
 interface AdminDeveloperDashboardProps {
   isMalay: boolean;
@@ -18,7 +19,15 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
   isMalay,
   onOpenBrokerModal
 }) => {
-  const [adminSection, setAdminSection] = useState<'SUPER_ADMIN' | 'GOVERNANCE' | 'BRIDGE_DIAGNOSTICS'>('SUPER_ADMIN');
+  const [adminSection, setAdminSection] = useState<'SUPER_ADMIN' | 'GOVERNANCE' | 'BRIDGE_DIAGNOSTICS' | 'SECOND_OPINION'>(() => {
+    if (typeof window !== 'undefined') {
+      const tab = new URLSearchParams(window.location.search).get('tab');
+      if (tab === 'second-opinion' || window.location.pathname === '/admin/second-opinion') {
+        return 'SECOND_OPINION';
+      }
+    }
+    return 'SUPER_ADMIN';
+  });
   // Admin Global States
   const [maxGlobalLot, setMaxGlobalLot] = useState(1.00);
   const [maxDailyLoss, setMaxDailyLoss] = useState(500);
@@ -219,12 +228,25 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
           <Activity className="w-4 h-4" />
           <span>Pemantauan AI Cloud &amp; Diagnostic Bridge</span>
         </button>
+        <button
+          onClick={() => setAdminSection('SECOND_OPINION')}
+          className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 ${
+            adminSection === 'SECOND_OPINION'
+              ? 'bg-cyan-600 text-white shadow-lg'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800'
+          }`}
+        >
+          <Eye className="w-4 h-4" />
+          <span>Second Opinion Observatory</span>
+        </button>
       </div>
 
       {adminSection === 'SUPER_ADMIN' ? (
         <SuperAdminDashboard isMalay={isMalay} onOpenBrokerModal={onOpenBrokerModal} />
       ) : adminSection === 'GOVERNANCE' ? (
         <AdminTradingCenter isMalay={isMalay} />
+      ) : adminSection === 'SECOND_OPINION' ? (
+        <SecondOpinionObservatory isMalay={isMalay} />
       ) : (
         <>
           {/* ========================================================================= */}
