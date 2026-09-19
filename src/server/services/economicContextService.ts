@@ -3,6 +3,7 @@ import crypto from 'crypto';
 
 export type EconomicImpact = 'HIGH' | 'MEDIUM' | 'LOW';
 export type EconomicEventStatus = 'SCHEDULED' | 'ACTIVE' | 'COMPLETED' | 'STALE' | 'UNKNOWN';
+export type CalendarState = 'CALENDAR_READY' | 'CALENDAR_STALE' | 'CALENDAR_UNAVAILABLE';
 
 export interface NormalizedEconomicEvent {
   eventId: string;
@@ -34,13 +35,34 @@ export interface EconomicContextEvaluation {
 
 export class EconomicContextService {
   private static cachedEvents: NormalizedEconomicEvent[] = [];
+  private static calendarState: CalendarState = 'CALENDAR_UNAVAILABLE';
+  private static lastSynchronizedAt: number = 0;
 
   public static setEvents(events: NormalizedEconomicEvent[]): void {
     this.cachedEvents = events;
+    if (events && events.length > 0) {
+      this.calendarState = 'CALENDAR_READY';
+      this.lastSynchronizedAt = Date.now();
+    } else {
+      this.calendarState = 'CALENDAR_UNAVAILABLE';
+    }
+  }
+
+  public static setCalendarState(state: CalendarState): void {
+    this.calendarState = state;
+  }
+
+  public static getCalendarState(): CalendarState {
+    if (this.calendarState === 'CALENDAR_READY' && (Date.now() - this.lastSynchronizedAt) > 7 * 24 * 3600 * 1000) {
+      return 'CALENDAR_STALE';
+    }
+    return this.calendarState;
   }
 
   public static clearEvents(): void {
     this.cachedEvents = [];
+    this.calendarState = 'CALENDAR_UNAVAILABLE';
+    this.lastSynchronizedAt = 0;
   }
 
   public static getEvents(): NormalizedEconomicEvent[] {
@@ -62,6 +84,34 @@ export class EconomicContextService {
     if (clean.includes('XAU') || clean.includes('GOLD')) { baseCurrency = 'XAU'; quoteCurrency = 'USD'; }
     if (clean.includes('NAS') || clean.includes('TECH')) { baseCurrency = 'USD'; quoteCurrency = 'USD'; }
     if (clean.includes('BTC')) { baseCurrency = 'USD'; quoteCurrency = 'USD'; }
+
+    // Fail-Closed Check: If calendar data is unavailable or uninitialized
+    const state = this.getCalendarState();
+    if (state === 'CALENDAR_UNAVAILABLE' || this.cachedEvents.length === 0) {
+      return {
+        symbol: params.symbol,
+        baseCurrency,
+        quoteCurrency,
+        hasHighImpactEventActive: true,
+        activeEvents: [],
+        decisionAllowed: false,
+        reason: 'ECONOMIC_CALENDAR_UNAVAILABLE_FAIL_CLOSED_NO_TRADE',
+        evidenceHash: crypto.createHash('sha256').update('CALENDAR_UNAVAILABLE').digest('hex')
+      };
+    }
+
+    if (state === 'CALENDAR_STALE' && !params.allowStale) {
+      return {
+        symbol: params.symbol,
+        baseCurrency,
+        quoteCurrency,
+        hasHighImpactEventActive: true,
+        activeEvents: [],
+        decisionAllowed: false,
+        reason: 'ECONOMIC_CALENDAR_STALE_FAIL_CLOSED_NO_TRADE',
+        evidenceHash: crypto.createHash('sha256').update('CALENDAR_STALE').digest('hex')
+      };
+    }
 
     const relevantCurrencies = [baseCurrency, quoteCurrency];
     const activeEvents: NormalizedEconomicEvent[] = [];
@@ -119,3 +169,6 @@ export class EconomicContextService {
     };
   }
 }
+
+export const economicContextService = EconomicContextService;
+

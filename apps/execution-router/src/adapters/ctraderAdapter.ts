@@ -391,8 +391,9 @@ export class CTraderAdapter implements BrokerAdapter {
           if (alreadyOpen && !order.order_id?.includes('test_') && !order.proposal_id?.includes('test_')) {
             throw new Error(`MAX_POSITIONS_PER_SYMBOL_EXCEEDED: An active open position for ${order.symbol} already exists on cTrader.`);
           }
-          if (this.lastPositions.length >= 2 && !order.order_id?.includes('test_') && !order.proposal_id?.includes('test_')) {
-            throw new Error(`MAX_CONCURRENT_POSITIONS_REACHED: Maximum concurrent positions limit (2) reached on cTrader.`);
+          const maxConcurrent = Number(process.env.MAX_CONCURRENT_ORDERS) || 8;
+          if (this.lastPositions.length >= maxConcurrent && !order.order_id?.includes('test_') && !order.proposal_id?.includes('test_')) {
+            throw new Error(`MAX_CONCURRENT_POSITIONS_REACHED: Maximum concurrent positions limit (${maxConcurrent}) reached on cTrader.`);
           }
         }
 

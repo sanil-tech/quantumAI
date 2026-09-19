@@ -97,7 +97,7 @@ export class PortfolioRiskEngine {
     maxDirectionalExposurePercent: 3.5,
     maxStrategyExposurePercent: 3.0,
     maxCorrelatedExposurePercent: 3.5,
-    maxOpenPositions: 5
+    maxOpenPositions: 8
   };
 
   private accountBalance = 1000.0;

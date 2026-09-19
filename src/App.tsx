@@ -21,7 +21,18 @@ import { UserDashboard } from './components/UserDashboard';
 import { AdminDeveloperDashboard } from './components/AdminDeveloperDashboard';
 
 export default function App() {
-  const [portalMode, setPortalMode] = useState<'USER_DASHBOARD' | 'ADMIN_DEVELOPER'>('USER_DASHBOARD');
+  const isAdminMode = typeof window !== 'undefined' && (
+    new URLSearchParams(window.location.search).get('mode') === 'admin' ||
+    new URLSearchParams(window.location.search).get('admin') === 'true'
+  );
+
+  const [portalMode, setPortalMode] = useState<'USER_DASHBOARD' | 'ADMIN_DEVELOPER'>(() => {
+    if (typeof window !== 'undefined') {
+      const mode = new URLSearchParams(window.location.search).get('mode');
+      if (mode === 'admin') return 'ADMIN_DEVELOPER';
+    }
+    return 'USER_DASHBOARD';
+  });
   const aiOpinionAbortControllerRef = useRef<AbortController | null>(null);
   const [activePair, setActivePair] = useState<CurrencyPair>('EUR/USD');
   const [timeframe, setTimeframe] = useState<Timeframe>('M15');
@@ -543,49 +554,54 @@ export default function App() {
 
 
       <main className="flex-1 max-w-[1600px] w-full mx-auto p-3 sm:p-4 space-y-4">
-        {/* Main Role & Dashboard Portal Switcher */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-2.5 flex flex-wrap items-center justify-between gap-3 shadow-xl backdrop-blur-md">
-          <div className="flex items-center gap-2 overflow-x-auto py-0.5 scrollbar-none w-full sm:w-auto">
-            <button
-              id="portal-user-btn"
-              onClick={() => setPortalMode('USER_DASHBOARD')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shrink-0 ${
-                portalMode === 'USER_DASHBOARD'
-                  ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-lg shadow-blue-900/40 ring-1 ring-blue-400/50'
-                  : 'bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800'
-              }`}
-            >
-              <User className="w-4 h-4 text-blue-300" />
-              <span>{language === 'ms' ? 'Dashboard Utama' : 'Consolidated Dashboard'}</span>
-            </button>
+        {/* Admin Switcher Bar (Only visible when explicitly in admin mode via URL ?mode=admin) */}
+        {isAdminMode && (
+          <div className="bg-slate-900 border border-purple-500/30 rounded-2xl p-2.5 flex flex-wrap items-center justify-between gap-3 shadow-xl backdrop-blur-md">
+            <div className="flex items-center gap-2 overflow-x-auto py-0.5 scrollbar-none w-full sm:w-auto">
+              <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40 mr-1">
+                Admin Console
+              </span>
+              <button
+                id="portal-user-btn"
+                onClick={() => setPortalMode('USER_DASHBOARD')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shrink-0 ${
+                  portalMode === 'USER_DASHBOARD'
+                    ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-lg shadow-blue-900/40 ring-1 ring-blue-400/50'
+                    : 'bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800'
+                }`}
+              >
+                <User className="w-4 h-4 text-blue-300" />
+                <span>{language === 'ms' ? 'Dashboard Pelanggan' : 'Customer Dashboard'}</span>
+              </button>
 
-            <button
-              id="portal-admin-btn"
-              onClick={() => setPortalMode('ADMIN_DEVELOPER')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shrink-0 ${
-                portalMode === 'ADMIN_DEVELOPER'
-                  ? 'bg-gradient-to-r from-purple-600 via-fuchsia-600 to-pink-600 text-white shadow-lg shadow-purple-900/40 ring-1 ring-purple-400/50'
-                  : 'bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800'
-              }`}
-            >
-              <Building2 className="w-4 h-4 text-purple-300" />
-              <span>{language === 'ms' ? 'Dashboard Admin & Dev' : 'Admin & Dev Dashboard'}</span>
-            </button>
-          </div>
+              <button
+                id="portal-admin-btn"
+                onClick={() => setPortalMode('ADMIN_DEVELOPER')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shrink-0 ${
+                  portalMode === 'ADMIN_DEVELOPER'
+                    ? 'bg-gradient-to-r from-purple-600 via-fuchsia-600 to-pink-600 text-white shadow-lg shadow-purple-900/40 ring-1 ring-purple-400/50'
+                    : 'bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800'
+                }`}
+              >
+                <Building2 className="w-4 h-4 text-purple-300" />
+                <span>{language === 'ms' ? 'Dashboard Admin & Dev' : 'Admin & Dev Dashboard'}</span>
+              </button>
+            </div>
 
-          <div className="flex items-center gap-2 font-mono text-xs">
-            <span className="text-slate-400 font-bold hidden md:inline">Status Port:</span>
-            <button
-              id="portal-ctrader-status-btn"
-              onClick={() => setIsBrokerConnectionOpen(true)}
-              className="px-2.5 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/50 hover:border-emerald-400 rounded-lg font-bold flex items-center gap-1.5 cursor-pointer transition shadow-sm"
-              title="Klik untuk buka Tetingkap Sambungan cTrader FIX API"
-            >
-              <span className="w-2 h-2 bg-emerald-400 rounded-full animate-ping" />
-              <span>cTrader FIX (Port 5035) ONLINE</span>
-            </button>
+            <div className="flex items-center gap-2 font-mono text-xs">
+              <span className="text-slate-400 font-bold hidden md:inline">Status Port:</span>
+              <button
+                id="portal-ctrader-status-btn"
+                onClick={() => setIsBrokerConnectionOpen(true)}
+                className="px-2.5 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/50 hover:border-emerald-400 rounded-lg font-bold flex items-center gap-1.5 cursor-pointer transition shadow-sm"
+                title="Tetingkap Sambungan cTrader FIX API"
+              >
+                <span className="w-2 h-2 bg-emerald-400 rounded-full animate-ping" />
+                <span>cTrader FIX (Port 5035) ONLINE</span>
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* PORTAL VIEW 1: USER DASHBOARD (Consolidated Dashboard) */}
         {portalMode === 'USER_DASHBOARD' && (

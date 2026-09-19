@@ -2,27 +2,50 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { TradingRepository } from '@iati/database';
 import { logger } from '@iati/core';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { aiDecisionEngine } from '../../../apps/decision-agent/src/services/aiDecisionEngine';
 import { serverBrokerConnection, serverBridgeHeartbeat } from './broker';
 import { canonicalExecutionRouter } from './execution';
 import { ctraderMarketDataFeedService } from '../services/ctraderMarketDataFeedService';
+import { multiClientCopierService } from '../services/multiClientCopierService';
 
 export const adminRouter = Router();
 const repo = new TradingRepository();
+
+export function timingSafeCompare(a?: string, b?: string): boolean {
+  if (!a || !b) return false;
+  const bufA = Buffer.from(a, 'utf8');
+  const bufB = Buffer.from(b, 'utf8');
+  if (bufA.length !== bufB.length) return false;
+  try {
+    return crypto.timingSafeEqual(bufA, bufB);
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Super-Admin & Admin Security Authorization Middleware
  * Strictly enforces that only authenticated super_admin or admin roles, or valid ADMIN_API_KEY
  * may access admin endpoints. Standard tenants/users are rejected with 403 Forbidden.
+ * Fails closed if ADMIN_API_KEY is not configured in the environment.
  */
 export const adminAuthMiddleware = (req: Request, res: Response, next: NextFunction) => {
   const adminKey = (req.headers['x-admin-key'] || req.headers['x-api-key']) as string | undefined;
   const authHeader = req.headers.authorization;
-  const configuredAdminKey = process.env.ADMIN_API_KEY || 'admin_demo_key_88';
-  const configuredJwtSecret = process.env.JWT_SECRET || 'quantum_super_secure_jwt_secret_2026';
+  const configuredAdminKey = process.env.ADMIN_API_KEY;
+  const configuredJwtSecret = process.env.JWT_SECRET;
 
-  // 1. Direct admin API key matching
-  if (adminKey && (adminKey === configuredAdminKey || adminKey === 'super_admin_secret_key' || adminKey === 'admin_demo_key_88')) {
+  if (!configuredAdminKey || configuredAdminKey.trim().length === 0) {
+    console.error('🔒 [AdminAuth] SECURITY_ALERT: ADMIN_API_KEY is not configured. Failing closed on admin route access.');
+    return res.status(401).json({
+      success: false,
+      error: 'UNAUTHORIZED_ADMIN_ACCESS: Administrative access is disabled (ADMIN_API_KEY unconfigured).'
+    });
+  }
+
+  // 1. Constant-time admin API key matching
+  if (adminKey && timingSafeCompare(adminKey, configuredAdminKey)) {
     (req as any).user = { role: 'super_admin', userId: 'super-admin-root' };
     return next();
   }
@@ -31,27 +54,29 @@ export const adminAuthMiddleware = (req: Request, res: Response, next: NextFunct
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.split(' ')[1];
 
-    if (token === configuredAdminKey || token === 'super_admin_secret_key' || token === 'admin_demo_key_88') {
+    if (timingSafeCompare(token, configuredAdminKey)) {
       (req as any).user = { role: 'super_admin', userId: 'super-admin-root' };
       return next();
     }
 
-    try {
-      const decoded: any = jwt.verify(token, configuredJwtSecret);
-      if (decoded && (decoded.role === 'super_admin' || decoded.role === 'admin' || decoded.isAdmin === true)) {
-        (req as any).user = decoded;
-        return next();
-      } else if (decoded) {
-        return res.status(403).json({
+    if (configuredJwtSecret) {
+      try {
+        const decoded: any = jwt.verify(token, configuredJwtSecret);
+        if (decoded && (decoded.role === 'super_admin' || decoded.role === 'admin' || decoded.isAdmin === true)) {
+          (req as any).user = decoded;
+          return next();
+        } else if (decoded) {
+          return res.status(403).json({
+            success: false,
+            error: 'FORBIDDEN_ADMIN_ACCESS: Authenticated user does not possess required super_admin permissions.'
+          });
+        }
+      } catch (e) {
+        return res.status(401).json({
           success: false,
-          error: 'FORBIDDEN_ADMIN_ACCESS: Authenticated user does not possess required super_admin permissions.'
+          error: 'UNAUTHORIZED_ADMIN_ACCESS: Invalid or expired authorization token.'
         });
       }
-    } catch (e) {
-      return res.status(401).json({
-        success: false,
-        error: 'UNAUTHORIZED_ADMIN_ACCESS: Invalid or expired authorization token.'
-      });
     }
   }
 
@@ -66,12 +91,78 @@ export const adminAuthMiddleware = (req: Request, res: Response, next: NextFunct
 adminRouter.use(adminAuthMiddleware);
 
 /**
+ * POST /api/admin/vip/approve
+ * Admin-only: Activate a VIP subscriber and issue a cryptographically signed token.
+ * Token is signed by the live server's VIP_AUTH_SECRET — always valid on this instance.
+ */
+adminRouter.post('/vip/approve', async (req: Request, res: Response) => {
+  try {
+    const { accountNumber, durationDays = 30 } = req.body;
+    if (!accountNumber) {
+      return res.status(400).json({ success: false, error: 'accountNumber is required' });
+    }
+    const { vipSubscriptionService } = await import('../services/vipSubscriptionService');
+    const activated = vipSubscriptionService.activateAccount(
+      String(accountNumber).trim().replace(/[^0-9]/g, ''),
+      Number(durationDays),
+      `Admin-REST (${(req as any).user?.userId || 'admin'})`
+    );
+    return res.json({
+      success: true,
+      accountNumber: activated.accountNumber,
+      status: activated.status,
+      expiresAt: activated.expiresAt,
+      expiryDate: new Date(activated.expiresAt).toISOString(),
+      token: activated.token || activated.authToken,
+      name: activated.name
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * GET /api/admin/vip/subscribers
+ * List all VIP subscribers and their status
+ */
+adminRouter.get('/vip/subscribers', async (req: Request, res: Response) => {
+  try {
+    const { vipSubscriptionService } = await import('../services/vipSubscriptionService');
+    const all = vipSubscriptionService.getAllSubscribers();
+    return res.json({ success: true, count: all.length, subscribers: all });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
  * GET /api/admin/tenants
  * Returns list of all tenants, account status, and broker connection statistics
  */
 adminRouter.get('/tenants', async (req: Request, res: Response) => {
   try {
-    const tenants = await repo.getAdminTenants();
+    let tenants = await repo.getAdminTenants();
+
+    // If PostgreSQL has no records, populate from genuine live registered subscribers
+    if (!tenants || tenants.length === 0) {
+      const liveSubs = multiClientCopierService.getSubscribers();
+      tenants = liveSubs.map(s => ({
+        tenantId: `tenant-${s.accountNumber}`,
+        connectionId: s.id,
+        accountNumber: s.accountNumber,
+        brokerName: s.brokerName || 'Spotware cTrader Open API',
+        connectionType: 'OPEN_API_OAUTH',
+        environment: s.environment || 'DEMO',
+        isActive: s.status === 'ACTIVE',
+        totalOrders: s.totalCopiedTrades || 0,
+        openPositions: 0,
+        closedPositions: s.totalCopiedTrades || 0,
+        netPnl: 0.00,
+        createdAt: new Date(s.createdAt || Date.now()).toISOString(),
+        updatedAt: new Date().toISOString()
+      }));
+    }
+
     res.json({
       success: true,
       count: tenants.length,
@@ -732,4 +823,7 @@ adminRouter.post('/learning/rebuild', adminAuthMiddleware, async (req: Request, 
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
+export default adminRouter;
+
 

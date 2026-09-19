@@ -2346,39 +2346,8 @@ export class TradingRepository {
       logger.warn(`[DB-REPOSITORY] Failed to query broker_connections: ${err.message}`);
     }
 
-    // Default master demo tenant fallback
-    return [
-      {
-        tenantId: '00000000-0000-0000-0000-000000000001',
-        connectionId: 'conn-demo-master-01',
-        accountNumber: '5881460',
-        brokerName: 'Spotware cTrader Open API',
-        connectionType: 'FIX_4_4_SSL',
-        environment: 'DEMO',
-        isActive: true,
-        totalOrders: 18,
-        openPositions: 0,
-        closedPositions: 18,
-        netPnl: 45.20,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      {
-        tenantId: '11111111-1111-1111-1111-111111111111',
-        connectionId: 'conn-tenant-alpha-02',
-        accountNumber: '5912914',
-        brokerName: 'IC Markets cTrader FIX',
-        connectionType: 'FIX_4_4_SSL',
-        environment: 'DEMO',
-        isActive: true,
-        totalOrders: 6,
-        openPositions: 1,
-        closedPositions: 5,
-        netPnl: 12.80,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-    ];
+    // No hardcoded mock data: return empty array if no real DB connections exist
+    return [];
   }
 
   /**

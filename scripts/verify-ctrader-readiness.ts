@@ -50,10 +50,10 @@ async function verifyFullConnectionAndExecutionReadiness() {
   console.log(`      • Effective Leverage: ${leverageStr}`);
   console.log(`      • Account Type: Hedging Demo\n`);
 
-  // SIGNAL 4: Market Data & Symbol Tick Feed Subscription (ProtoOA 2104)
+  // SIGNAL 4: Market Data & Symbol Tick Feed Subscription (ProtoOA 2127)
   console.log('📊 [STAGE 4] Subscribing to Live Spot Market Feeds...');
-  const spotSub = await transport.sendRequest(2104, { ctidTraderAccountId: accountId, symbolId: [1, 2, 41] }, 7000);
-  console.log(`   ✅ SIGNAL 4 PASS: ProtoOASubscribeSpotsRes (2105) Active for EUR/USD, GBP/USD, XAU/USD\n`);
+  const spotSub = await transport.sendRequest(2127, { ctidTraderAccountId: accountId, symbolId: [1, 2, 41] }, 7000);
+  console.log(`   ✅ SIGNAL 4 PASS: ProtoOASubscribeSpotsRes (2128) Active for EUR/USD, GBP/USD, XAU/USD\n`);
 
   // SIGNAL 5: Position & Order Gate Verification (ProtoOA 2124)
   console.log('🛡️ [STAGE 5] Checking Open Positions & Execution Route Gate...');

@@ -88,10 +88,13 @@ export class CTraderTransport extends EventEmitter {
         clearTimeout(timer);
         this.buffer = Buffer.alloc(0);
         this.rejectAll(err);
+        this.emit('disconnect', err);
       });
       this.socket.on('close', () => {
         this.buffer = Buffer.alloc(0);
-        this.rejectAll(new Error('CTRADER_SOCKET_CLOSED: Socket connection closed.'));
+        const closeErr = new Error('CTRADER_SOCKET_CLOSED: Socket connection closed.');
+        this.rejectAll(closeErr);
+        this.emit('disconnect', closeErr);
       });
     });
   }

@@ -1,0 +1,655 @@
+[
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "AUD/USD",
+    "direction": "SELL",
+    "entryPrice": 0.71241,
+    "stopLoss": 0.71541,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 24h without fill)"
+    ],
+    "id": "SIG-1789790582011",
+    "timestamp": 1789790582011
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "GBP/JPY",
+    "direction": "BUY",
+    "entryPrice": 209.79,
+    "stopLoss": 209.44,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 2h without fill)"
+    ],
+    "id": "SIG-1789768867463",
+    "timestamp": 1789768867463
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "GBP/USD",
+    "direction": "BUY",
+    "entryPrice": 1.33579,
+    "stopLoss": 1.33279,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 2h without fill)"
+    ],
+    "id": "SIG-1789746539123",
+    "timestamp": 1789746539123
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "USD/CAD",
+    "direction": "BUY",
+    "entryPrice": 1.39749,
+    "stopLoss": 1.39449,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 24h without fill)"
+    ],
+    "id": "SIG-1789744214991",
+    "timestamp": 1789744214991
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "NZD/USD",
+    "direction": "SELL",
+    "entryPrice": 0.57456,
+    "stopLoss": 0.57756,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 24h without fill)"
+    ],
+    "id": "SIG-1789744214988",
+    "timestamp": 1789744214988
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "GBP/JPY",
+    "direction": "BUY",
+    "entryPrice": 210.583,
+    "stopLoss": 210.233,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Market price (210.049) breached SL (210.233) before entry fill"
+    ],
+    "id": "SIG-1789743034620",
+    "timestamp": 1789743034620
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "EUR/JPY",
+    "direction": "BUY",
+    "entryPrice": 181.094,
+    "stopLoss": 180.744,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 2h without fill)"
+    ],
+    "id": "SIG-1789742994612",
+    "timestamp": 1789742994612
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "GBP/JPY",
+    "direction": "BUY",
+    "entryPrice": 210.875,
+    "stopLoss": 210.525,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 2h without fill)"
+    ],
+    "id": "SIG-1789736396625",
+    "timestamp": 1789736396625
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "GBP/JPY",
+    "direction": "BUY",
+    "entryPrice": 210.261,
+    "stopLoss": 209.911,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Market price (210.963) reached TP1 (210.961) before entry fill"
+    ],
+    "id": "SIG-1789719426183",
+    "timestamp": 1789719426183
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "EUR/JPY",
+    "direction": "BUY",
+    "entryPrice": 180.19,
+    "stopLoss": 179.84,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Market price (180.936) reached TP1 (180.89) before entry fill"
+    ],
+    "id": "SIG-1789717445322",
+    "timestamp": 1789717445322
+  },
+  {
+    "id": "setup_GBPJPY_H4_BUY",
+    "masterBrokerOrderId": "318896940",
+    "action": "NEW_ORDER",
+    "pair": "GBP/JPY",
+    "direction": "BUY",
+    "entryPrice": 210.583,
+    "stopLoss": 210.233,
+    "takeProfit1": 211.283,
+    "takeProfit2": 211.843,
+    "lotSize": 0.02,
+    "reasons": [
+      "GBP/JPY live price (210.733) is holding above 50 EMA trend filter.",
+      "RSI (14) sitting at 69.6 with ADX (32.7) confirming trending bullish.",
+      "SuperTrend filter is BULLISH and ATR volatility is 0.689.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
+      "[CANDLE CONFIRMATION] Bullish Pin Bar / Hammer confirmed on closed candle."
+    ],
+    "timestamp": 1789742885220
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "EUR/JPY",
+    "direction": "BUY",
+    "entryPrice": 180.321,
+    "stopLoss": 179.971,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 2h without fill)"
+    ],
+    "id": "SIG-1789713864132",
+    "timestamp": 1789713864132
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "GBP/JPY",
+    "direction": "BUY",
+    "entryPrice": 209.878,
+    "stopLoss": 209.528,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 2h without fill)"
+    ],
+    "id": "SIG-1789713864129",
+    "timestamp": 1789713864129
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "EUR/JPY",
+    "direction": "BUY",
+    "entryPrice": 179.676,
+    "stopLoss": 179.326,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Market price (180.402) reached TP1 (180.376) before entry fill"
+    ],
+    "id": "SIG-1789702700508",
+    "timestamp": 1789702700508
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "GBP/JPY",
+    "direction": "BUY",
+    "entryPrice": 209.128,
+    "stopLoss": 208.778,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Market price (209.831) reached TP1 (209.828) before entry fill"
+    ],
+    "id": "SIG-1789701760183",
+    "timestamp": 1789701760183
+  },
+  {
+    "id": "setup_EURJPY_M15_BUY",
+    "masterBrokerOrderId": "COPIER-setup_EU",
+    "action": "NEW_ORDER",
+    "pair": "EUR/JPY",
+    "direction": "BUY",
+    "entryPrice": 181.094,
+    "stopLoss": 180.744,
+    "takeProfit1": 181.794,
+    "takeProfit2": 182.354,
+    "lotSize": 0.02,
+    "reasons": [
+      "🤖 Gemini Second Opinion: Disahkan (Keyakinan 82%) - ADJUST",
+      "Order Block retest and bullish pin bar confirm upward momentum above 50 EMA.",
+      "Adjusted take-profit targets to enforce the strict adaptive rule requiring a minimum 1:2.0 risk-to-reward ratio."
+    ],
+    "timestamp": 1789721488973
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "GBP/JPY",
+    "direction": "SELL",
+    "entryPrice": 208.761,
+    "stopLoss": 209.111,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Market price (209.136) breached SL (209.111) before entry fill"
+    ],
+    "id": "SIG-1789700083666",
+    "timestamp": 1789700083666
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "EUR/JPY",
+    "direction": "BUY",
+    "entryPrice": 179.081,
+    "stopLoss": 178.731,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 2h without fill)"
+    ],
+    "id": "SIG-1789696938605",
+    "timestamp": 1789696938605
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "USD/CHF",
+    "direction": "BUY",
+    "entryPrice": 0.82474,
+    "stopLoss": 0.82174,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 24h without fill)"
+    ],
+    "id": "SIG-1789696858595",
+    "timestamp": 1789696858595
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "EUR/USD",
+    "direction": "SELL",
+    "entryPrice": 1.14784,
+    "stopLoss": 1.15084,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 24h without fill)"
+    ],
+    "id": "SIG-1789690690464",
+    "timestamp": 1789690690464
+  },
+  {
+    "id": "setup_EURJPY_M15_BUY_v2",
+    "masterBrokerOrderId": "318734474",
+    "action": "NEW_ORDER",
+    "pair": "EUR/JPY",
+    "direction": "BUY",
+    "entryPrice": 179.081,
+    "stopLoss": 178.731,
+    "takeProfit1": 179.781,
+    "takeProfit2": 180.341,
+    "lotSize": 0.02,
+    "reasons": [
+      "EUR/JPY live price (179.231) is holding above 50 EMA trend filter.",
+      "RSI (14) sitting at 65.0 with ADX (20.0).",
+      "SuperTrend filter is BULLISH and ATR volatility is 0.063.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
+      "[CANDLE CONFIRMATION] Bullish Pin Bar / Hammer confirmed on closed candle."
+    ],
+    "timestamp": 1789690496825
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "GBP/JPY",
+    "direction": "BUY",
+    "entryPrice": 208.188,
+    "stopLoss": 207.838,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 2h without fill)"
+    ],
+    "id": "SIG-1789687931250",
+    "timestamp": 1789687931250
+  },
+  {
+    "id": "setup_AUDUSD_M15_BUY",
+    "masterBrokerOrderId": "318731852",
+    "action": "NEW_ORDER",
+    "pair": "AUD/USD",
+    "direction": "BUY",
+    "entryPrice": 0.71004,
+    "stopLoss": 0.70704,
+    "takeProfit1": 0.71604,
+    "takeProfit2": 0.72084,
+    "lotSize": 0.02,
+    "reasons": [
+      "AUD/USD live price (0.71101) is holding above 50 EMA trend filter.",
+      "RSI (14) sitting at 44.8 with ADX (20.0) confirming trending bearish.",
+      "SuperTrend filter is BULLISH and ATR volatility is 0.00017.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
+      "[CANDLE CONFIRMATION] Bullish Engulfing confirmed on closed candle.",
+      "[ADAPTIVE LEARNING MEMORY] Strategy SMC_QUANT_V1 has 7 verified win(s) for ORDER_BLOCK_RETEST on AUD/USD. Source: REAL_TRADE.",
+      "[BACKTEST WARNING] pm-1y-1789686201184-32: Historical 1-Year Backtest indicates caution on AUD/USD (ORDER_BLOCK_RETEST BUY, TRENDING_BEARISH). Root cause: \"1-Year Backtest Evaluation: BUY setup on AUD/USD stopped out at SL 0.70967 during daily volatility expansion.\". Source: HISTORICAL_BACKTEST. Authority: BACKTEST_ENGINE. Execution Veto: NO.",
+      "[BACKTEST WARNING] pm-1y-1789686201183-26: Historical 1-Year Backtest indicates caution on AUD/USD (ORDER_BLOCK_RETEST BUY, TRENDING_BEARISH). Root cause: \"1-Year Backtest Evaluation: BUY setup on AUD/USD stopped out at SL 0.70549 during daily volatility expansion.\". Source: HISTORICAL_BACKTEST. Authority: BACKTEST_ENGINE. Execution Veto: NO.",
+      "[BACKTEST WARNING] pm-1y-1789686201183-24: Historical 1-Year Backtest indicates caution on AUD/USD (ORDER_BLOCK_RETEST BUY, TRENDING_BEARISH). Root cause: \"1-Year Backtest Evaluation: BUY setup on AUD/USD stopped out at SL 0.70623 during daily volatility expansion.\". Source: HISTORICAL_BACKTEST. Authority: BACKTEST_ENGINE. Execution Veto: NO."
+    ],
+    "timestamp": 1789686614649
+  },
+  {
+    "id": "setup_GBPJPY_H4_SELL",
+    "masterBrokerOrderId": "318752673",
+    "action": "NEW_ORDER",
+    "pair": "GBP/JPY",
+    "direction": "SELL",
+    "entryPrice": 208.801,
+    "stopLoss": 209.151,
+    "takeProfit1": 208.101,
+    "takeProfit2": 207.541,
+    "lotSize": 0.02,
+    "reasons": [
+      "GBP/JPY live price (208.645) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 50.0 with ADX (30.5) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.568.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
+      "[CANDLE CONFIRMATION] Bearish Shooting Star confirmed on closed candle.",
+      "[ADAPTIVE LEARNING MEMORY] Applied rule from pm-trade_288663816-1.0: \"ADAPTIVE RULE: Upon approaching resistance, await CHOCH confirmation.\". SL buffer expanded. Source: REAL_TRADE.",
+      "[CONFIRMATION REQUIRED] Awaiting structural retest on H4 to avoid premature entry flagged in pm-trade_288663816-1.0"
+    ],
+    "timestamp": 1789699382493
+  },
+  {
+    "id": "setup_AUDUSD_H4_SELL",
+    "masterBrokerOrderId": "318742814",
+    "action": "NEW_ORDER",
+    "pair": "AUD/USD",
+    "direction": "SELL",
+    "entryPrice": 0.71215,
+    "stopLoss": 0.71515,
+    "takeProfit1": 0.70615,
+    "takeProfit2": 0.70135,
+    "lotSize": 0.02,
+    "reasons": [
+      "📐 Autochartist: Corak Channel Down disahkan (Kualiti 8/10) menyokong SELL.",
+      "🤖 Gemini Second Opinion: Disahkan (Keyakinan 85%) - ADJUST",
+      "H4 trend structure is solidly bearish under 50 EMA with SuperTrend support and ADX at 30.4 confirming strong momentum.",
+      "Adjusted Stop Loss and Take Profit levels to strictly comply with the mandatory 1:2.0 minimum Risk-to-Reward adaptive rule.",
+      "Bearish Engulfing confirmation and FVG confluence support momentum continuation."
+    ],
+    "timestamp": 1789695242212
+  },
+  {
+    "id": "SIG_TEST_1789656814437_EURUSD",
+    "action": "NEW_ORDER",
+    "pair": "EUR/USD",
+    "direction": "BUY",
+    "entryPrice": 1.085,
+    "stopLoss": 1.082,
+    "takeProfit1": 1.088,
+    "takeProfit2": 1.092,
+    "masterBrokerOrderId": 987654321,
+    "timestamp": 1789656814438
+  },
+  {
+    "id": "SIG-GBPJPY-1789650305250",
+    "masterBrokerOrderId": "SIG-GBPJPY-1789650305250",
+    "action": "NEW_ORDER",
+    "pair": "GBP/JPY",
+    "direction": "SELL",
+    "entryPrice": 208.506,
+    "stopLoss": 208.856,
+    "takeProfit1": 207.806,
+    "takeProfit2": 207.246,
+    "lotSize": 0.02,
+    "reasons": [
+      "GBP/JPY live price holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 43.0 with ADX (21.4) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.617."
+    ],
+    "timestamp": 1789650305251
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "GBP/USD",
+    "direction": "BUY",
+    "entryPrice": 1.33838,
+    "stopLoss": 1.33538,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 2h without fill)"
+    ],
+    "id": "SIG-1789644677069",
+    "timestamp": 1789644677069
+  },
+  {
+    "id": "setup_GBPUSD_M15_BUY",
+    "masterBrokerOrderId": "318769915",
+    "action": "NEW_ORDER",
+    "pair": "GBP/USD",
+    "direction": "BUY",
+    "entryPrice": 1.33622,
+    "stopLoss": 1.33322,
+    "takeProfit1": 1.34222,
+    "takeProfit2": 1.34702,
+    "lotSize": 0.01,
+    "reasons": [
+      "GBP/USD live price (1.33722) is holding above 50 EMA trend filter.",
+      "RSI (14) sitting at 67.6 with ADX (20.0) confirming trending bearish.",
+      "SuperTrend filter is BULLISH and ATR volatility is 0.00037.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
+      "[CANDLE CONFIRMATION] Bullish Pin Bar / Hammer confirmed on closed candle.",
+      "[ADAPTIVE LEARNING MEMORY] Applied rule from pm-trade_289789222-1.0: \"ADAPTIVE RULE #47: Prohibit initiation of long positions within 20 pips below major psychological whole numbers (e.g., 1.3400) unless a 15-minute candle closes above the level with above-average volume.\". SL buffer expanded. Source: REAL_TRADE.",
+      "[BACKTEST WARNING] pm-1y-1789706018967-32: Historical 1-Year Backtest indicates caution on GBP/USD (ORDER_BLOCK_RETEST BUY, TRENDING_BEARISH). Root cause: \"1-Year Backtest Evaluation: BUY setup on GBP/USD stopped out at SL 1.34505 during daily volatility expansion.\". Source: HISTORICAL_BACKTEST. Authority: BACKTEST_ENGINE. Execution Veto: NO.",
+      "[BACKTEST WARNING] pm-1y-1789706018967-24: Historical 1-Year Backtest indicates caution on GBP/USD (ORDER_BLOCK_RETEST BUY, TRENDING_BEARISH). Root cause: \"1-Year Backtest Evaluation: BUY setup on GBP/USD stopped out at SL 1.33705 during daily volatility expansion.\". Source: HISTORICAL_BACKTEST. Authority: BACKTEST_ENGINE. Execution Veto: NO.",
+      "[BACKTEST WARNING] pm-1y-1789706018967-20: Historical 1-Year Backtest indicates caution on GBP/USD (ORDER_BLOCK_RETEST BUY, TRENDING_BEARISH). Root cause: \"1-Year Backtest Evaluation: BUY setup on GBP/USD stopped out at SL 1.33953 during daily volatility expansion.\". Source: HISTORICAL_BACKTEST. Authority: BACKTEST_ENGINE. Execution Veto: NO.",
+      "[CONFIRMATION REQUIRED] Awaiting structural retest on M15 to avoid premature entry flagged in pm-trade_289789222-1.0"
+    ],
+    "timestamp": 1789706525717
+  },
+  {
+    "id": "setup_USDCHF_H4_BUY",
+    "masterBrokerOrderId": "318568758",
+    "action": "NEW_ORDER",
+    "pair": "USD/CHF",
+    "direction": "BUY",
+    "entryPrice": 0.82474,
+    "stopLoss": 0.82174,
+    "takeProfit1": 0.83074,
+    "takeProfit2": 0.83554,
+    "lotSize": 0.02,
+    "reasons": [
+      "USD/CHF live price (0.82574) is holding above 50 EMA trend filter.",
+      "RSI (14) sitting at 76.8 with ADX (40.3) confirming trending bullish.",
+      "SuperTrend filter is BULLISH and ATR volatility is 0.00217.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
+      "[CANDLE CONFIRMATION] Bullish Pin Bar / Hammer confirmed on closed candle.",
+      "[ADAPTIVE LEARNING MEMORY] Strategy SMC_QUANT_V1 has 2 verified win(s) for ORDER_BLOCK_RETEST on USD/CHF. Source: REAL_TRADE."
+    ],
+    "timestamp": 1789610444954
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "GBP/JPY",
+    "direction": "BUY",
+    "entryPrice": 208.903,
+    "stopLoss": 208.553,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 2h without fill)"
+    ],
+    "id": "SIG-1789606024928",
+    "timestamp": 1789606024928
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "USD/CHF",
+    "direction": "BUY",
+    "entryPrice": 0.82483,
+    "stopLoss": 0.82183,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 2h without fill)"
+    ],
+    "id": "SIG-1789605595776",
+    "timestamp": 1789605595776
+  },
+  {
+    "id": "setup_EURUSD_H4_SELL",
+    "masterBrokerOrderId": "318553759",
+    "action": "NEW_ORDER",
+    "pair": "EUR/USD",
+    "direction": "SELL",
+    "entryPrice": 1.14784,
+    "stopLoss": 1.15084,
+    "takeProfit1": 1.14184,
+    "takeProfit2": 1.13704,
+    "lotSize": 0.01,
+    "reasons": [
+      "EUR/USD live price (1.14684) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 21.5 with ADX (52.4) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.00198.",
+      "SMC Structure detected: MOMENTUM CONTINUATION with MARKET ENTRY execution.",
+      "[CANDLE CONFIRMATION] Bearish Shooting Star confirmed on closed candle.",
+      "[ADAPTIVE LEARNING MEMORY] Applied rule from pm-trade_1787934963105_uk8jj-1.0: \"ADAPTIVE RULE: Upon approaching resistance, await CHOCH confirmation.\". SL buffer expanded. Source: REAL_TRADE.",
+      "[CONFIRMATION REQUIRED] Awaiting structural retest on H4 to avoid premature entry flagged in pm-trade_1787934963105_uk8jj-1.0"
+    ],
+    "timestamp": 1789604291232
+  },
+  {
+    "id": "setup_NZDUSD_H4_SELL",
+    "masterBrokerOrderId": "318569883",
+    "action": "NEW_ORDER",
+    "pair": "NZD/USD",
+    "direction": "SELL",
+    "entryPrice": 0.57277,
+    "stopLoss": 0.57577,
+    "takeProfit1": 0.56677,
+    "takeProfit2": 0.56197,
+    "lotSize": 0.02,
+    "reasons": [
+      "📐 Autochartist: Corak Channel Down disahkan (Kualiti 8/10) menyokong SELL.",
+      "NZD/USD live price (0.57177) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 30.2 with ADX (46.8) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.00169.",
+      "SMC Structure detected: MOMENTUM CONTINUATION with MARKET ENTRY execution.",
+      "[CANDLE CONFIRMATION] Bearish Shooting Star confirmed on closed candle.",
+      "[ADAPTIVE LEARNING MEMORY] Strategy SMC_QUANT_V1 has 2 verified win(s) for MOMENTUM_CONTINUATION on NZD/USD. Source: REAL_TRADE."
+    ],
+    "timestamp": 1789610886238
+  },
+  {
+    "id": "setup_GBPJPY_M15_BUY",
+    "masterBrokerOrderId": "318952269",
+    "action": "NEW_ORDER",
+    "pair": "GBP/JPY",
+    "direction": "BUY",
+    "entryPrice": 209.79,
+    "stopLoss": 209.44,
+    "takeProfit1": 210.49,
+    "takeProfit2": 211.05,
+    "lotSize": 0.02,
+    "reasons": [
+      "🤖 Gemini Second Opinion: Disahkan (Keyakinan 85%) - ADJUST",
+      "Bullish structure is supported by M15 Pin Bar confirmation, holding above 50 EMA, and FVG confluence.",
+      "Proposed Risk:Reward of 1:1.9 violates mandatory Adaptive Rule requiring a minimum 1:2.0 R:R ratio.",
+      "Adjusted Stop Loss to 209.60 and Take Profit 1 to 210.64 to establish a compliant 1:2.0 R:R profile."
+    ],
+    "timestamp": 1789761659602
+  },
+  {
+    "id": "setup_USDCHF_M15_BUY",
+    "action": "NEW_ORDER",
+    "pair": "USD/CHF",
+    "direction": "BUY",
+    "entryPrice": 0.82483,
+    "stopLoss": 0.82183,
+    "takeProfit1": 0.83083,
+    "takeProfit2": 0.83563,
+    "lotSize": 0.02,
+    "reasons": [
+      "USD/CHF live price (0.82588) is holding above 50 EMA trend filter.",
+      "RSI (14) sitting at 81.1 with ADX (20.0) confirming trending bearish.",
+      "SuperTrend filter is BULLISH and ATR volatility is 0.00106.",
+      "SMC Structure detected: MOMENTUM CONTINUATION with MARKET ENTRY execution.",
+      "[CANDLE CONFIRMATION] Bullish Pin Bar / Hammer confirmed on closed candle.",
+      "[ADAPTIVE LEARNING MEMORY] Strategy SMC_QUANT_V1 has 2 verified win(s) for MOMENTUM_CONTINUATION on USD/CHF. Source: REAL_TRADE."
+    ],
+    "timestamp": 1789601322067
+  },
+  {
+    "id": "setup_NZDUSD_M15_BUY",
+    "action": "NEW_ORDER",
+    "pair": "NZD/USD",
+    "direction": "BUY",
+    "entryPrice": 0.57088,
+    "stopLoss": 0.56788,
+    "takeProfit1": 0.57688,
+    "takeProfit2": 0.5816799999999999,
+    "lotSize": 0.02,
+    "reasons": [
+      "NZD/USD live price (0.57188) is holding above 50 EMA trend filter.",
+      "RSI (14) sitting at 30.8 with ADX (20.0) confirming trending bearish.",
+      "SuperTrend filter is BULLISH and ATR volatility is 0.00084.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
+      "[CANDLE CONFIRMATION] Bullish Pin Bar / Hammer confirmed on closed candle."
+    ],
+    "timestamp": 1789601322067
+  },
+  {
+    "id": "setup_USDCAD_H4_BUY",
+    "masterBrokerOrderId": "318594946",
+    "action": "NEW_ORDER",
+    "pair": "USD/CAD",
+    "direction": "BUY",
+    "entryPrice": 1.39844,
+    "stopLoss": 1.39544,
+    "takeProfit1": 1.40444,
+    "takeProfit2": 1.40924,
+    "lotSize": 0.02,
+    "reasons": [
+      "📐 Autochartist: Corak Double Bottom disahkan (Kualiti 7/10) menyokong BUY.",
+      "USD/CAD live price (1.39894) is holding above 50 EMA trend filter.",
+      "RSI (14) sitting at 78.4 with ADX (74.0) confirming trending bullish.",
+      "SuperTrend filter is BULLISH and ATR volatility is 0.00231.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
+      "[CANDLE CONFIRMATION] Bullish Pin Bar / Hammer confirmed on closed candle."
+    ],
+    "timestamp": 1789625064680
+  }
+]

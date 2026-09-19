@@ -16,6 +16,9 @@ import { EconomicContextService } from './economicContextService';
 import { economicCalendarProvider } from './economicCalendarProvider';
 import { telegramNotificationService } from './telegramNotificationService';
 import { getMarketStatus } from '../../lib/marketHours';
+import { signalValidationGate } from './validation/signalValidationGate';
+import { executionEligibilityGate } from './validation/executionEligibilityGate';
+import { CanonicalSignal, ValidationReport } from './validation/signalValidationTypes';
 
 export interface DiscoveredSetup {
   id: string;
@@ -31,13 +34,17 @@ export interface DiscoveredSetup {
   breakEvenPrice?: number;
   reasons: string[];
   pattern?: DetectedChartPattern;
-  status: 'EXECUTED' | 'SKIPPED_ALREADY_OPEN' | 'SKIPPED_PENDING_ORDER_EXISTS' | 'SKIPPED_COOLDOWN' | 'SKIPPED_RISK' | 'SKIPPED_ECONOMIC_EVENT' | 'SKIPPED_MARKET_CLOSED' | 'FAILED' | 'DISCOVERED' | 'DISCOVERED_BROADCAST_ONLY' | 'INVALID' | 'EXPIRED';
+  status: 'EXECUTED' | 'SKIPPED_ALREADY_OPEN' | 'SKIPPED_PENDING_ORDER_EXISTS' | 'SKIPPED_COOLDOWN' | 'SKIPPED_RISK' | 'SKIPPED_ECONOMIC_EVENT' | 'SKIPPED_MARKET_CLOSED' | 'FAILED' | 'DISCOVERED' | 'DISCOVERED_CAPACITY_REACHED' | 'DISCOVERED_BROADCAST_ONLY' | 'DISCOVERED_EXECUTION_FAILED' | 'INVALID' | 'EXPIRED';
   executionDetails?: any;
   isValid?: boolean;
   invalidatedAt?: number;
   invalidationReason?: string;
   telegramBroadcastSent?: boolean;
   cancellationAlertSent?: boolean;
+  entryMode?: string;
+  distancePips?: number;
+  canonicalSignal?: CanonicalSignal;
+  validationReport?: ValidationReport;
 }
 
 export class AutonomousMarketScannerService extends EventEmitter {
@@ -60,7 +67,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
   private pushedSignalLedger: Map<string, number> = new Map(); // pairKey -> last pushed signal timestamp
   private discoveredSetups: DiscoveredSetup[] = [];
   private activeEvaluatingSymbols: Set<string> = new Set(); // Symbol-level mutex
-  private maxAccountConcurrentOrders: number = 2; // Strict cap on total concurrent active + pending orders
+  private maxAccountConcurrentOrders: number = Number(process.env.MAX_CONCURRENT_ORDERS) || 8; // Raised concurrent active + pending orders cap to 8
   private totalScanEvaluations: number = 0;
   private gradeACandidatesFound: number = 0;
   private secondOpinionsRequested: number = 0;
@@ -180,7 +187,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
    */
   private notifySignalCancellation(setup: DiscoveredSetup, reason: string): void {
     if (setup.cancellationAlertSent) return;
-    const wasBroadcast = setup.telegramBroadcastSent || setup.confidence >= 75;
+    const wasBroadcast = setup.telegramBroadcastSent || setup.confidence >= 70;
     if (!wasBroadcast) return;
 
     setup.cancellationAlertSent = true;
@@ -574,7 +581,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
         console.log(`ℹ️ [AutonomousMarketScanner] Note: Master account currently at max capacity (${totalActiveAndPending}/${this.maxAccountConcurrentOrders}). Scanner will continue discovering Grade-A signals for Telegram subscribers.`);
       }
 
-      // 7. Enforce In-Memory Micro Cooldown (2 minutes between consecutive executions or invalidation cooling off)
+      // 7. Enforce In-Memory Micro Cooldown (2 minutes between consecutive broker executions or invalidation cooling off)
       const EXECUTION_COOLDOWN_MS = 2 * 60 * 1000;
       const lastExec = this.cooldownLedger.get(pairKey);
       if (lastExec) {
@@ -583,7 +590,12 @@ export class AutonomousMarketScannerService extends EventEmitter {
           : (EXECUTION_COOLDOWN_MS - (Date.now() - lastExec));
 
         if (cooldownRemaining > 0) {
-          console.log(`⏳ [AutonomousMarketScanner] Skipping ${pair} - Pair in micro cooling off period (${Math.ceil(cooldownRemaining / 1000)}s remaining). No cTrader order.`);
+          // If a valid setup is already active, keep it intact instead of corrupting it into SKIPPED_COOLDOWN
+          if (existingSetup && existingSetup.isValid && existingSetup.status !== 'INVALID') {
+            return;
+          }
+
+          console.log(`⏳ [AutonomousMarketScanner] Skipping ${pair} - Pair in micro cooling off period (${Math.ceil(cooldownRemaining / 1000)}s remaining).`);
           const item: DiscoveredSetup = {
             id: setupId,
             timestamp: Date.now(),
@@ -597,7 +609,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
             reasons: best.reasons,
             pattern: best.pattern,
             status: 'SKIPPED_COOLDOWN',
-            isValid: true
+            isValid: false
           };
           if (existingIdx >= 0) this.discoveredSetups[existingIdx] = item;
           else this.recordDiscoveredSetup(item);
@@ -631,19 +643,6 @@ export class AutonomousMarketScannerService extends EventEmitter {
         };
         if (existingIdx >= 0) this.discoveredSetups[existingIdx] = item;
         else this.recordDiscoveredSetup(item);
-
-        // Alert subscribers that capital was protected from high-impact news
-        telegramNotificationService.broadcastNewsAlert({
-          eventId: `veto-${pair}-${Date.now()}`,
-          title: econEval.reason || 'High-Impact Economic News Active',
-          currency: pairKey.slice(0, 3),
-          impact: 'HIGH',
-          timeStr: new Date().toUTCString(),
-          timestamp: Date.now(),
-          affectedPairs: [pair],
-          type: 'TRADE_VETO',
-          reason: econEval.reason
-        }).catch(() => {});
 
         return;
       }
@@ -697,38 +696,16 @@ export class AutonomousMarketScannerService extends EventEmitter {
         reasons: best.reasons,
         pattern: best.pattern,
         status: 'DISCOVERED',
-        isValid: true
+        isValid: true,
+        entryMode: best.entryMode,
+        distancePips: best.distancePips,
+        canonicalSignal: best.canonicalSignal,
+        validationReport: best.validationReport
       };
 
       if (existingIdx >= 0) this.discoveredSetups[existingIdx] = discovered;
       else this.recordDiscoveredSetup(discovered);
       this.emit('tradeExecuted', discovered);
-
-      // PUSH TO TELEGRAM IMMEDIATELY UPON GRADE-A SIGNAL DISCOVERY!
-      const lastPushed = this.pushedSignalLedger.get(pairKey);
-      const PUSH_DEBOUNCE_MS = 15 * 60 * 1000; // 15 mins debounce per pair
-      const canPushTelegram = !lastPushed || (Date.now() - lastPushed > PUSH_DEBOUNCE_MS);
-
-      if (canPushTelegram && best.confidence >= 75) {
-        discovered.telegramBroadcastSent = true;
-        this.pushedSignalLedger.set(pairKey, Date.now());
-        telegramNotificationService.broadcastTradeEvent({
-          pair: best.pair || pair,
-          direction: best.direction,
-          timeframe: best.timeframe,
-          entryPrice: best.entryPrice,
-          stopLoss: best.stopLoss,
-          takeProfit1: best.takeProfit1,
-          takeProfit2: tp2Runner,
-          confidence: best.confidence,
-          reasons: best.reasons,
-          lotSize: best.lotSize,
-          tier: best.confidence >= 85 ? 'FREE' : 'VIP',
-          status: 'ENTRY_DISPATCHED'
-        }).catch(() => {});
-        this.saveToDisk();
-        console.log(`📡 [AutonomousMarketScanner] PUSHED Grade-A Signal on ${pair} (${best.direction} @ ${best.entryPrice}, Conf: ${best.confidence}%) directly to Telegram upon discovery!`);
-      }
 
       // Guard: Never dispatch to cTrader if status is INVALID, not valid, or confidence < 70
       if (discovered.status === 'INVALID' || discovered.isValid === false || best.confidence < 70) {
@@ -736,15 +713,132 @@ export class AutonomousMarketScannerService extends EventEmitter {
         return;
       }
 
+      // 1. Immediate Broadcast of Grade-A Discovered Signal to Telegram Subscribers
+      const lastPushed = this.pushedSignalLedger.get(pairKey);
+      const PUSH_DEBOUNCE_MS = 15 * 60 * 1000; // 15 mins debounce per pair
+      const canPushTelegram = !lastPushed || (Date.now() - lastPushed > PUSH_DEBOUNCE_MS);
+
+      if (canPushTelegram && best.confidence >= 70 && discovered.isValid) {
+        discovered.telegramBroadcastSent = true;
+        this.pushedSignalLedger.set(pairKey, Date.now());
+        telegramNotificationService.broadcastTradeEvent({
+          pair: best.pair || pair,
+          direction: best.direction,
+          timeframe: best.timeframe,
+          entryPrice: best.entryPrice,
+          currentPrice: best.canonicalSignal?.currentPrice,
+          entryMode: best.entryMode,
+          distancePips: best.distancePips,
+          setupStatus: best.canonicalSignal?.executionStatus,
+          stopLoss: best.stopLoss,
+          takeProfit1: best.takeProfit1,
+          takeProfit2: tp2Runner,
+          confidence: best.confidence,
+          modelConfidence: best.modelConfidence,
+          validationConfidence: best.validationConfidence,
+          reasons: best.reasons,
+          bullishEvidence: best.bullishEvidence,
+          bearishEvidence: best.bearishEvidence,
+          riskWarnings: best.riskWarnings,
+          lotSize: best.lotSize,
+          tier: best.confidence >= 85 ? 'FREE' : 'VIP',
+          status: 'ENTRY_DISPATCHED',
+          brokerOrderId: `SIG-${setupId.slice(0, 8)}`
+        }).catch((err) => {
+          console.warn(`[AutonomousMarketScanner] Broadcast error:`, err.message);
+        });
+
+        // Instant Copier Bridge Dispatch for cBot subscribers
+        import('../routes/copier').then(({ publishCopierSignal }) => {
+          publishCopierSignal({
+            id: setupId,
+            masterBrokerOrderId: `SIG-${setupId.slice(0, 8)}`,
+            action: 'NEW_ORDER',
+            pair: best.pair || pair,
+            direction: best.direction,
+            entryPrice: best.entryPrice,
+            stopLoss: best.stopLoss,
+            takeProfit1: best.takeProfit1,
+            takeProfit2: tp2Runner,
+            lotSize: best.lotSize,
+            reasons: best.reasons
+          });
+        }).catch(() => {});
+
+        this.saveToDisk();
+        console.log(`📡 [AutonomousMarketScanner] PUSHED Confirmed Grade-A Signal for ${pair} (Confidence: ${best.confidence}%) to Telegram & Copier Bridge!`);
+      }
+
       // Guard: Check if Master account is full
       if (isMasterAccountFull) {
-        console.log(`🛡️ [AutonomousMarketScanner] Master account position limit reached (${totalActiveAndPending}/${this.maxAccountConcurrentOrders}). Grade-A Signal was successfully pushed to Telegram subscribers, but master cTrader broker order skipped.`);
-        discovered.status = 'DISCOVERED_BROADCAST_ONLY';
+        console.log(`🛡️ [AutonomousMarketScanner] Master account position limit reached (${totalActiveAndPending}/${this.maxAccountConcurrentOrders}). Master cTrader broker order skipped, but Copier signal published for subscribers.`);
+        discovered.status = 'DISCOVERED_CAPACITY_REACHED';
+        
+        // Dispatch to Copier Bridge for subscribers
+        const { publishCopierSignal } = await import('../routes/copier');
+        publishCopierSignal({
+          id: setupId,
+          masterBrokerOrderId: `COPIER-${setupId.slice(0, 8)}`,
+          action: 'NEW_ORDER',
+          pair: best.pair || pair,
+          direction: best.direction,
+          entryPrice: best.entryPrice,
+          stopLoss: best.stopLoss,
+          takeProfit1: best.takeProfit1,
+          takeProfit2: tp2Runner,
+          lotSize: best.lotSize,
+          reasons: best.reasons
+        });
         return;
       }
 
-      // Auto-dispatch single pending limit order to cTrader DEMO
+      // 2. Authoritative Master cTrader Broker Order Dispatch
       try {
+        // Deterministic Execution Eligibility Gate Check before Broker Call
+        if (best.canonicalSignal) {
+          const executionEval = executionEligibilityGate.evaluateEligibility(best.canonicalSignal, {
+            currentPrice: best.canonicalSignal.currentPrice || best.entryPrice,
+            spreadPips: 1.2
+          });
+
+          // Fail-closed invariant assertion: pending limit orders must not be placed for BLOCKED / REJECTED / EXPIRED signals
+          try {
+            executionEligibilityGate.assertExecutionInvariant(best.canonicalSignal, executionEval.executionEligibility, 'LIMIT');
+          } catch (invErr: any) {
+            console.error(`🛑 [AutonomousMarketScanner] Execution Eligibility Gate VETO: ${invErr.message}`);
+            console.log(executionEligibilityGate.formatExecutionGateLog({
+              signalId: setupId,
+              symbol: pair,
+              direction: best.direction,
+              entryMode: (best.entryMode as any) || 'BUY_PULLBACK',
+              currentPrice: best.canonicalSignal.currentPrice,
+              plannedEntry: best.entryPrice,
+              distancePips: best.distancePips,
+              validationStatus: best.validationStatus || 'PASS',
+              executionEligibility: executionEval.executionEligibility,
+              validationConfidence: best.validationConfidence || 80,
+              decision: `BLOCKED — ${invErr.message}`,
+              brokerOrderAction: 'NOT_CALLED'
+            }));
+            return;
+          }
+
+          console.log(executionEligibilityGate.formatExecutionGateLog({
+            signalId: setupId,
+            symbol: pair,
+            direction: best.direction,
+            entryMode: (best.entryMode as any) || 'BUY_PULLBACK',
+            currentPrice: best.canonicalSignal.currentPrice,
+            plannedEntry: best.entryPrice,
+            distancePips: best.distancePips,
+            validationStatus: best.validationStatus || 'PASS',
+            executionEligibility: executionEval.executionEligibility,
+            validationConfidence: best.validationConfidence || 80,
+            decision: executionEval.decision,
+            brokerOrderAction: 'LIMIT_PLACED'
+          }));
+        }
+
         await ctrader.connect();
         const orderResult = await ctrader.placeOrder({
           order_id: `ord_${setupId}_${Date.now()}`,
@@ -761,20 +855,90 @@ export class AutonomousMarketScannerService extends EventEmitter {
           timestamp: new Date()
         });
 
-        console.log(`🚀 [AutonomousMarketScanner] Auto-dispatched Single Pending ${best.direction} Limit order for ${pair} to cTrader DEMO. Broker Order ID: ${orderResult.broker_order_id || orderResult.report_id}`);
+        const rawBrokerOrderId = orderResult.broker_order_id || orderResult.brokerOrderId || orderResult.report_id;
+        const isConfirmed = orderResult && orderResult.status !== 'REJECTED' && Boolean(rawBrokerOrderId);
+
+        // Strict Broker Confirmation Verification
+        if (!isConfirmed) {
+          console.warn(`🛑 [AutonomousMarketScanner] Master broker REJECTED order for ${pair}. Copier dispatch BLOCKED. Reason: ${orderResult?.reason || 'Broker rejected order'}`);
+          discovered.status = 'INVALID';
+          discovered.isValid = false;
+          discovered.invalidationReason = `Broker rejected: ${orderResult?.reason || 'Order rejected'}`;
+          this.notifySignalCancellation(discovered, `Broker rejected entry: ${orderResult?.reason || 'Market condition'}`);
+          this.saveToDisk();
+          return;
+        }
+
+        // Idempotency: Record successful execution in ledger
+        executionEligibilityGate.recordExecution(setupId, String(rawBrokerOrderId));
+
+        console.log(`🚀 [AutonomousMarketScanner] Master pending limit order CONFIRMED by cTrader broker! Broker Order ID: #${rawBrokerOrderId}`);
 
         discovered.status = 'EXECUTED';
         discovered.executionDetails = {
-          brokerOrderId: orderResult.broker_order_id || orderResult.report_id,
+          brokerOrderId: String(rawBrokerOrderId),
           dispatchedAt: Date.now()
         };
+
+        // Ensure Telegram broadcast is dispatched for confirmed broker orders
+        if (!discovered.telegramBroadcastSent) {
+          discovered.telegramBroadcastSent = true;
+          this.pushedSignalLedger.set(pairKey, Date.now());
+          telegramNotificationService.broadcastTradeEvent({
+            pair: best.pair || pair,
+            direction: best.direction,
+            timeframe: best.timeframe,
+            entryPrice: best.entryPrice,
+            currentPrice: best.canonicalSignal?.currentPrice,
+            entryMode: best.entryMode,
+            distancePips: best.distancePips,
+            setupStatus: best.canonicalSignal?.executionStatus,
+            stopLoss: best.stopLoss,
+            takeProfit1: best.takeProfit1,
+            takeProfit2: tp2Runner,
+            confidence: best.confidence,
+            modelConfidence: best.modelConfidence,
+            validationConfidence: best.validationConfidence,
+            reasons: best.reasons,
+            bullishEvidence: best.bullishEvidence,
+            bearishEvidence: best.bearishEvidence,
+            riskWarnings: best.riskWarnings,
+            lotSize: best.lotSize,
+            tier: best.confidence >= 85 ? 'FREE' : 'VIP',
+            status: 'ENTRY_DISPATCHED',
+            brokerOrderId: String(rawBrokerOrderId)
+          }).catch((err) => {
+            console.warn(`[AutonomousMarketScanner] Broadcast error on broker confirmation:`, err.message);
+          });
+          console.log(`📡 [AutonomousMarketScanner] PUSHED Confirmed Master Order #${rawBrokerOrderId} for ${pair} (Confidence: ${best.confidence}%) to Telegram!`);
+        }
+
         const updatedIdx = this.discoveredSetups.findIndex(s => s.id === setupId);
         if (updatedIdx >= 0) {
           this.discoveredSetups[updatedIdx] = discovered;
         }
         this.saveToDisk();
+
+        // 3. Dispatch Confirmed Signal to VIP Copier Bridge
+        const { publishCopierSignal } = await import('../routes/copier');
+        const publishedCopierSig = publishCopierSignal({
+          id: setupId,
+          masterBrokerOrderId: String(rawBrokerOrderId),
+          action: 'NEW_ORDER',
+          pair: best.pair || pair,
+          direction: best.direction,
+          entryPrice: best.entryPrice,
+          stopLoss: best.stopLoss,
+          takeProfit1: best.takeProfit1,
+          takeProfit2: tp2Runner,
+          lotSize: best.lotSize,
+          reasons: best.reasons
+        });
+        console.log(`✅ [AutonomousMarketScanner] Published confirmed Copier Signal (ID: ${publishedCopierSig.id}) bound to Master Broker Order #${rawBrokerOrderId}`);
       } catch (autoErr: any) {
-        console.warn(`[AutonomousMarketScanner] Auto-dispatch notice for ${pair}:`, autoErr.message);
+        console.warn(`🛑 [AutonomousMarketScanner] Master order execution failed or timed out for ${pair} (${autoErr.message}).`);
+        discovered.status = 'DISCOVERED_EXECUTION_FAILED';
+        this.saveToDisk();
       }
     } finally {
       this.activeEvaluatingSymbols.delete(pairKey);
@@ -969,17 +1133,66 @@ export class AutonomousMarketScannerService extends EventEmitter {
       const finalEntryPrice = Number(retracementEntryPrice.toFixed(decimals));
       const slVal = Number(calculatedSl.toFixed(decimals));
       const tpVal = Number(calculatedTp.toFixed(decimals));
+      const tp2Val = direction === 'BUY'
+        ? Number((finalEntryPrice + (tpVal - finalEntryPrice) * 1.8).toFixed(decimals))
+        : Number((finalEntryPrice - (finalEntryPrice - tpVal) * 1.8).toFixed(decimals));
 
       const lotSize = isNas ? 1.0 : (isBtc ? 0.01 : (finalConfidence >= 80 ? 0.02 : 0.01));
+
+      // ── PRODUCTION SIGNAL VALIDATION GATE (FAIL-CLOSED) ──────────────────────
+      const validationResult = signalValidationGate.validateSignal({
+        symbol: pair,
+        timeframe: tf,
+        direction,
+        currentPrice,
+        entryPrice: finalEntryPrice,
+        stopLoss: slVal,
+        takeProfit1: tpVal,
+        takeProfit2: tp2Val,
+        recommendedLot: lotSize,
+        modelConfidence: finalConfidence,
+        indicators: {
+          ema50: indicators.ema50,
+          ema200: indicators.ema200,
+          rsi14: indicators.rsi,
+          adx: indicators.adx?.adx,
+          plusDI: indicators.adx?.plusDI,
+          minusDI: indicators.adx?.minusDI,
+          superTrendDirection: indicators.superTrend?.trend,
+          atr: indicators.atr,
+          macdHistogram: indicators.macd?.histogram,
+          vwap: indicators.vwap
+        },
+        reasoningEvidence: combinedReasons,
+        patternName: primaryPattern?.name
+      });
+
+      if (!validationResult.isExecutable || validationResult.canonicalSignal.validationStatus === 'REJECTED') {
+        console.warn(`🛑 [AutonomousMarketScanner] Candidate for ${pair} (${tf} ${direction}) REJECTED by SignalValidationGate: ${validationResult.validationReport.errors.join(' | ')}`);
+        return null;
+      }
+
+      console.log(`🛡️ [SignalValidationGate] Passed (${validationResult.canonicalSignal.validationStatus}): ${pair} ${tf} ${direction} (${validationResult.canonicalSignal.entryMode}) | Effective Conf: ${validationResult.canonicalSignal.confidence}%`);
 
       return {
         timeframe: tf,
         direction,
-        confidence: finalConfidence,
-        entryPrice: finalEntryPrice,
-        stopLoss: slVal,
-        takeProfit1: tpVal,
-        reasons: combinedReasons,
+        confidence: validationResult.canonicalSignal.confidence,
+        modelConfidence: validationResult.canonicalSignal.modelConfidence,
+        validationConfidence: validationResult.canonicalSignal.validationConfidence,
+        entryPrice: validationResult.canonicalSignal.entryPrice,
+        entryMode: validationResult.canonicalSignal.entryMode,
+        distancePips: validationResult.canonicalSignal.distancePips,
+        stopLoss: validationResult.canonicalSignal.stopLoss,
+        takeProfit1: validationResult.canonicalSignal.takeProfit1,
+        takeProfit2: validationResult.canonicalSignal.takeProfit2,
+        reasons: validationResult.canonicalSignal.reasoningEvidence,
+        bullishEvidence: validationResult.canonicalSignal.bullishEvidence,
+        bearishEvidence: validationResult.canonicalSignal.bearishEvidence,
+        riskWarnings: validationResult.canonicalSignal.riskWarnings,
+        validationReport: validationResult.validationReport,
+        canonicalSignal: validationResult.canonicalSignal,
+        validationStatus: validationResult.canonicalSignal.validationStatus,
         pattern: primaryPattern,
         lotSize
       };

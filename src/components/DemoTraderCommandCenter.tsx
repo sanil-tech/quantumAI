@@ -1429,150 +1429,7 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
 
             {/* Setups List */}
             {(() => {
-              const displayedSetups = (Array.isArray(scannerStatus?.recentSetups) && scannerStatus.recentSetups.length > 0)
-                ? scannerStatus.recentSetups
-                : [
-                    {
-                      id: "setup_AUDUSD_M15_BUY_seed",
-                      pair: "AUD/USD",
-                      timeframe: "M15",
-                      direction: "BUY",
-                      confidence: 84,
-                      entryPrice: 0.71942,
-                      stopLoss: 0.71863,
-                      takeProfit1: 0.71991,
-                      patternName: "Ascending Triangle",
-                      patternQuality: 7,
-                      reasons: ["Bullish Order Block mitigation pada zon diskaun M15", "Penyelarasan Purata Bergerak EMA20 > EMA50"],
-                      status: "SKIPPED_ALREADY_OPEN"
-                    },
-                    {
-                      id: "setup_AUDUSD_H1_BUY_seed",
-                      pair: "AUD/USD",
-                      timeframe: "H1",
-                      direction: "BUY",
-                      confidence: 79,
-                      entryPrice: 0.71942,
-                      stopLoss: 0.71820,
-                      takeProfit1: 0.72150,
-                      patternName: "Channel Up",
-                      patternQuality: 6,
-                      reasons: ["H1 higher timeframe alignment above EMA200", "RSI momentum di atas 55"],
-                      status: "SKIPPED_ALREADY_OPEN"
-                    },
-                    {
-                      id: "setup_NASDAQ_M15_BUY_seed",
-                      pair: "NASDAQ",
-                      timeframe: "M15",
-                      direction: "BUY",
-                      confidence: 88,
-                      entryPrice: 26431.78,
-                      stopLoss: 26406.78,
-                      takeProfit1: 26481.78,
-                      patternName: "Channel Up",
-                      patternQuality: 8,
-                      reasons: ["Index momentum expansion di atas VWAP", "FVG fill & aggressive demand rejection"],
-                      status: "SKIPPED_COOLDOWN"
-                    },
-                    {
-                      id: "setup_USDCHF_M15_SELL_seed",
-                      pair: "USD/CHF",
-                      timeframe: "M15",
-                      direction: "SELL",
-                      confidence: 88,
-                      entryPrice: 0.80407,
-                      stopLoss: 0.80657,
-                      takeProfit1: 0.79907,
-                      patternName: "Descending Triangle",
-                      patternQuality: 7,
-                      reasons: ["Bearish Supply Zone retest", "CHOCH structure breakdown"],
-                      status: "SKIPPED_ALREADY_OPEN"
-                    },
-                    {
-                      id: "setup_USDCAD_M15_SELL_seed",
-                      pair: "USD/CAD",
-                      timeframe: "M15",
-                      direction: "SELL",
-                      confidence: 88,
-                      entryPrice: 1.38540,
-                      stopLoss: 1.38790,
-                      takeProfit1: 1.38040,
-                      patternName: "Double Top",
-                      patternQuality: 7,
-                      reasons: ["Bearish rejection pada paras rintangan institusi", "RSI overbought divergence"],
-                      status: "SKIPPED_ALREADY_OPEN"
-                    },
-                    {
-                      id: "setup_XAUUSD_M15_SELL_seed",
-                      pair: "XAU/USD",
-                      timeframe: "M15",
-                      direction: "SELL",
-                      confidence: 82,
-                      entryPrice: 2361.88,
-                      stopLoss: 2364.88,
-                      takeProfit1: 2355.88,
-                      patternName: "Rising Wedge",
-                      patternQuality: 6,
-                      reasons: ["Gold Asian high liquidity sweep", "Bearish Engulfing di zon premium"],
-                      status: "SKIPPED_ALREADY_OPEN"
-                    },
-                    {
-                      id: "setup_GBPUSD_H1_SELL_seed",
-                      pair: "GBP/USD",
-                      timeframe: "H1",
-                      direction: "SELL",
-                      confidence: 80,
-                      entryPrice: 1.35888,
-                      stopLoss: 1.36138,
-                      takeProfit1: 1.35388,
-                      patternName: "Channel Down",
-                      patternQuality: 7,
-                      reasons: ["H1 trendline breakdown", "SuperTrend bearish flip"],
-                      status: "SKIPPED_ALREADY_OPEN"
-                    },
-                    {
-                      id: "setup_GBPJPY_H1_SELL_seed",
-                      pair: "GBP/JPY",
-                      timeframe: "H1",
-                      direction: "SELL",
-                      confidence: 80,
-                      entryPrice: 216.517,
-                      stopLoss: 216.767,
-                      takeProfit1: 216.017,
-                      patternName: "Double Top",
-                      patternQuality: 8,
-                      reasons: ["JPY cross-pair liquidation sweep", "Bearish pinbar rejection at resistance"],
-                      status: "SKIPPED_COOLDOWN"
-                    },
-                    {
-                      id: "setup_BTCUSD_H1_BUY_seed",
-                      pair: "BTC/USD",
-                      timeframe: "H1",
-                      direction: "BUY",
-                      confidence: 79,
-                      entryPrice: 79832.44,
-                      stopLoss: 78832.44,
-                      takeProfit1: 81832.44,
-                      patternName: "Falling Wedge",
-                      patternQuality: 8,
-                      reasons: ["Bitcoin breakout above EMA50", "Institutional volume surge"],
-                      status: "SKIPPED_ALREADY_OPEN"
-                    },
-                    {
-                      id: "setup_GBPUSD_M15_BUY_seed",
-                      pair: "GBP/USD",
-                      timeframe: "M15",
-                      direction: "BUY",
-                      confidence: 72,
-                      entryPrice: 1.35888,
-                      stopLoss: 1.35638,
-                      takeProfit1: 1.36388,
-                      patternName: "Double Bottom",
-                      patternQuality: 7,
-                      reasons: ["M15 demand zone bounce", "RSI reversal from oversold 28"],
-                      status: "SKIPPED_ALREADY_OPEN"
-                    }
-                  ];
+              const displayedSetups = Array.isArray(scannerStatus?.recentSetups) ? scannerStatus.recentSetups : [];
 
               // Helper to format found timestamp
               const formatFoundTime = (ts?: number | string) => {
@@ -1593,6 +1450,16 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
                 if (diffHour < 24) return `${diffHour}j ${diffMin % 60}m lalu (${timeStr})`;
                 return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${timeStr}`;
               };
+
+              if (displayedSetups.length === 0) {
+                return (
+                  <div className="p-8 text-center bg-slate-950/60 border border-slate-800/80 rounded-xl text-slate-400 font-sans text-xs">
+                    <Sparkles className="w-6 h-6 text-indigo-400 mx-auto mb-2 opacity-60 animate-pulse" />
+                    <p className="font-semibold text-slate-200">Tiada setup aktif dijumpai pada imbasan pasaran terkini</p>
+                    <p className="text-[11px] text-slate-500 mt-1">Sistem imbasan autonomous AI sentiasa memantau instrumen pasaran secara langsung.</p>
+                  </div>
+                );
+              }
 
               return (
                 <div className="space-y-3">
@@ -1711,21 +1578,25 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
                                 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                                 : setup.status === 'SKIPPED_ALREADY_OPEN'
                                   ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
-                                  : setup.status === 'SKIPPED_RISK'
-                                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
-                                    : setup.status === 'SKIPPED_COOLDOWN'
-                                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                                      : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
+                                  : setup.status === 'DISCOVERED_CAPACITY_REACHED'
+                                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                                    : setup.status === 'SKIPPED_RISK'
+                                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                                      : setup.status === 'SKIPPED_COOLDOWN'
+                                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                        : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
                             }`}>
                               {setup.status === 'EXECUTED' 
-                                ? '✅ PENDING LIMIT DIHANTAR' 
+                                ? '✅ ORDER CTRADER AKTIF' 
                                 : setup.status === 'SKIPPED_ALREADY_OPEN' 
                                   ? 'ℹ️ POSISI AKTIF' 
-                                  : setup.status === 'SKIPPED_RISK' 
-                                    ? '🛡️ RISK LIMIT' 
-                                    : setup.status === 'SKIPPED_COOLDOWN' 
-                                      ? '⏳ COOLDOWN (2m)' 
-                                      : '🎯 PENDING LIMIT'}
+                                  : setup.status === 'DISCOVERED_CAPACITY_REACHED'
+                                    ? '📡 COPIER AKTIF (HAD MASTER 2/2)'
+                                    : setup.status === 'SKIPPED_RISK' 
+                                      ? '🛡️ RISK LIMIT' 
+                                      : setup.status === 'SKIPPED_COOLDOWN' 
+                                        ? '⏳ COOLDOWN (2m)' 
+                                        : '🎯 RADAR SETUP'}
                             </span>
                           )}
                           <button

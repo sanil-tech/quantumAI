@@ -145,6 +145,11 @@ export class CTraderProtoManager {
       case 2136: messageTypeName = 'ProtoOAUnsubscribeLiveTrendbarReq'; break;
       case 2137: messageTypeName = 'ProtoOAGetTrendbarsReq'; break;
       case 2138: messageTypeName = 'ProtoOAGetTrendbarsRes'; break;
+      case 2149: messageTypeName = 'ProtoOAGetAccountListByAccessTokenReq'; break;
+      case 2150: messageTypeName = 'ProtoOAGetAccountListByAccessTokenRes'; break;
+      // Error response payload types — must be decoded explicitly
+      case 50:    messageTypeName = 'ProtoErrorRes'; break;
+      case 2142:  messageTypeName = 'ProtoOAErrorRes'; break;
       default:
         break;
     }
@@ -156,11 +161,13 @@ export class CTraderProtoManager {
         const decoded = Type.decode(payloadBytes);
         decodedPayload = Type.toObject(decoded, { longs: Number, enums: Number, defaults: true });
       } catch {
-        if (payloadType === 50) {
+        // Fallback: try ProtoOAErrorRes for any error-class payloads
+        if (payloadType === 50 || payloadType === 2142) {
           try {
-            const Type = root.lookupType('ProtoErrorRes');
-            const decoded = Type.decode(payloadBytes);
-            decodedPayload = Type.toObject(decoded, { longs: Number, enums: Number, defaults: true });
+            const errTypeName = payloadType === 50 ? 'ProtoErrorRes' : 'ProtoOAErrorRes';
+            const ErrType = root.lookupType(errTypeName);
+            const decoded = ErrType.decode(payloadBytes);
+            decodedPayload = ErrType.toObject(decoded, { longs: Number, enums: Number, defaults: true });
           } catch {
             decodedPayload = { rawBytes: payloadBytes };
           }

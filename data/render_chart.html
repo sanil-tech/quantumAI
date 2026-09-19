@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0d1117;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      width: 1000px;
+      height: 540px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    #header {
+      height: 48px;
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      color: #ffffff;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: 0.5px;
+      color: #58a6ff;
+    }
+    .badge {
+      background: rgba(248, 81, 73, 0.15);
+      color: #ff7b72;
+      border: 1px solid rgba(248, 81, 73, 0.4);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .symbol-info {
+      font-size: 14px;
+      color: #8b949e;
+      font-weight: 600;
+    }
+    #canvas-container {
+      width: 1000px;
+      height: 492px;
+      background: #0d1117;
+      position: relative;
+    }
+    canvas {
+      display: block;
+      width: 1000px;
+      height: 492px;
+    }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <div class="brand">
+      <span>🔮 QUANTUM AI ANALYTICS</span>
+      <span class="symbol-info">• XAU/USD (M15)</span>
+    </div>
+    <div class="badge">SELL SETUP — BEARISH ORDER BLOCK</div>
+  </div>
+  <div id="canvas-container">
+    <canvas id="chartCanvas" width="2000" height="984"></canvas>
+  </div>
+
+  <script>
+    try {
+      const canvas = document.getElementById('chartCanvas');
+      const ctx = canvas.getContext('2d');
+      const dpr = 2;
+      ctx.scale(dpr, dpr);
+
+      const w = 1000;
+      const h = 492;
+
+      const candles = [{"time":1789608307,"open":4387.77,"high":4389.63,"low":4387.6,"close":4388.44,"volume":1104},{"time":1789609207,"open":4388.44,"high":4391.6,"low":4386.55,"close":4389.37,"volume":1095},{"time":1789610107,"open":4389.37,"high":4391.11,"low":4389.36,"close":4389.98,"volume":702},{"time":1789611007,"open":4389.98,"high":4392.63,"low":4389.67,"close":4391.21,"volume":1052},{"time":1789611907,"open":4391.21,"high":4395.92,"low":4390.25,"close":4395.02,"volume":766},{"time":1789612807,"open":4395.02,"high":4399.65,"low":4392.37,"close":4398.68,"volume":832},{"time":1789613707,"open":4398.68,"high":4403.01,"low":4397.96,"close":4401.72,"volume":512},{"time":1789614607,"open":4401.72,"high":4405.5,"low":4401.44,"close":4405.13,"volume":733},{"time":1789615507,"open":4405.13,"high":4410.54,"low":4404.43,"close":4408.5,"volume":1033},{"time":1789616407,"open":4408.5,"high":4413.67,"low":4408.35,"close":4411.88,"volume":637},{"time":1789617307,"open":4411.88,"high":4415.42,"low":4411.64,"close":4415.21,"volume":1123},{"time":1789618207,"open":4415.21,"high":4418.28,"low":4412.49,"close":4416.77,"volume":973},{"time":1789619107,"open":4416.77,"high":4421.75,"low":4414.59,"close":4418.97,"volume":760},{"time":1789620007,"open":4418.97,"high":4421.36,"low":4418.05,"close":4419.66,"volume":538},{"time":1789620907,"open":4419.66,"high":4419.73,"low":4417.44,"close":4419.09,"volume":655},{"time":1789621807,"open":4419.09,"high":4420.69,"low":4414.58,"close":4417.11,"volume":1029},{"time":1789622707,"open":4417.11,"high":4418.52,"low":4413.82,"close":4413.9,"volume":1022},{"time":1789623607,"open":4413.9,"high":4414.63,"low":4406.82,"close":4407.88,"volume":533},{"time":1789624507,"open":4407.88,"high":4409.95,"low":4399.49,"close":4402.26,"volume":989},{"time":1789625407,"open":4402.26,"high":4402.91,"low":4394.18,"close":4395.19,"volume":1098},{"time":1789626307,"open":4395.19,"high":4396.22,"low":4386.54,"close":4389.32,"volume":646},{"time":1789627207,"open":4389.32,"high":4391.78,"low":4379.47,"close":4382.09,"volume":997},{"time":1789628107,"open":4382.09,"high":4383.44,"low":4374.22,"close":4375.17,"volume":1165},{"time":1789629007,"open":4375.17,"high":4377.35,"low":4368.15,"close":4370.89,"volume":818},{"time":1789629907,"open":4370.89,"high":4372.88,"low":4364.17,"close":4365.39,"volume":547},{"time":1789630807,"open":4365.39,"high":4368.07,"low":4361.48,"close":4363.21,"volume":786},{"time":1789631707,"open":4363.21,"high":4365.48,"low":4358.83,"close":4361.23,"volume":809},{"time":1789632607,"open":4361.23,"high":4363.37,"low":4360.42,"close":4362.49,"volume":1101},{"time":1789633507,"open":4362.49,"high":4367.07,"low":4360.17,"close":4365.37,"volume":1177},{"time":1789634407,"open":4365.37,"high":4371.34,"low":4363.22,"close":4369.94,"volume":565},{"time":1789635307,"open":4369.94,"high":4380.57,"low":4369.23,"close":4378.2,"volume":732},{"time":1789636207,"open":4378.2,"high":4387.36,"low":4377.88,"close":4386.75,"volume":872},{"time":1789637107,"open":4386.75,"high":4397.56,"low":4386.18,"close":4395.35,"volume":649},{"time":1789638007,"open":4395.35,"high":4407.33,"low":4394.2,"close":4405.05,"volume":618},{"time":1789638907,"open":4405.05,"high":4415.85,"low":4403.61,"close":4413.23,"volume":909},{"time":1789639807,"open":4413.23,"high":4422.59,"low":4410.46,"close":4421.13,"volume":880},{"time":1789640707,"open":4421.13,"high":4427.49,"low":4420.95,"close":4426.3,"volume":1139},{"time":1789641607,"open":4426.3,"high":4431.1,"low":4425.16,"close":4428.32,"volume":672},{"time":1789642507,"open":4428.32,"high":4430.06,"low":4426.53,"close":4429.3,"volume":807},{"time":1789643407,"open":4429.3,"high":4434.61,"low":4429.28,"close":4432.8,"volume":993},{"time":1789644307,"open":4432.8,"high":4438.92,"low":4432.66,"close":4436.77,"volume":1182},{"time":1789645207,"open":4436.77,"high":4444.32,"low":4434.31,"close":4443.42,"volume":832},{"time":1789646107,"open":4443.42,"high":4450.05,"low":4441,"close":4448.52,"volume":903},{"time":1789647007,"open":4448.52,"high":4454.97,"low":4445.87,"close":4453.49,"volume":684},{"time":1789647907,"open":4453.49,"high":4455.53,"low":4453.47,"close":4455,"volume":698}];
+      const entryPrice = 4455;
+      const stopLoss = 4467.5;
+      const takeProfit1 = 4442.5;
+      const takeProfit2 = 4427;
+      const localResistance = 4458;
+
+      const padTop = 35;
+      const padBottom = 40;
+      const padRight = 110;
+      const padLeft = 25;
+
+      const chartW = w - padLeft - padRight;
+      const chartH = h - padTop - padBottom;
+
+      let minPrice = Infinity;
+      let maxPrice = -Infinity;
+
+      candles.forEach(c => {
+        if (c.low < minPrice) minPrice = c.low;
+        if (c.high > maxPrice) maxPrice = c.high;
+      });
+
+      minPrice = Math.min(minPrice, entryPrice, stopLoss, takeProfit1, takeProfit2, localResistance);
+      maxPrice = Math.max(maxPrice, entryPrice, stopLoss, takeProfit1, takeProfit2, localResistance);
+
+      const priceMargin = (maxPrice - minPrice) * 0.15 || 1.0;
+      minPrice -= priceMargin;
+      maxPrice += priceMargin;
+      const priceRange = maxPrice - minPrice;
+
+      function getY(p) {
+        return padTop + chartH - ((p - minPrice) / priceRange) * chartH;
+      }
+
+      function getX(i) {
+        const spacing = chartW / candles.length;
+        return padLeft + i * spacing + spacing / 2;
+      }
+
+      // Background
+      ctx.fillStyle = '#0d1117';
+      ctx.fillRect(0, 0, w, h);
+
+      // Grid
+      ctx.strokeStyle = '#21262d';
+      ctx.lineWidth = 1;
+
+      for (let i = 0; i <= 6; i++) {
+        const p = minPrice + (priceRange / 6) * i;
+        const y = getY(p);
+        ctx.beginPath();
+        ctx.moveTo(padLeft, y);
+        ctx.lineTo(w - padRight, y);
+        ctx.stroke();
+
+        ctx.fillStyle = '#8b949e';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(p.toFixed(2), w - padRight + 12, y);
+      }
+
+      const timeStep = Math.max(1, Math.floor(candles.length / 6));
+      for (let i = 0; i < candles.length; i += timeStep) {
+        const x = getX(i);
+        ctx.beginPath();
+        ctx.moveTo(x, padTop);
+        ctx.lineTo(x, h - padBottom);
+        ctx.stroke();
+
+        const c = candles[i];
+        const d = new Date(c.time * 1000);
+        const timeStr = String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');
+        ctx.fillStyle = '#8b949e';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(timeStr, x, h - padBottom + 16);
+      }
+
+      // 1. Shaded Stop Loss Area (Red)
+      const entryY = getY(entryPrice);
+      const slY = getY(stopLoss);
+      const slTop = Math.min(entryY, slY);
+      const slH = Math.abs(entryY - slY);
+
+      ctx.fillStyle = 'rgba(248, 81, 73, 0.15)';
+      ctx.fillRect(w - padRight - 320, slTop, 320, slH);
+
+      ctx.strokeStyle = '#f85149';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(padLeft, slY);
+      ctx.lineTo(w - padRight, slY);
+      ctx.stroke();
+
+      // 2. Shaded Take Profit 1 Area (Green)
+      const tp1Y = getY(takeProfit1);
+      const tp1Top = Math.min(entryY, tp1Y);
+      const tp1H = Math.abs(entryY - tp1Y);
+
+      ctx.fillStyle = 'rgba(46, 160, 67, 0.15)';
+      ctx.fillRect(w - padRight - 320, tp1Top, 320, tp1H);
+
+      ctx.strokeStyle = '#3fb950';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(padLeft, tp1Y);
+      ctx.lineTo(w - padRight, tp1Y);
+      ctx.stroke();
+
+      // 3. Take Profit 2 Line (Runner)
+      const tp2Y = getY(takeProfit2);
+      ctx.strokeStyle = '#2ea043';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 3]);
+      ctx.beginPath();
+      ctx.moveTo(padLeft, tp2Y);
+      ctx.lineTo(w - padRight, tp2Y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 4. White Entry Line
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(padLeft, entryY);
+      ctx.lineTo(w - padRight, entryY);
+      ctx.stroke();
+
+      // 5. Local Resistance / Order Block Line
+      const resY = getY(localResistance);
+      ctx.strokeStyle = '#e3b341';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(padLeft, resY);
+      ctx.lineTo(w - padRight, resY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Key Level Tag
+      ctx.fillStyle = '#e3b341';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('🔶 Local Resistance ' + localResistance.toFixed(2), padLeft + 15, resY - 8);
+
+      // Candles
+      const candleW = Math.max(3, (chartW / candles.length) * 0.65);
+      candles.forEach((c, i) => {
+        const x = getX(i);
+        const openY = getY(c.open);
+        const closeY = getY(c.close);
+        const highY = getY(c.high);
+        const lowY = getY(c.low);
+
+        const isBull = c.close >= c.open;
+        const color = isBull ? '#3fb950' : '#f85149';
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(x, highY);
+        ctx.lineTo(x, lowY);
+        ctx.stroke();
+
+        ctx.fillStyle = color;
+        const top = Math.min(openY, closeY);
+        const bh = Math.max(1.5, Math.abs(closeY - openY));
+        ctx.fillRect(x - candleW / 2, top, candleW, bh);
+      });
+
+      // Price Badges
+      function drawBadge(text, y, bg, fg) {
+        ctx.font = 'bold 11px sans-serif';
+        const tw = ctx.measureText(text).width;
+        const bw = tw + 18;
+        const bh = 24;
+        const bx = w - padRight - bw - 10;
+        const by = y - bh / 2;
+
+        ctx.fillStyle = bg;
+        ctx.fillRect(bx, by, bw, bh);
+
+        ctx.fillStyle = fg;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, bx + 9, y);
+      }
+
+      drawBadge('Stop Loss ' + stopLoss.toFixed(2), slY, '#b91c1c', '#ffffff');
+      drawBadge('Entry Point ' + entryPrice.toFixed(2), entryY, '#21262d', '#ffffff');
+      drawBadge('Take Profit 1 (50% Bank) ' + takeProfit1.toFixed(2), tp1Y, '#15803d', '#ffffff');
+      drawBadge('Take Profit 2 (Runner) ' + takeProfit2.toFixed(2), tp2Y, '#166534', '#ffffff');
+
+      console.log('CHART_RENDER_COMPLETE');
+    } catch (e) {
+      console.error('CHART_ERROR:', e.message);
+    }
+  </script>
+</body>
+</html>

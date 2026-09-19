@@ -42,10 +42,16 @@ export const CommercialOnboardingModal: React.FC<CommercialOnboardingModalProps>
   const [maxLotSize, setMaxLotSize] = useState<number>(0.50);
 
   // Step 3: Broker Method & Credentials
-  const [connectionMethod, setConnectionMethod] = useState<'FIX_PROTOCOL' | 'OPEN_API' | 'SANDBOX'>('FIX_PROTOCOL');
+  const getStoredModalAccount = () => {
+    if (typeof window === 'undefined') return '';
+    return localStorage.getItem('vip_account_id') || localStorage.getItem('quantum_ctrader_account') || '';
+  };
+  const modalStoredAcc = getStoredModalAccount();
+
+  const [connectionMethod, setConnectionMethod] = useState<'FIX_PROTOCOL' | 'OPEN_API' | 'SANDBOX'>('OPEN_API');
   const [accountEnvironment, setAccountEnvironment] = useState<'DEMO' | 'REAL_LIVE'>('DEMO');
-  const [accountNumber, setAccountNumber] = useState<string>('5912914');
-  const [senderCompId, setSenderCompId] = useState<string>('demo.ctrader.5912914');
+  const [accountNumber, setAccountNumber] = useState<string>(modalStoredAcc || '');
+  const [senderCompId, setSenderCompId] = useState<string>(modalStoredAcc ? `demo.ctrader.${modalStoredAcc}` : '');
   const [brokerPassword, setBrokerPassword] = useState<string>('');
   const [pasteRawText, setPasteRawText] = useState<string>('');
 

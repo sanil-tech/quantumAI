@@ -1,130 +1,25 @@
 [
   {
-    "id": "setup_NZDUSD_H4_SELL",
-    "timestamp": 1789522451558,
-    "pair": "NZD/USD",
-    "timeframe": "H4",
-    "direction": "SELL",
-    "confidence": 96,
-    "entryPrice": 0.5752,
-    "stopLoss": 0.5782,
-    "takeProfit1": 0.5692,
-    "reasons": [
-      "📐 Autochartist: Corak Descending Triangle disahkan (Kualiti 6/10) menyokong SELL.",
-      "NZD/USD live price (0.57420) is holding below 50 EMA trend filter.",
-      "RSI (14) sitting at 30.6 with ADX (49.9) confirming trending bearish.",
-      "SuperTrend filter is BEARISH and ATR volatility is 0.00156.",
-      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
-      "[CANDLE CONFIRMATION] Bearish Shooting Star confirmed on closed candle.",
-      "[ADAPTIVE LEARNING MEMORY] Strategy SMC_QUANT_V1 has 2 verified win(s) for ORDER_BLOCK_RETEST on NZD/USD. Source: REAL_TRADE."
-    ],
-    "pattern": {
-      "id": "pat_desc_triangle_H4_1789522451557",
-      "name": "Descending Triangle",
-      "type": "DESCENDING_TRIANGLE",
-      "direction": "DOWN",
-      "timeframe": "H4",
-      "quality": 6,
-      "length": 59,
-      "identificationTime": 1789522451557,
-      "breakoutLevel": 0.57954,
-      "targetPrice": 0.57092,
-      "description": "Sokongan mendatar pada 0.57954 dengan rintangan cerun menurun (Bearish Breakdown)."
-    },
-    "status": "SKIPPED_RISK",
-    "isValid": true
-  },
-  {
     "id": "setup_USDCAD_H4_BUY",
-    "timestamp": 1789541550897,
+    "timestamp": 1789767066668,
     "pair": "USD/CAD",
     "timeframe": "H4",
     "direction": "BUY",
-    "confidence": 96,
-    "entryPrice": 1.39198,
-    "stopLoss": 1.38898,
-    "takeProfit1": 1.39798,
-    "takeProfit2": 1.40278,
-    "breakEvenPrice": 1.39198,
+    "confidence": 82,
+    "entryPrice": 1.39794,
+    "stopLoss": 1.39494,
+    "takeProfit1": 1.40394,
     "reasons": [
-      "📐 Autochartist: Corak Double Bottom disahkan (Kualiti 7/10) menyokong BUY.",
-      "USD/CAD live price (1.39298) is holding above 50 EMA trend filter.",
-      "RSI (14) sitting at 70.9 with ADX (60.4) confirming trending bullish.",
-      "SuperTrend filter is BULLISH and ATR volatility is 0.00220.",
+      "🔴 PASARAN DITUTUP: Pasaran USD/CAD ditutup untuk hujung minggu. Dibuka semula Isnin 05:00 am (47j 28m lagi).",
+      "USD/CAD live price (1.39894) is holding above 50 EMA trend filter.",
+      "RSI (14) sitting at 62.3 with ADX (62.9) confirming trending bullish.",
+      "SuperTrend filter is BULLISH and ATR volatility is 0.00228.",
       "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
-      "[CANDLE CONFIRMATION] Bullish Engulfing confirmed on closed candle.",
-      "[ADAPTIVE LEARNING MEMORY] Strategy SMC_QUANT_V1 has 2 verified win(s) for ORDER_BLOCK_RETEST on USD/CAD. Source: REAL_TRADE."
+      "[CANDLE CONFIRMATION] Bullish Pin Bar / Hammer confirmed on closed candle.",
+      "[ADAPTIVE LEARNING MEMORY] Applied rule from pm-trade_289771514-1.0: \"ADAPTIVE RULE #12: Restrict new BUY entries within 20 pips of major round-number resistance (e.g. 1.4000) unless volume is above the 20-period moving average, and implement an API emergency kill-switch if the market price gaps past the designated Stop Loss.\". SL buffer expanded. Source: REAL_TRADE.",
+      "[CONFIRMATION REQUIRED] Awaiting structural retest on H4 to avoid premature entry flagged in pm-trade_289771514-1.0"
     ],
-    "pattern": {
-      "id": "pat_double_bottom_H4_1789541550896",
-      "name": "Double Bottom",
-      "type": "DOUBLE_BOTTOM",
-      "direction": "UP",
-      "timeframe": "H4",
-      "quality": 7,
-      "length": 52,
-      "identificationTime": 1789541550896,
-      "breakoutLevel": 1.3761,
-      "description": "Lembah berkembar pada paras 1.37610 menunjukkan sokongan lantai kukuh."
-    },
-    "status": "DISCOVERED",
-    "isValid": true,
-    "telegramBroadcastSent": true
-  },
-  {
-    "id": "setup_USDCHF_H4_BUY",
-    "timestamp": 1789518899996,
-    "pair": "USD/CHF",
-    "timeframe": "H4",
-    "direction": "BUY",
-    "confidence": 90,
-    "entryPrice": 0.818,
-    "stopLoss": 0.815,
-    "takeProfit1": 0.824,
-    "reasons": [
-      "USD/CHF live price (0.81900) is holding above 50 EMA trend filter.",
-      "RSI (14) sitting at 67.7 with ADX (34.3) confirming trending bullish.",
-      "SuperTrend filter is BULLISH and ATR volatility is 0.00185.",
-      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
-      "[ADAPTIVE LEARNING MEMORY] Strategy SMC_QUANT_V1 has 2 verified win(s) for ORDER_BLOCK_RETEST on USD/CHF. Source: REAL_TRADE.",
-      "⚠️ Autochartist: Amaran corak Double Top (DOWN)."
-    ],
-    "pattern": {
-      "id": "pat_double_top_H4_1789518899995",
-      "name": "Double Top",
-      "type": "DOUBLE_TOP",
-      "direction": "DOWN",
-      "timeframe": "H4",
-      "quality": 7,
-      "length": 12,
-      "identificationTime": 1789518899995,
-      "breakoutLevel": 0.81952,
-      "description": "Puncak berkembar pada paras 0.81952 gagal melepasi rintangan."
-    },
-    "status": "SKIPPED_ALREADY_OPEN",
-    "isValid": true,
-    "executionDetails": {
-      "brokerOrderId": "318316849",
-      "dispatchedAt": 1789518902774
-    }
-  },
-  {
-    "id": "setup_AUDUSD_H4_SELL",
-    "timestamp": 1789518899994,
-    "pair": "AUD/USD",
-    "timeframe": "H4",
-    "direction": "SELL",
-    "confidence": 85,
-    "entryPrice": 0.71403,
-    "stopLoss": 0.71703,
-    "takeProfit1": 0.70803,
-    "reasons": [
-      "AUD/USD live price (0.71303) is holding below 50 EMA trend filter.",
-      "RSI (14) sitting at 35.8 with ADX (40.3) confirming trending bearish.",
-      "SuperTrend filter is BEARISH and ATR volatility is 0.00141.",
-      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution."
-    ],
-    "status": "SKIPPED_PENDING_ORDER_EXISTS",
+    "status": "SKIPPED_MARKET_CLOSED",
     "isValid": true
   }
 ]

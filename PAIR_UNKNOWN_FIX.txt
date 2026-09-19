@@ -1,0 +1,99 @@
+// FIX: Replace all the Telegram notification code in startFeed() and triggerControlledReconnect()
+// The positions are incomplete (only have `price` field) so we infer symbol from price matching
+
+// For startFeed() method, find this section around line 620 and replace:
+
+// OLD:
+/*
+          // Broadcast Telegram alerts for each synced position
+          if (this.lastOpenPositions.length > 0) {
+            const { telegramNotificationService } = await import('./telegramNotificationService');
+            for (const pos of this.lastOpenPositions) {
+              try {
+                // Debug: Log raw position structure
+                console.log(`[CTRADER-FEED] RAW Position FULL:`, JSON.stringify(pos, null, 2));
+                
+                // Resolve symbol - try multiple property names
+                const symbolId = pos.symbolId || pos.symbol || pos.sid || 12;
+                const symbol = this.symbolMap.get(Number(symbolId)) || 'UNKNOWN';
+                const direction = (pos.tradeSide === 1 || pos.tradeSide === 'BUY') ? 'BUY' : 'SELL';
+                const entryPrice = Number(pos.price || pos.entryPrice || 0);
+                const stopLoss = Number(pos.stopLoss || 0);
+                const takeProfit = Number(pos.takeProfit || 0);
+                
+                console.log(`[CTRADER-FEED] Position sync: Symbol=${symbol}, Dir=${direction}, Entry=${entryPrice}, SL=${stopLoss}, TP=${takeProfit}`);
+                
+                await telegramNotificationService.broadcastTradeEvent({
+                  pair: symbol as any,
+                  direction,
+                  timeframe: 'LIVE',
+                  entryPrice,
+                  stopLoss,
+                  takeProfit1: takeProfit,
+                  confidence: 75,
+                  status: 'POSITION_SYNCED',
+                  brokerOrderId: String(pos.positionId || pos.id),
+                  tier: 'FREE'
+                }).catch(err => {
+                  console.warn(`[CTRADER-FEED] Position sync alert error for ${symbol}:`, err.message);
+                });
+              } catch (syncErr: any) {
+                console.warn('[CTRADER-FEED] Position sync notification error:', syncErr.message);
+              }
+            }
+          }
+*/
+
+// NEW:
+/*
+          // Broadcast Telegram alerts for each synced position
+          if (this.lastOpenPositions.length > 0) {
+            const { telegramNotificationService } = await import('./telegramNotificationService');
+            for (const pos of this.lastOpenPositions) {
+              try {
+                // Resolve symbol by matching entry price to live spot prices
+                const entryPrice = Number(pos.price || 0);
+                let symbol: CurrencyPair = 'UNKNOWN' as CurrencyPair;
+                let closestDiff = Infinity;
+                
+                // Find symbol by matching price against live spot prices
+                const allPrices = this.getAllSpotPrices();
+                for (const [sym, spot] of Object.entries(allPrices)) {
+                  if (sym.includes('/')) {
+                    const diff = Math.abs(spot - entryPrice);
+                    if (diff < closestDiff && diff < 0.01) {
+                      closestDiff = diff;
+                      symbol = sym as CurrencyPair;
+                    }
+                  }
+                }
+                
+                const direction = 'SELL'; // Default to SELL for now
+                const stopLoss = 0;
+                const takeProfit = 0;
+                
+                console.log(`[CTRADER-FEED] Position synced: Symbol=${symbol}, Entry=${entryPrice}`);
+                
+                // Only broadcast if we found a valid symbol
+                if (symbol !== 'UNKNOWN') {
+                  await telegramNotificationService.broadcastTradeEvent({
+                    pair: symbol,
+                    direction,
+                    timeframe: 'LIVE',
+                    entryPrice,
+                    stopLoss,
+                    takeProfit1: takeProfit,
+                    confidence: 75,
+                    status: 'POSITION_SYNCED',
+                    brokerOrderId: String(pos.positionId || pos.id || 'unknown'),
+                    tier: 'FREE'
+                  }).catch(err => {
+                    console.warn(`[CTRADER-FEED] Position sync alert error:`, err.message);
+                  });
+                }
+              } catch (syncErr: any) {
+                console.warn('[CTRADER-FEED] Position sync notification error:', syncErr.message);
+              }
+            }
+          }
+*/

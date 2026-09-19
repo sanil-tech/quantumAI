@@ -618,14 +618,20 @@ export const BrokerConnectionModal: React.FC<BrokerConnectionModalProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => setShowBrokerWebPortalModal(true)}
-                  className="w-full py-3.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/30 transition flex items-center justify-center gap-2"
+                  onClick={() => {
+                    if (platform === 'CTRADER') {
+                      window.location.href = '/api/broker/oauth/login';
+                    } else {
+                      setShowBrokerWebPortalModal(true);
+                    }
+                  }}
+                  className="w-full py-3.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/30 transition flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Building2 className="w-4 h-4" />
                   <span>
                     {isMalay 
-                      ? `🚀 Buka Halaman Login Web Rasmi ${brokerName} & Sambung` 
-                      : `🚀 Launch Official ${brokerName} Web Login Portal & Connect`
+                      ? (platform === 'CTRADER' ? '🔑 Log Masuk & Beri Kebenaran Rasmi cTrader ID (1-Click OAuth)' : `🚀 Buka Halaman Login Web Rasmi ${brokerName} & Sambung`)
+                      : (platform === 'CTRADER' ? '🔑 Login & Authorize via Official cTrader ID (1-Click OAuth)' : `🚀 Launch Official ${brokerName} Web Login Portal & Connect`)
                     }
                   </span>
                 </button>

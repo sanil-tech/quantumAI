@@ -448,9 +448,10 @@ export class SignalIntelligenceService {
       finalScore: finalConfidence
     };
 
+    const adxStrengthLabel = adx < 20 ? 'weak' : adx <= 25 ? 'moderate' : 'strong';
     const technicalEvidence: string[] = [
       `${pair} live price (${priceNum.toFixed(decimals)}) is holding ${priceNum >= ema50 ? 'above' : 'below'} 50 EMA trend filter.`,
-      `RSI (14) sitting at ${rsi.toFixed(1)} with ADX (${adx.toFixed(1)}) confirming ${marketRegime.replace('_', ' ').toLowerCase()}.`,
+      `RSI (14) at ${rsi.toFixed(1)} | ADX (${adx.toFixed(1)}) indicates ${adxStrengthLabel} trend strength in ${marketRegime.replace('_', ' ').toLowerCase()} regime.`,
       `SuperTrend filter is ${superTrend} and ATR volatility is ${atr.toFixed(decimals)}.`,
       ...(setupType !== 'NONE' ? [`SMC Structure detected: ${setupType.replace(/_/g, ' ')} with ${entryType.replace(/_/g, ' ')} execution.`] : [])
     ];

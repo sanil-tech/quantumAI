@@ -9,8 +9,8 @@
       "entryPrice": 1.365,
       "closePrice": 1.352,
       "realizedPnL": 13,
-      "openTime": "2026-09-15T12:56:32.202Z",
-      "closeTime": "2026-09-15T12:58:16.883Z",
+      "openTime": "2026-09-17T14:53:54.771Z",
+      "closeTime": "2026-09-17T15:13:55.712Z",
       "exitReason": "TAKE_PROFIT_2",
       "proposalId": "prop_sell_test"
     },
@@ -22,13 +22,33 @@
       "entryPrice": 1.365,
       "closePrice": 1.359,
       "realizedPnL": 12,
-      "openTime": "2026-09-15T12:56:32.202Z",
-      "closeTime": "2026-09-15T12:56:32.202Z",
+      "openTime": "2026-09-17T14:53:54.771Z",
+      "closeTime": "2026-09-17T14:53:54.771Z",
       "exitReason": "TAKE_PROFIT_1",
       "proposalId": "prop_sell_test"
     }
   ],
   "executionLogs": [
+    {
+      "id": "scaleout_1789656834772",
+      "timestamp": "2026-09-17T14:53:54.772Z",
+      "pair": "GBP/USD",
+      "direction": "SELL",
+      "confidence": 90,
+      "price": 1.359,
+      "status": "PARTIAL_SCALE_OUT",
+      "reason": "Method 2 TP1 reached. 50% closed (+60.0 pips). SL moved to Break-Even (1.365). Runner tracking TP2 (1.352)."
+    },
+    {
+      "id": "scaleout_1789656834753",
+      "timestamp": "2026-09-17T14:53:54.753Z",
+      "pair": "EUR/USD",
+      "direction": "BUY",
+      "confidence": 90,
+      "price": 1.171,
+      "status": "PARTIAL_SCALE_OUT",
+      "reason": "Method 2 TP1 reached. 50% closed (+60.0 pips). SL moved to Break-Even (1.165). Runner tracking TP2 (1.178)."
+    },
     {
       "id": "scaleout_1789476992202",
       "timestamp": "2026-09-15T12:56:32.202Z",
@@ -171,5 +191,5 @@
     }
   ],
   "isAutoPilotEnabled": true,
-  "lastSavedAt": "2026-09-15T12:58:16.884Z"
+  "lastSavedAt": "2026-09-17T15:13:55.715Z"
 }

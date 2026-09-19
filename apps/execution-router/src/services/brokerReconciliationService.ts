@@ -79,10 +79,13 @@ export class BrokerReconciliationService {
       // 1. Fetch broker positions directly from live singleton feed or cTrader adapter
       let brokerPositions: any[] = [];
       let brokerInstance: CTraderAdapter | undefined;
+      let brokerFetched = false;
       try {
-        const rawFeedPositions = await ctraderMarketDataFeedService.fetchRawOpenPositions().catch(() => []);
-        if (Array.isArray(rawFeedPositions) && rawFeedPositions.length > 0) {
-          brokerPositions = rawFeedPositions.map((p: any) => {
+        const rawFeedPositions = await ctraderMarketDataFeedService.fetchRawOpenPositions().catch(() => null);
+        if (Array.isArray(rawFeedPositions)) {
+          brokerFetched = true;
+          if (rawFeedPositions.length > 0) {
+            brokerPositions = rawFeedPositions.map((p: any) => {
             const symId = Number(p.tradeData?.symbolId ?? p.symbolId ?? 1);
             const symSpec = CTraderSymbolRegistry.getSymbolById(symId);
             const rawName = symSpec?.symbolName || (
@@ -117,9 +120,10 @@ export class BrokerReconciliationService {
               status: 'OPEN'
             };
           });
+          }
         }
 
-        if (brokerPositions.length === 0) {
+        if (brokerPositions.length === 0 && !brokerFetched) {
           const broker = (this.executionRouter.getBroker('ctrader-broker-01') as CTraderAdapter | undefined) 
             || new CTraderAdapter({ accountId: accountId || '48282756' });
           brokerInstance = broker;
@@ -128,6 +132,7 @@ export class BrokerReconciliationService {
           }
           const livePositions = await broker.getPositions();
           if (Array.isArray(livePositions)) {
+            brokerFetched = true;
             brokerPositions = livePositions.map(p => ({
               position_id: String(p.position_id),
               ticketId: String(p.position_id),
@@ -266,7 +271,7 @@ export class BrokerReconciliationService {
             ).catch(() => {});
           }
 
-          results.push({
+            results.push({
             symbol: dbPos.symbol,
             brokerPositionId: match.position_id,
             databasePositionId: dbPos.positionId,
@@ -281,7 +286,7 @@ export class BrokerReconciliationService {
               discrepancyReason: isDiverged ? 'Volume or Direction mismatch detected' : (wasAutoHealed ? 'Unprotected SL/TP auto-healed' : undefined)
             }
           });
-        } else if (brokerPositions.length > 0) {
+        } else if (brokerFetched || ctraderMarketDataFeedService.isConnected()) {
           // DATABASE_ONLY: Position was closed on broker (e.g. SL/TP hit or manual close)
           results.push({
             symbol: dbPos.symbol,

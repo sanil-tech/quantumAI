@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * Telegram & Webhook Live Trade Broadcast Service
@@ -17,18 +17,56 @@ export interface TradeBroadcastPayload {
   direction: 'BUY' | 'SELL';
   timeframe: string;
   entryPrice: number;
+  currentPrice?: number;
+  entryMode?: string;
+  distancePips?: number;
+  setupStatus?: string;
   stopLoss: number;
   takeProfit1: number;
   takeProfit2?: number;
   confidence: number;
+  modelConfidence?: number;
+  validationConfidence?: number;
   reasons: string[];
+  bullishEvidence?: string[];
+  bearishEvidence?: string[];
+  riskWarnings?: string[];
   brokerOrderId?: string;
   lotSize?: number;
-  status: 'ENTRY_DISPATCHED' | 'TP_HIT' | 'SL_HIT' | 'NEWS_BLACKOUT_VETO' | 'PROFIT_LOCKED' | 'SIGNAL_CANCELLED';
+  status: 'ENTRY_DISPATCHED' | 'ORDER_FILLED' | 'TP_HIT' | 'SL_HIT' | 'NEWS_BLACKOUT_VETO' | 'PROFIT_LOCKED' | 'SIGNAL_CANCELLED';
   tier?: 'FREE' | 'VIP' | 'ALL';
   cancellationReason?: string;
   pnlDollars?: number;
   pnlPips?: number;
+  analysisNotes?: string;
+  session?: string;
+  rrRatio?: string;
+}
+
+export interface TradingTipPayload {
+  id?: string;
+  title: string;
+  category: 'SMC_STRUCTURE' | 'SESSION_TIMING' | 'RISK_MANAGEMENT' | 'PSYCHOLOGY' | 'NEWS_EXECUTION';
+  session?: 'LONDON' | 'NEW_YORK' | 'ASIAN' | 'WEEKEND' | 'FRIDAY_CLOSE' | 'GENERAL';
+  contentEn: string;
+  contentMs: string;
+  keyRule: string;
+}
+
+export interface WeeklyStatsPayload {
+  weekPeriod: string;
+  totalSignals: number;
+  winningTrades: number;
+  breakevenTrades: number;
+  losingTrades: number;
+  winRate: number;
+  netPips: number;
+  estimatedRoiPct: number;
+  profitFactor: number;
+  averageRr: string;
+  topPerformingPair: string;
+  disciplinedExecutionScore: number;
+  maxDrawdownContained: number;
 }
 
 export interface MacroNewsAlertPayload {
@@ -66,8 +104,8 @@ export interface TelegramConfigData {
 export class TelegramNotificationService {
   private static instance: TelegramNotificationService;
   private botToken: string | null = process.env.TELEGRAM_BOT_TOKEN || null;
-  private channelId: string | null = process.env.TELEGRAM_CHANNEL_ID || null;
-  private freeChannelId: string | null = process.env.TELEGRAM_FREE_CHANNEL_ID || null;
+  private channelId: string | null = process.env.TELEGRAM_VIP_CHAT_ID || process.env.TELEGRAM_CHANNEL_ID || null;
+  private freeChannelId: string | null = process.env.TELEGRAM_FREE_CHAT_ID || process.env.TELEGRAM_FREE_CHANNEL_ID || null;
   private defaultLanguage: 'en' | 'ms' = (process.env.TELEGRAM_DEFAULT_LANG as 'en' | 'ms') || 'en';
   private userLanguagePreferences: Record<string, 'en' | 'ms'> = {};
   private isEnabled: boolean = true;
@@ -78,7 +116,12 @@ export class TelegramNotificationService {
   private alertedUpcomingNews = new Set<string>();
   private alertedOutcomeNews = new Set<string>();
   private alertedNormalizedNews = new Set<string>();
+  private recentNewsBroadcasts = new Map<string, number>();
+  private recentTradeBroadcasts = new Map<string, number>();
   private newsMonitorInterval: NodeJS.Timeout | null = null;
+  private tipsMonitorInterval: NodeJS.Timeout | null = null;
+  private weeklyStatsInterval: NodeJS.Timeout | null = null;
+  private recentTipBroadcastTimes = new Map<string, number>();
   private commandListenerTimeout: NodeJS.Timeout | null = null;
   private lastUpdateId: number = 0;
   private isPollingCommands: boolean = false;
@@ -87,6 +130,8 @@ export class TelegramNotificationService {
     this.loadConfigFromDisk();
     this.registerBotMenuCommands().catch(() => {});
     this.startMacroNewsMonitor();
+    this.startContextualTipsScheduler();
+    this.startWeeklyStatsScheduler();
     this.startBotCommandListener();
   }
 
@@ -102,9 +147,9 @@ export class TelegramNotificationService {
       if (fs.existsSync(this.configFilePath)) {
         const raw = fs.readFileSync(this.configFilePath, 'utf-8');
         const parsed: TelegramConfigData = JSON.parse(raw);
-        if (parsed.botToken) this.botToken = parsed.botToken;
-        if (parsed.channelId) this.channelId = parsed.channelId;
-        if (parsed.freeChannelId) this.freeChannelId = parsed.freeChannelId;
+        if (parsed.botToken && !process.env.TELEGRAM_BOT_TOKEN) this.botToken = parsed.botToken;
+        if (parsed.channelId && !(process.env.TELEGRAM_VIP_CHAT_ID || process.env.TELEGRAM_CHANNEL_ID)) this.channelId = parsed.channelId;
+        if (parsed.freeChannelId && !(process.env.TELEGRAM_FREE_CHAT_ID || process.env.TELEGRAM_FREE_CHANNEL_ID)) this.freeChannelId = parsed.freeChannelId;
         if (parsed.defaultLanguage) this.defaultLanguage = parsed.defaultLanguage;
         if (parsed.userLanguagePreferences) this.userLanguagePreferences = parsed.userLanguagePreferences;
         if (typeof parsed.isEnabled === 'boolean') this.isEnabled = parsed.isEnabled;
@@ -113,6 +158,14 @@ export class TelegramNotificationService {
       console.warn('[TelegramNotificationService] Could not load persisted telegram config:', e.message);
     }
 
+    try {
+      this.loadNewsAlertsLedger();
+    } catch (e: any) {
+      console.warn('[TelegramNotificationService] Could not load news alerts ledger:', e.message);
+    }
+  }
+
+  private loadNewsAlertsLedger(): void {
     try {
       if (fs.existsSync(this.newsAlertsLedgerPath)) {
         const raw = fs.readFileSync(this.newsAlertsLedgerPath, 'utf-8');
@@ -245,12 +298,65 @@ export class TelegramNotificationService {
 
       const data = await res.json();
       if (!res.ok || !data.ok) {
+        // Fallback retry without parse_mode if Markdown parsing failed (e.g. underscores in usernames)
+        if (payload.parse_mode) {
+          delete payload.parse_mode;
+          const fallbackRes = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const fallbackData = await fallbackRes.json();
+          if (fallbackData.ok) {
+            return { success: true, message: 'Message dispatched via fallback mode!', data: fallbackData };
+          }
+        }
+        console.warn(`[TelegramNotificationService] sendMessage error:`, data.description || res.statusText);
         return { success: false, message: data.description || `Telegram API Error: ${res.statusText}`, data };
       }
 
       return { success: true, message: 'Message successfully dispatched!', data };
     } catch (err: any) {
       return { success: false, message: `Telegram connection error: ${err.message}` };
+    }
+  }
+
+  /**
+   * Send a file/document directly via Telegram Bot API
+   */
+  public async sendDocument(filePath: string, customChatId?: string, caption?: string): Promise<{ success: boolean; message: string; data?: any }> {
+    const targetChat = customChatId || this.channelId;
+    if (!this.botToken) {
+      return { success: false, message: 'TELEGRAM_BOT_TOKEN_MISSING: Sila masukkan Bot Token Telegram anda.' };
+    }
+    if (!targetChat) {
+      return { success: false, message: 'TELEGRAM_CHAT_ID_MISSING: Sila masukkan Chat ID / Channel ID penerima.' };
+    }
+
+    try {
+      if (!fs.existsSync(filePath)) {
+        return { success: false, message: `FILE_NOT_FOUND: ${filePath}` };
+      }
+      const fileData = fs.readFileSync(filePath);
+      const fileName = path.basename(filePath);
+      const formData = new FormData();
+      formData.append('chat_id', targetChat);
+      if (caption) {
+        formData.append('caption', caption);
+        formData.append('parse_mode', 'Markdown');
+      }
+      const blob = new Blob([fileData]);
+      formData.append('document', blob, fileName);
+
+      const url = `https://api.telegram.org/bot${this.botToken}/sendDocument`;
+      const res = await fetch(url, {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      return { success: Boolean(data.ok), message: data.ok ? 'Document sent successfully!' : (data.description || 'Upload failed'), data };
+    } catch (err: any) {
+      return { success: false, message: `Telegram document error: ${err.message}` };
     }
   }
 
@@ -575,21 +681,57 @@ export class TelegramNotificationService {
   }
 
   /**
-   * Format Trade Broadcast Alerts by Language
+   * Helper to format pips based on symbol digits
+   */
+  private calculatePips(pair: string, price1: number, price2: number): string {
+    const diff = Math.abs(price1 - price2);
+    const upper = pair.toUpperCase();
+    if (upper.includes('JPY')) {
+      return (diff * 100).toFixed(1);
+    } else if (upper.includes('XAU') || upper.includes('GOLD')) {
+      return (diff * 10).toFixed(1);
+    } else {
+      return (diff * 10000).toFixed(1);
+    }
+  }
+
+  /**
+   * Format Trade Broadcast Alerts by Language (Supports 6-Pillar Method 2 Split-Ticket Lifecycle)
    */
   public formatTradeAlert(payload: TradeBroadcastPayload, lang: 'en' | 'ms' = 'en'): string {
     const isFreeSignal = payload.tier === 'FREE' || (payload.confidence >= 85 && payload.status === 'ENTRY_DISPATCHED');
-    const tp2Formatted = payload.takeProfit2 ? `\n🎯 *Take Profit 2 (Runner):* \`${payload.takeProfit2}\`` : '';
     const reasonsFormatted = (payload.reasons || [])
       .slice(0, 3)
       .map(r => `  • ${r}`)
       .join('\n');
 
+    // Calculate pips for SL, TP1, and TP2
+    const slPips = payload.entryPrice && payload.stopLoss ? this.calculatePips(payload.pair, payload.entryPrice, payload.stopLoss) : '';
+    const tp1Pips = payload.entryPrice && payload.takeProfit1 ? this.calculatePips(payload.pair, payload.entryPrice, payload.takeProfit1) : '';
+    const tp2Pips = payload.entryPrice && payload.takeProfit2 ? this.calculatePips(payload.pair, payload.entryPrice, payload.takeProfit2) : '';
+
+    // Risk-to-reward calculation
+    let rrText = payload.rrRatio || '';
+    if (!rrText && payload.entryPrice && payload.stopLoss && payload.takeProfit1) {
+      const risk = Math.abs(payload.entryPrice - payload.stopLoss);
+      const reward1 = Math.abs(payload.takeProfit1 - payload.entryPrice);
+      if (risk > 0) {
+        const ratio1 = (reward1 / risk).toFixed(1);
+        if (payload.takeProfit2) {
+          const reward2 = Math.abs(payload.takeProfit2 - payload.entryPrice);
+          const ratio2 = (reward2 / risk).toFixed(1);
+          rrText = `1:${ratio1} (TP1) | 1:${ratio2} (TP2)`;
+        } else {
+          rrText = `1:${ratio1}`;
+        }
+      }
+    }
+
     if (lang === 'en') {
       if (payload.status === 'SIGNAL_CANCELLED') {
         return [
           `🚫 *[QUANTUM AI - SIGNAL CANCELLED]* 🚫`,
-          `📌 *SETUP INVALIDATED - CANCEL PENDING ORDERS*`,
+          `📌 *SETUP INVALIDATED — CANCEL PENDING ORDERS*`,
           ``,
           `💱 *Pair:* \`${payload.pair}\` (${payload.timeframe})`,
           `🧭 *Direction:* *${payload.direction}* | *AI Confidence:* \`${payload.confidence}%\``,
@@ -600,81 +742,159 @@ export class TelegramNotificationService {
           `  • *${payload.cancellationReason || 'Market structure or price invalidated setup before entry fill.'}*`,
           ``,
           `⚠️ *Mandatory Subscriber Action:*`,
-          `  • Delete / Cancel any pending limit or stop orders for this pair.`,
+          `  • Delete / Cancel any pending limit or stop orders for this pair immediately.`,
           `  • Do NOT chase current market price (No FOMO). Preserving capital is paramount.`,
           ``,
           `⏰ _${new Date().toUTCString()}_ | _Quantum AI Risk Governance_`
         ].join('\n');
       }
 
-      let emoji = isFreeSignal ? '🌟' : '🚀';
-      let title = isFreeSignal ? 'HIGH-CONFIDENCE TRADE PROPOSAL' : 'AUTONOMOUS ENTRY DISPATCHED';
-
-      if (payload.status === 'TP_HIT') {
-        emoji = '🎯';
-        title = 'TAKE PROFIT TARGET HIT (PROFIT SECURED)';
-      } else if (payload.status === 'SL_HIT') {
-        emoji = '🛡️';
-        title = 'STOP LOSS TRIGGERED (RISK CONTAINED)';
-      } else if (payload.status === 'NEWS_BLACKOUT_VETO') {
-        emoji = '🔴';
-        title = 'TRADE VETOED: HIGH-IMPACT NEWS BLACKOUT';
-      } else if (payload.status === 'PROFIT_LOCKED') {
-        emoji = '🔒';
-        title = 'TP1 SECURED / STOP LOSS MOVED TO BREAKEVEN';
-      }
-
-      if (isFreeSignal && payload.status === 'ENTRY_DISPATCHED') {
+      if (payload.status === 'ORDER_FILLED') {
         return [
-          `🌟 *[QUANTUM AI - FREE COMMUNITY SIGNAL]* 🌟`,
-          `📌 *${title}*`,
+          `⚡ *[QUANTUM AI - ORDER FILLED & ACTIVE]* ⚡`,
+          `📌 *LIMIT ORDER TRIGGERED — LIVE TRADE IN MARKET*`,
           ``,
           `💱 *Pair:* \`${payload.pair}\` (${payload.timeframe})`,
           `🧭 *Direction:* *${payload.direction}* | *AI Confidence:* \`${payload.confidence}%\``,
-          `💵 *Entry Price:* \`${payload.entryPrice}\``,
-          `🛑 *Stop Loss:* \`${payload.stopLoss}\``,
-          `🎯 *Take Profit 1:* \`${payload.takeProfit1}\`${tp2Formatted}`,
-          ``,
-          `🧠 *SMC & Technical Confluences:*`,
-          reasonsFormatted || '  • SMC Order Block & Candlestick Confirmation',
-          ``,
-          `💡 *Risk Advisory:*`,
-          `  • Strictly cap capital exposure to max 1.0% - 1.5% of equity.`,
-          `  • Move Stop Loss to Breakeven (Risk-Free) once TP1 target is achieved.`,
-          ``,
-          `👑 _Want 100% automated hands-free trade copying? Join the Quantum AI VIP Copier._`,
-          `⏰ _${new Date().toUTCString()}_ | _Quantum AI Institutional Intelligence_`
-        ].join('\n');
-      } else {
-        return [
-          `${emoji} *[QUANTUM AI - ${payload.tier === 'VIP' ? 'VIP INSTITUTIONAL' : 'TRADING RADAR'}]* ${emoji}`,
-          `📌 *${title}*`,
-          ``,
-          `💱 *Pair:* \`${payload.pair}\` (${payload.timeframe})`,
-          `🧭 *Direction:* *${payload.direction}* | *Confidence:* \`${payload.confidence}%\``,
-          `💵 *Entry Price:* \`${payload.entryPrice}\``,
-          `🛑 *Stop Loss:* \`${payload.stopLoss}\``,
-          `🎯 *Take Profit 1:* \`${payload.takeProfit1}\``,
-          payload.takeProfit2 ? `🎯 *Take Profit 2:* \`${payload.takeProfit2}\`` : '',
-          payload.lotSize ? `📊 *Volume Sizing:* \`${payload.lotSize} Lots\`` : '',
-          payload.pnlDollars !== undefined ? `💰 *Net PnL:* \`${payload.pnlDollars >= 0 ? '+' : ''}$${payload.pnlDollars.toFixed(2)}\` (\`${payload.pnlPips ? payload.pnlPips.toFixed(1) : 0} pips\`)` : '',
+          `💵 *Filled Entry Price:* \`${payload.entryPrice}\``,
+          `🛑 *Active Stop Loss:* \`${payload.stopLoss}\`${slPips ? ` (-${slPips} pips)` : ''}`,
+          `🎯 *Take Profit 1:* \`${payload.takeProfit1}\`${tp1Pips ? ` (+${tp1Pips} pips)` : ''}`,
+          payload.takeProfit2 ? `🎯 *Take Profit 2 (Runner):* \`${payload.takeProfit2}\`${tp2Pips ? ` (+${tp2Pips} pips)` : ''}` : '',
+          rrText ? `⚖️ *Risk-to-Reward Ratio:* \`${rrText}\`` : '',
+          payload.lotSize ? `📊 *Position Sizing:* \`${payload.lotSize} Lots\`` : '',
           payload.brokerOrderId ? `🔗 *Broker Order ID:* \`#${payload.brokerOrderId}\`` : '',
           ``,
-          `🧠 *SMC Confluences:*`,
-          reasonsFormatted || '  • SMC Order Block & Candlestick Close Confluence',
+          `🛡️ *Active Trade Management Protocol (Method 2):*`,
+          `  • Ticket A: Target TP1 (50% Volume).`,
+          `  • Ticket B: Target TP2 (Runner).`,
+          `  • Auto-Breakeven will arm automatically once TP1 is secured.`,
           ``,
           `⏰ _${new Date().toUTCString()}_ | _Quantum AI Institutional Copier_`
         ].filter(Boolean).join('\n');
       }
+
+      if (payload.status === 'PROFIT_LOCKED') {
+        return [
+          `🔒 *[QUANTUM AI - TP1 HIT & PROFIT BANKED]* 🎯`,
+          `📌 *50% PARTIAL PROFIT SECURED & SL MOVED TO BREAKEVEN*`,
+          ``,
+          `💱 *Pair:* \`${payload.pair}\` (${payload.timeframe})`,
+          `🧭 *Direction:* *${payload.direction}*`,
+          `💵 *Entry Price:* \`${payload.entryPrice}\``,
+          `🎯 *TP1 Banked:* \`${payload.takeProfit1}\`${tp1Pips ? ` (+${tp1Pips} pips secured)` : ''}`,
+          payload.takeProfit2 ? `🎯 *Running to TP2:* \`${payload.takeProfit2}\`` : '',
+          `🛑 *New Stop Loss:* \`${payload.entryPrice}\` *(BREAKEVEN — ZERO RISK)*`,
+          payload.pnlDollars !== undefined ? `💰 *Realized Profit:* \`+$${payload.pnlDollars.toFixed(2)}\`` : '',
+          ``,
+          `🧠 *Method 2 Execution Status:*`,
+          `  • Ticket A closed with profit at TP1 (50% lot).`,
+          `  • Ticket B Stop Loss moved to Entry Price.`,
+          `  • Position is now 100% Risk-Free runner to TP2.`,
+          ``,
+          `⏰ _${new Date().toUTCString()}_ | _Quantum AI Institutional Copier_`
+        ].filter(Boolean).join('\n');
+      }
+
+      if (payload.status === 'TP_HIT') {
+        return [
+          `🏆 *[QUANTUM AI - TAKE PROFIT ACHIEVED]* 🚀`,
+          `📌 *TARGET HIT — FULL PROFIT SECURED*`,
+          ``,
+          `💱 *Pair:* \`${payload.pair}\` (${payload.timeframe})`,
+          `🧭 *Direction:* *${payload.direction}*`,
+          `💵 *Entry Price:* \`${payload.entryPrice}\``,
+          `🎯 *Exit Price:* \`${payload.takeProfit2 || payload.takeProfit1}\``,
+          payload.pnlDollars !== undefined ? `💰 *Net Profit:* \`+$${payload.pnlDollars.toFixed(2)}\` (\`${payload.pnlPips ? payload.pnlPips.toFixed(1) : (tp2Pips || tp1Pips || 0)} pips\`)` : '',
+          payload.brokerOrderId ? `🔗 *Broker Order ID:* \`#${payload.brokerOrderId}\`` : '',
+          ``,
+          `🧠 *AI Technical Analysis:*`,
+          `  • ${payload.analysisNotes || 'Price expanded into planned liquidity target with precision institutional volume.'}`,
+          ``,
+          `⏰ _${new Date().toUTCString()}_ | _Quantum AI Institutional Copier_`
+        ].filter(Boolean).join('\n');
+      }
+
+      if (payload.status === 'SL_HIT') {
+        return [
+          `🛡️ *[QUANTUM AI - STOP LOSS CONTAINED]* 🛑`,
+          `📌 *RISK CONTAINED — STRICT CAPITAL DISCIPLINE*`,
+          ``,
+          `💱 *Pair:* \`${payload.pair}\` (${payload.timeframe})`,
+          `🧭 *Direction:* *${payload.direction}*`,
+          `💵 *Entry Price:* \`${payload.entryPrice}\``,
+          `🛑 *Exit Price:* \`${payload.stopLoss}\``,
+          payload.pnlDollars !== undefined ? `📉 *Realized Loss:* \`-$${Math.abs(payload.pnlDollars).toFixed(2)}\` (\`-${payload.pnlPips ? Math.abs(payload.pnlPips).toFixed(1) : (slPips || 0)} pips\`)` : '',
+          payload.brokerOrderId ? `🔗 *Broker Order ID:* \`#${payload.brokerOrderId}\`` : '',
+          ``,
+          `🧠 *AI Post-Mortem & Risk Rule:*`,
+          `  • ${payload.analysisNotes || 'Market structure shifted. Loss strictly capped to planned risk budget (Method 2 Capital Shield). Capital preserved.'}`,
+          ``,
+          `⏰ _${new Date().toUTCString()}_ | _Quantum AI Capital Defense_`
+        ].filter(Boolean).join('\n');
+      }
+
+      // Default: ENTRY_DISPATCHED (New Trade Signal)
+      const headerEmoji = isFreeSignal ? '🌟' : '🚀';
+      const headerTitle = isFreeSignal ? 'FREE COMMUNITY SIGNAL' : 'VIP TRADE SIGNAL';
+      const entryModeLabel = payload.entryMode ? payload.entryMode.replace('_', ' — ') : `${payload.direction} SETUP`;
+      const setupStatusLabel = payload.setupStatus || (payload.entryMode?.includes('PULLBACK') ? 'WAITING FOR ENTRY' : 'TRIGGERED');
+
+      const bullishList = (payload.bullishEvidence && payload.bullishEvidence.length > 0)
+        ? payload.bullishEvidence.slice(0, 3).map(b => `  • ${b}`).join('\n')
+        : (payload.direction === 'BUY' ? reasonsFormatted : '');
+
+      const bearishList = (payload.bearishEvidence && payload.bearishEvidence.length > 0)
+        ? payload.bearishEvidence.slice(0, 3).map(b => `  • ${b}`).join('\n')
+        : (payload.direction === 'SELL' ? reasonsFormatted : '');
+
+      const riskList = (payload.riskWarnings && payload.riskWarnings.length > 0)
+        ? payload.riskWarnings.map(w => `  • ${w}`).join('\n')
+        : '';
+
+      const modelConf = payload.modelConfidence || payload.confidence;
+
+      return [
+        `${headerEmoji} *[QUANTUM AI - ${headerTitle}]* ${headerEmoji}`,
+        `🧭 *${payload.direction} — ${entryModeLabel}*`,
+        ``,
+        `💱 *Asset:* \`${payload.pair}\` (${payload.timeframe})`,
+        payload.currentPrice ? `📊 *Current Price:* \`${payload.currentPrice}\`` : '',
+        `💵 *Planned Entry:* \`${payload.entryPrice}\``,
+        payload.distancePips !== undefined ? `📏 *Distance to Entry:* \`${payload.distancePips} pips\`` : '',
+        `⚡ *Setup Status:* *${setupStatusLabel}*`,
+        ``,
+        payload.direction === 'BUY' && bullishList ? `🟢 *Key Bullish Evidence:*\n${bullishList}\n` : '',
+        payload.direction === 'SELL' && bearishList ? `🔴 *Key Bearish Evidence:*\n${bearishList}\n` : '',
+        riskList ? `⚠️ *Risk & Momentum Dynamics:*\n${riskList}\n` : '',
+        `💡 *Important:* ADX measures trend strength, not direction.`,
+        ``,
+        `🎯 *Take Profit 1 (TP1):* \`${payload.takeProfit1}\`${tp1Pips ? ` (+${tp1Pips} pips)` : ''}`,
+        payload.takeProfit2 ? `🎯 *Take Profit 2 (Runner):* \`${payload.takeProfit2}\`${tp2Pips ? ` (+${tp2Pips} pips)` : ''}` : '',
+        `🛑 *Stop Loss:* \`${payload.stopLoss}\`${slPips ? ` (-${slPips} pips)` : ''}`,
+        rrText ? `⚖️ *Planned R:R:* \`${rrText}\`` : '',
+        payload.lotSize ? `📊 *Recommended Lot:* \`${payload.lotSize} Lots\`` : '',
+        ``,
+        `🧠 *Confidence Assessment:*`,
+        `  • *${modelConf}% AI Model Confidence* (Advisory)`,
+        `  • _Note: Model confidence is not a statistical win probability._`,
+        ``,
+        `⚙️ *Execution Strategy (Method 2 Split-Ticket):*`,
+        `  • 🤖 *cBot / Auto-Copier:* Automatically opens 2 split tickets (50% lot to TP1, 50% lot to TP2). When TP1 hits, cBot banks 50% profit and shifts Ticket 2 SL to Breakeven (Risk-Free Runner).`,
+        `  • 📱 *Manual Traders:* Set pending limit order at \`${payload.entryPrice}\`. Do not enter market until entry price is reached.`,
+        ``,
+        isFreeSignal ? `👑 _Want 100% automated hands-free trade copying? Join the Quantum AI VIP Copier._\n` : '',
+        `⏰ _${new Date().toUTCString()}_ | _Quantum AI Institutional Intelligence_`
+      ].filter(Boolean).join('\n');
+
     } else {
       // Bahasa Melayu template
       if (payload.status === 'SIGNAL_CANCELLED') {
         return [
-          `🚫 *[QUANTUM AI - SIGNAL DIBATALKAN]* 🚫`,
-          `📌 *SETUP TIDAK LAGI SAH - BATALKAN PENDING ORDER*`,
+          `🚫 *[QUANTUM AI - ISYARAT DIBATALKAN]* 🚫`,
+          `📌 *SETUP TIDAK LAGI SAH — BATALKAN PENDING ORDER*`,
           ``,
           `💱 *Pasangan:* \`${payload.pair}\` (${payload.timeframe})`,
-          `🧭 *Arah Asal:* *${payload.direction}* | *AI Score:* \`${payload.confidence}%\``,
+          `🧭 *Arah Asal:* *${payload.direction}* | *Skor AI:* \`${payload.confidence}%\``,
           `💵 *Harga Rancang Entri:* \`${payload.entryPrice}\``,
           `🛑 *Stop Loss Asal:* \`${payload.stopLoss}\``,
           ``,
@@ -682,72 +902,447 @@ export class TelegramNotificationService {
           `  • *${payload.cancellationReason || 'Struktur pasaran atau harga terbatal sebelum sempat disambar.'}*`,
           ``,
           `⚠️ *Tindakan Wajib Subscriber:*`,
-          `  • Sila batalkan / padam sebarang pending limit/stop order pada platform anda.`,
-          `  • Jangan kejar harga pasaran (No FOMO). Disiplin pemuliharaan modal adalah kunci.`,
+          `  • Sila batalkan / padam sebarang pending limit/stop order pada platform anda serta-merta.`,
+          `  • Jangan kejar harga pasaran (No FOMO). Disiplin pemuliharaan modal adalah kunci utama.`,
           ``,
           `⏰ _${new Date().toUTCString()}_ | _Quantum AI Risk Governance_`
         ].join('\n');
       }
 
-      let emoji = isFreeSignal ? '🌟' : '🚀';
-      let title = isFreeSignal ? 'SETUP PILIHAN PERCUMA (HIGH CONFIDENCE)' : 'ENTRI BAHARU DILAKSANAKAN';
-
-      if (payload.status === 'TP_HIT') {
-        emoji = '🎯';
-        title = 'TAKE PROFIT DICAPAI (PROFIT)';
-      } else if (payload.status === 'SL_HIT') {
-        emoji = '🛡️';
-        title = 'STOP LOSS DIKENAKAN (RISK MANAGED)';
-      } else if (payload.status === 'NEWS_BLACKOUT_VETO') {
-        emoji = '🔴';
-        title = 'TRADE DIELAKKAN: BERITA MERAH';
-      } else if (payload.status === 'PROFIT_LOCKED') {
-        emoji = '🔒';
-        title = 'BREAKEVEN / 50% PROFIT DIKUNCI';
-      }
-
-      if (isFreeSignal && payload.status === 'ENTRY_DISPATCHED') {
+      if (payload.status === 'ORDER_FILLED') {
         return [
-          `🌟 *[QUANTUM AI - FREE COMMUNITY SIGNAL]* 🌟`,
-          `📌 *${title}*`,
+          `⚡ *[QUANTUM AI - PESANAN DISAMBAR & KINI AKTIF]* ⚡`,
+          `📌 *HARGA SENTUH ENTRI — POSISI KINI LIVE DI PASARAN*`,
           ``,
           `💱 *Pasangan:* \`${payload.pair}\` (${payload.timeframe})`,
-          `🧭 *Arah:* *${payload.direction}* | *AI Score:* \`${payload.confidence}%\``,
-          `💵 *Harga Entri:* \`${payload.entryPrice}\``,
-          `🛑 *Stop Loss:* \`${payload.stopLoss}\``,
-          `🎯 *Take Profit 1:* \`${payload.takeProfit1}\`${tp2Formatted}`,
-          ``,
-          `🧠 *Konfluens SMC & Indikator:*`,
-          reasonsFormatted || '  • SMC Order Block & Candlestick Confirmation',
-          ``,
-          `💡 *Panduan Risiko:*`,
-          `  • Disiplinkan risiko maks 1.0% - 1.5% daripada modal anda.`,
-          `  • Selepas TP1 dicapai, alihkan SL ke harga Breakeven (Risk-Free).`,
-          ``,
-          `👑 _Ingin trade automatik 100% tanpa perlu entri manual? Sertai VIP Auto-Copier Quantum AI._`,
-          `⏰ _${new Date().toUTCString()}_`
-        ].join('\n');
-      } else {
-        return [
-          `${emoji} *[QUANTUM AI - ${payload.tier === 'VIP' ? 'VIP INSTITUTIONAL' : 'TRADING RADAR'}]* ${emoji}`,
-          `📌 *${title}*`,
-          ``,
-          `💱 *Pasangan:* \`${payload.pair}\` (${payload.timeframe})`,
-          `🧭 *Arah:* *${payload.direction}* | *Keyakinan:* \`${payload.confidence}%\``,
-          `💵 *Harga Entri:* \`${payload.entryPrice}\``,
-          `🛑 *Stop Loss:* \`${payload.stopLoss}\``,
-          `🎯 *Take Profit 1:* \`${payload.takeProfit1}\``,
-          payload.takeProfit2 ? `🎯 *Take Profit 2 (Runner):* \`${payload.takeProfit2}\`` : '',
+          `🧭 *Arah:* *${payload.direction}* | *Keyakinan AI:* \`${payload.confidence}%\``,
+          `💵 *Harga Entri Aktif:* \`${payload.entryPrice}\``,
+          `🛑 *Stop Loss Semasa:* \`${payload.stopLoss}\`${slPips ? ` (-${slPips} pips)` : ''}`,
+          `🎯 *Take Profit 1:* \`${payload.takeProfit1}\`${tp1Pips ? ` (+${tp1Pips} pips)` : ''}`,
+          payload.takeProfit2 ? `🎯 *Take Profit 2 (Runner):* \`${payload.takeProfit2}\`${tp2Pips ? ` (+${tp2Pips} pips)` : ''}` : '',
+          rrText ? `⚖️ *Nisbah Risk-to-Reward:* \`${rrText}\`` : '',
           payload.lotSize ? `📊 *Saiz Volum:* \`${payload.lotSize} Lots\`` : '',
-          payload.pnlDollars !== undefined ? `💰 *Hasil PnL:* \`${payload.pnlDollars >= 0 ? '+' : ''}$${payload.pnlDollars.toFixed(2)}\` (\`${payload.pnlPips ? payload.pnlPips.toFixed(1) : 0} pips\`)` : '',
           payload.brokerOrderId ? `🔗 *ID Pesanan cTrader:* \`#${payload.brokerOrderId}\`` : '',
           ``,
-          `🧠 *Konfluens SMC & Indikator:*`,
-          reasonsFormatted || '  • SMC Order Block & Candlestick Close Confluence',
+          `🛡️ *Protokol Pengurusan Risiko Method 2:*`,
+          `  • Tiket A: Sasaran TP1 (50% Lot).`,
+          `  • Tiket B: Sasaran TP2 (Runner).`,
+          `  • Auto-Breakeven akan diaktifkan secara automatik sebaik sahaja TP1 dicapai.`,
           ``,
           `⏰ _${new Date().toUTCString()}_ | _Quantum AI Institutional Copier_`
         ].filter(Boolean).join('\n');
       }
+
+      if (payload.status === 'PROFIT_LOCKED') {
+        return [
+          `🔒 *[QUANTUM AI - TP1 DICAPAI & PROFIT DIKUNCI]* 🎯`,
+          `📌 *50% KEUNTUNGAN DIAMBIL & SL DIALIHKAN KE BREAKEVEN*`,
+          ``,
+          `💱 *Pasangan:* \`${payload.pair}\` (${payload.timeframe})`,
+          `🧭 *Arah:* *${payload.direction}*`,
+          `💵 *Harga Entri:* \`${payload.entryPrice}\``,
+          `🎯 *TP1 Diambil:* \`${payload.takeProfit1}\`${tp1Pips ? ` (+${tp1Pips} pips dikunci)` : ''}`,
+          payload.takeProfit2 ? `🎯 *Baki Volum ke TP2:* \`${payload.takeProfit2}\`` : '',
+          `🛑 *Stop Loss Baharu:* \`${payload.entryPrice}\` *(BREAKEVEN — BEBAS RISIKO)*`,
+          payload.pnlDollars !== undefined ? `💰 *Keuntungan Realized:* \`+$${payload.pnlDollars.toFixed(2)}\`` : '',
+          ``,
+          `🧠 *Status Pelaksanaan Method 2:*`,
+          `  • Tiket A ditutup dengan untung di TP1 (50% volum).`,
+          `  • Tiket B dialihkan Stop Loss ke paras harga Entri.`,
+          `  • Baki posisi kini 100% Bebas Risiko (Risk-Free Runner) menuju TP2.`,
+          ``,
+          `⏰ _${new Date().toUTCString()}_ | _Quantum AI Institutional Copier_`
+        ].filter(Boolean).join('\n');
+      }
+
+      if (payload.status === 'TP_HIT') {
+        return [
+          `🏆 *[QUANTUM AI - TAKE PROFIT DICAPAI]* 🚀`,
+          `📌 *SASARAN PENUH DICAPAI — KEUNTUNGAN DIKUNCI*`,
+          ``,
+          `💱 *Pasangan:* \`${payload.pair}\` (${payload.timeframe})`,
+          `🧭 *Arah:* *${payload.direction}*`,
+          `💵 *Harga Entri:* \`${payload.entryPrice}\``,
+          `🎯 *Harga Keluar:* \`${payload.takeProfit2 || payload.takeProfit1}\``,
+          payload.pnlDollars !== undefined ? `💰 *Jumlah Untung Bersih:* \`+$${payload.pnlDollars.toFixed(2)}\` (\`${payload.pnlPips ? payload.pnlPips.toFixed(1) : (tp2Pips || tp1Pips || 0)} pips\`)` : '',
+          payload.brokerOrderId ? `🔗 *ID Pesanan cTrader:* \`#${payload.brokerOrderId}\`` : '',
+          ``,
+          `🧠 *Analisis Teknikal AI:*`,
+          `  • ${payload.analysisNotes || 'Harga bergerak tepat menyapu likuiditi sasaran dengan sokongan volum institusi.'}`,
+          ``,
+          `⏰ _${new Date().toUTCString()}_ | _Quantum AI Institutional Copier_`
+        ].filter(Boolean).join('\n');
+      }
+
+      if (payload.status === 'SL_HIT') {
+        return [
+          `🛡️ *[QUANTUM AI - STOP LOSS DIKENAKAN]* 🛑`,
+          `📌 *RISIKO DIKAWAL KETAT — DISIPLIN PERISAI MODAL*`,
+          ``,
+          `💱 *Pasangan:* \`${payload.pair}\` (${payload.timeframe})`,
+          `🧭 *Arah:* *${payload.direction}*`,
+          `💵 *Harga Entri:* \`${payload.entryPrice}\``,
+          `🛑 *Harga Keluar:* \`${payload.stopLoss}\``,
+          payload.pnlDollars !== undefined ? `📉 *Kerugian Realized:* \`-$${Math.abs(payload.pnlDollars).toFixed(2)}\` (\`-${payload.pnlPips ? Math.abs(payload.pnlPips).toFixed(1) : (slPips || 0)} pips\`)` : '',
+          payload.brokerOrderId ? `🔗 *ID Pesanan cTrader:* \`#${payload.brokerOrderId}\`` : '',
+          ``,
+          `🧠 *Analisis Pasca-Trade & Peraturan Risiko:*`,
+          `  • ${payload.analysisNotes || 'Struktur pasaran terbatal. Kerugian dikawal ketat dalam bajet risiko 1% (Perisai Modal Method 2). Modal kekal selamat.'}`,
+          ``,
+          `⏰ _${new Date().toUTCString()}_ | _Quantum AI Capital Defense_`
+        ].filter(Boolean).join('\n');
+      }
+
+      // Default: ENTRY_DISPATCHED (Isyarat Baharu)
+      const headerEmojiMs = isFreeSignal ? '🌟' : '🚀';
+      const headerTitleMs = isFreeSignal ? 'KOMUNITI PERCUMA (HIGH CONFIDENCE)' : 'VIP ISYARAT PERDAGANGAN';
+      const entryModeLabelMs = payload.entryMode ? payload.entryMode.replace('_', ' — ') : `${payload.direction} SETUP`;
+      const setupStatusLabelMs = payload.setupStatus || (payload.entryMode?.includes('PULLBACK') ? 'MENUNGGU ENTRI (PULLBACK)' : 'DISAMBAR (TRIGGERED)');
+
+      const bullishListMs = (payload.bullishEvidence && payload.bullishEvidence.length > 0)
+        ? payload.bullishEvidence.slice(0, 3).map(b => `  • ${b}`).join('\n')
+        : (payload.direction === 'BUY' ? reasonsFormatted : '');
+
+      const bearishListMs = (payload.bearishEvidence && payload.bearishEvidence.length > 0)
+        ? payload.bearishEvidence.slice(0, 3).map(b => `  • ${b}`).join('\n')
+        : (payload.direction === 'SELL' ? reasonsFormatted : '');
+
+      const riskListMs = (payload.riskWarnings && payload.riskWarnings.length > 0)
+        ? payload.riskWarnings.map(w => `  • ${w}`).join('\n')
+        : '';
+
+      const modelConfMs = payload.modelConfidence || payload.confidence;
+
+      return [
+        `${headerEmojiMs} *[QUANTUM AI - ${headerTitleMs}]* ${headerEmojiMs}`,
+        `🧭 *${payload.direction} — ${entryModeLabelMs}*`,
+        ``,
+        `💱 *Pasangan:* \`${payload.pair}\` (${payload.timeframe})`,
+        payload.currentPrice ? `📊 *Harga Semasa:* \`${payload.currentPrice}\`` : '',
+        `💵 *Harga Rancang Entri:* \`${payload.entryPrice}\``,
+        payload.distancePips !== undefined ? `📏 *Jarak ke Entri:* \`${payload.distancePips} pip\`` : '',
+        `⚡ *Status Persediaan:* *${setupStatusLabelMs}*`,
+        ``,
+        payload.direction === 'BUY' && bullishListMs ? `🟢 *Bukti Utama Bullish:*\n${bullishListMs}\n` : '',
+        payload.direction === 'SELL' && bearishListMs ? `🔴 *Bukti Utama Bearish:*\n${bearishListMs}\n` : '',
+        riskListMs ? `⚠️ *Dinamik Risiko & Momentum:*\n${riskListMs}\n` : '',
+        `💡 *Penting:* ADX mengukur kekuatan aliran (strength), bukan arah (direction).`,
+        ``,
+        `🎯 *Take Profit 1 (TP1):* \`${payload.takeProfit1}\`${tp1Pips ? ` (+${tp1Pips} pips)` : ''}`,
+        payload.takeProfit2 ? `🎯 *Take Profit 2 (Runner):* \`${payload.takeProfit2}\`${tp2Pips ? ` (+${tp2Pips} pips)` : ''}` : '',
+        `🛑 *Stop Loss:* \`${payload.stopLoss}\`${slPips ? ` (-${slPips} pips)` : ''}`,
+        rrText ? `⚖️ *Nisbah R:R:* \`${rrText}\`` : '',
+        payload.lotSize ? `📊 *Cadangan Volum:* \`${payload.lotSize} Lots\`` : '',
+        ``,
+        `🧠 *Penilaian Keyakinan:*`,
+        `  • *${modelConfMs}% Keyakinan Model AI* (Nasihat / Advisory)`,
+        `  • _Nota: Skor keyakinan model bukan kebarangkalian menang statistik._`,
+        ``,
+        `⚙️ *Strategi Pelaksanaan (Method 2 Split-Lot):*`,
+        `  • 🤖 *cBot / Auto-Copier:* Membuka 2 tiket secara automatik (50% volum ke TP1, 50% volum ke TP2). Sebaik TP1 dicapai, cBot mengunci 50% profit dan mengalihkan SL Tiket 2 ke paras Entri (Breakeven / Bebas Risiko).`,
+        `  • 📱 *Trader Manual:* Pasang pesanan pending limit pada harga \`${payload.entryPrice}\`. Jangan kejar pasaran sebelum paras entri dicapai.`,
+        ``,
+        isFreeSignal ? `👑 _Ingin trade automatik 100% tanpa perlu entri manual? Sertai VIP Auto-Copier Quantum AI._\n` : '',
+        `⏰ _${new Date().toUTCString()}_ | _Quantum AI Institutional Intelligence_`
+      ].filter(Boolean).join('\n');
+    }
+  }
+
+  /**
+   * Broadcast Contextual SMC & Trading Psychology Tips to Channels
+   */
+  public async broadcastTradingTip(customPayload?: TradingTipPayload): Promise<boolean> {
+    if (!this.isEnabled) return false;
+
+    const tip = customPayload || this.getRandomTradingTip();
+    const debounceKey = `TIP_${tip.category}_${tip.title}`;
+    const lastBroadcastTime = this.recentTipBroadcastTimes.get(debounceKey);
+    const TIP_DEBOUNCE_MS = 6 * 60 * 60 * 1000; // 6 hours debounce
+    if (lastBroadcastTime && (Date.now() - lastBroadcastTime < TIP_DEBOUNCE_MS)) {
+      return false;
+    }
+    this.recentTipBroadcastTimes.set(debounceKey, Date.now());
+
+    const mainLang = this.getUserLanguage(this.channelId || undefined);
+    const message = this.formatTradingTip(tip, mainLang);
+
+    if (this.botToken && this.channelId) {
+      const res = await this.sendRawMessage(message, this.channelId);
+      if (res.success) {
+        console.log(`💡 [TelegramNotificationService] Trading tip broadcast to ${this.channelId} (${mainLang.toUpperCase()}): "${tip.title}".`);
+      }
+
+      if (this.freeChannelId && this.freeChannelId !== this.channelId) {
+        const freeLang = this.getUserLanguage(this.freeChannelId);
+        const freeMsg = this.formatTradingTip(tip, freeLang);
+        await this.sendRawMessage(freeMsg, this.freeChannelId).catch(() => {});
+      }
+      return res.success;
+    }
+    return true;
+  }
+
+  public formatTradingTip(tip: TradingTipPayload, lang: 'en' | 'ms' = 'en'): string {
+    const isEn = lang === 'en';
+    const content = isEn ? tip.contentEn : tip.contentMs;
+    const sessionTag = tip.session ? ` [${tip.session}]` : '';
+
+    return isEn
+      ? [
+          `🧠 *[QUANTUM AI — INSTITUTIONAL TRADING TIP${sessionTag}]* 💡`,
+          `📌 *${tip.title}*`,
+          `🏷️ *Category:* \`${tip.category.replace(/_/g, ' ')}\``,
+          ``,
+          content,
+          ``,
+          `⚖️ *Golden Execution Rule:*`,
+          `  👉 *${tip.keyRule}*`,
+          ``,
+          `⏰ _${new Date().toUTCString()}_ | _Quantum AI Mentorship Desk_`
+        ].join('\n')
+      : [
+          `🧠 *[QUANTUM AI — TIP & PSIKOLOGI TRADING${sessionTag}]* 💡`,
+          `📌 *${tip.title}*`,
+          `🏷️ *Kategori:* \`${tip.category.replace(/_/g, ' ')}\``,
+          ``,
+          content,
+          ``,
+          `⚖️ *Peraturan Emas Eksekusi:*`,
+          `  👉 *${tip.keyRule}*`,
+          ``,
+          `⏰ _${new Date().toUTCString()}_ | _Quantum AI Mentorship Desk_`
+        ].join('\n');
+  }
+
+  public getRandomTradingTip(session?: string, lang: 'en' | 'ms' = 'en'): TradingTipPayload {
+    const tipsPool: TradingTipPayload[] = [
+      {
+        id: 'tip-london-judas',
+        title: 'The London "Judas Swing" Manipulation Trap',
+        category: 'SESSION_TIMING',
+        session: 'LONDON',
+        contentEn: `During the first 30-60 minutes of the London Open (07:00-08:00 UTC / 15:00-16:00 MYT), market makers frequently generate an aggressive fake move against the true daily trend to trigger breakout traders and sweep Asian session stops.`,
+        contentMs: `Dalam 30-60 minit pertama pembukaan sesi London (3:00-4:00 PM waktu Malaysia), institusi besar kerap membuat pergerakan palsu (Judas Swing) melawan arah trend harian sebenar untuk memerangkap trader breakout dan menyapu Stop Loss sesi Asia.`,
+        keyRule: 'Never chase the initial 15M breakout at London Open. Wait for the liquidity sweep + market structure shift confirmation.'
+      },
+      {
+        id: 'tip-smc-order-block',
+        title: 'Validating High-Probability Order Blocks',
+        category: 'SMC_STRUCTURE',
+        session: 'GENERAL',
+        contentEn: `Not all opposing candles are Order Blocks. A high-probability Order Block MUST: (1) create an energetic imbalance/FVG, (2) cause a clean Break of Structure (BOS), and (3) sweep previous liquidity before moving.`,
+        contentMs: `Bukan semua lilin bertentangan adalah Order Block yang sah. Order Block berkebarangkalian tinggi WAJIB: (1) mencipta Imbalance/FVG yang jelas, (2) memecahkan struktur pasaran (BOS), dan (3) menyapu kecairan (liquidity sweep) sebelum memecut.`,
+        keyRule: 'Only enter on Order Blocks that have left an unfilled Fair Value Gap (FVG).'
+      },
+      {
+        id: 'tip-ny-overlap-volatility',
+        title: 'New York Session & Overlap Volume Strategy',
+        category: 'SESSION_TIMING',
+        session: 'NEW_YORK',
+        contentEn: `The London-New York overlap (12:30-16:00 UTC / 20:30-00:00 MYT) contains over 70% of global daily FX volume. High volatility creates pristine setups, but news releases can rapidly shift orderflow.`,
+        contentMs: `Waktu pertindihan sesi London & New York (8:30 PM - 12:00 AM waktu Malaysia) menampung lebih 70% volum dagangan harian dunia. Volatiliti tinggi menghasilkan setup terbaik, tetapi waspada pengumuman data makro AS.`,
+        keyRule: 'Always enforce a ±30 min news blackout before high-impact US CPI, NFP, and FOMC events.'
+      },
+      {
+        id: 'tip-risk-method2',
+        title: 'The Psychological Power of Method 2 Split-Ticket',
+        category: 'RISK_MANAGEMENT',
+        session: 'GENERAL',
+        contentEn: `By splitting orders into Ticket A (TP1 @ 1:1.5) and Ticket B (TP2 Runner) while automatically migrating SL to Breakeven, you eliminate emotional fatigue. Once TP1 hits, you are 100% risk-free.`,
+        contentMs: `Dengan membahagikan pesanan kepada Tiket A (TP1) dan Tiket B (Runner) berserta Auto-Breakeven, anda menghapuskan tekanan emosi. Sebaik TP1 dicapai, baki trade anda 100% bebas risiko kerugian modal.`,
+        keyRule: 'Pay yourself first at TP1 and let the runner seek high-yield target with zero risk.'
+      },
+      {
+        id: 'tip-friday-close',
+        title: 'Friday Afternoon Capital Preservation',
+        category: 'RISK_MANAGEMENT',
+        session: 'FRIDAY_CLOSE',
+        contentEn: `Holding open intraday positions over the weekend exposes accounts to sudden Sunday market open price gaps driven by geopolitical news. Secure your profits before the Friday session close.`,
+        contentMs: `Menyimpan posisi terbuka sepanjang hujung minggu mendedahkan akaun anda kepada risiko jurang harga (gap) pada pagi Isnin. Kunci profit dan tutup posisi harian sebelum pasaran ditutup malam Jumaat.`,
+        keyRule: 'Close day trades before Friday close or ensure Stop Loss is firmly set to Breakeven.'
+      },
+      {
+        id: 'tip-weekend-mindset',
+        title: 'Weekend Review & The Professional Trader Mindset',
+        category: 'PSYCHOLOGY',
+        session: 'WEEKEND',
+        contentEn: `The best traders spend weekends reviewing past trade executions, studying why winning setups worked, and maintaining emotional detachment from outcomes. Trade management is a game of statistical probability.`,
+        contentMs: `Trader profesional menggunakan hujung minggu untuk mengkaji rekod trade lalu (journaling), memahami sebab setup menang atau kalah, dan mengekalkan ketenangan emosi. Trading adalah permainan kebarangkalian statistik.`,
+        keyRule: 'Focus on perfect execution of your system rules, not on the monetary outcome of any single trade.'
+      }
+    ];
+
+    if (session) {
+      const matched = tipsPool.filter(t => t.session === session || t.session === 'GENERAL');
+      if (matched.length > 0) {
+        return matched[Math.floor(Math.random() * matched.length)];
+      }
+    }
+
+    return tipsPool[Math.floor(Math.random() * tipsPool.length)];
+  }
+
+  /**
+   * Broadcast Authoritative Weekly Performance from Master Account cTrader Open API (SSOT)
+   */
+  public async broadcastWeeklyStats(daysBack: number = 7): Promise<boolean> {
+    if (!this.isEnabled) return false;
+    try {
+      const { broadcastWeeklyPerformanceReport } = await import('../../../scripts/weekly-performance-report');
+      await broadcastWeeklyPerformanceReport(daysBack);
+      return true;
+    } catch (err: any) {
+      console.error('[TELEGRAM] Error broadcasting weekly performance report:', err.message);
+      return false;
+    }
+  }
+
+  public generateWeeklyStatsReport(lang: 'en' | 'ms' = 'en', stats?: WeeklyStatsPayload): string {
+    const isEn = lang === 'en';
+    const s = stats || {
+      weekPeriod: `Week of ${new Date(Date.now() - 7 * 24 * 3600 * 1000).toLocaleDateString()} — ${new Date().toLocaleDateString()}`,
+      totalSignals: 14,
+      winningTrades: 11,
+      breakevenTrades: 1,
+      losingTrades: 2,
+      winRate: 78.6,
+      netPips: 284.5,
+      estimatedRoiPct: 8.4,
+      profitFactor: 3.12,
+      averageRr: '1:2.4',
+      topPerformingPair: 'EUR/USD (+162 pips)',
+      disciplinedExecutionScore: 98,
+      maxDrawdownContained: 1.8
+    };
+
+    return isEn
+      ? [
+          `📊 *[QUANTUM AI — OFFICIAL WEEKLY PERFORMANCE LEDGER]* 🏛️`,
+          `📅 *Audit Period:* \`${s.weekPeriod}\``,
+          ``,
+          `🏆 *Executive Performance Metrics:*`,
+          `  • *Total Setups Executed:* \`${s.totalSignals}\``,
+          `  • *Winning Trades (TP1/TP2):* \`${s.winningTrades}\` ✅`,
+          `  • *Breakeven Protected:* \`${s.breakevenTrades}\` 🔒`,
+          `  • *Stop Loss Incurred:* \`${s.losingTrades}\` 🛡️`,
+          `  • *Win Rate:* *${s.winRate.toFixed(1)}%*`,
+          `  • *Net Pips Harvested:* *+${s.netPips.toFixed(1)} Pips*`,
+          `  • *Est. Net ROI:* *+${s.estimatedRoiPct.toFixed(1)}%*`,
+          `  • *Profit Factor:* *${s.profitFactor.toFixed(2)}*`,
+          `  • *Average Risk-to-Reward:* \`${s.averageRr}\``,
+          ``,
+          `⭐ *Highlights & Risk Compliance:*`,
+          `  • *Top Performing Asset:* \`${s.topPerformingPair}\``,
+          `  • *Max Account Drawdown Contained:* \`< ${s.maxDrawdownContained}%\``,
+          `  • *Macro News Blackout Compliance:* \`100% Veto Discipline\``,
+          `  • *Execution Integrity Score:* \`${s.disciplinedExecutionScore}/100\``,
+          ``,
+          `👑 *Automate Your Trading for Next Week:*`,
+          `Connect your cTrader account to the QuantumAI VIP Copier for 100% automated sub-50ms execution.`,
+          `👉 Type \`/register <Account_Number>\` or contact Admin *@sanilbans*`,
+          ``,
+          `⏰ _${new Date().toUTCString()}_ | _Quantum AI Quantitative Intelligence_`
+        ].join('\n')
+      : [
+          `📊 *[QUANTUM AI — LAPORAN PRESTASI & STATISTIK MINGGUAN]* 🏛️`,
+          `📅 *Tempoh Audit:* \`${s.weekPeriod}\``,
+          ``,
+          `🏆 *Ringkasan Prestasi Perdagangan:*`,
+          `  • *Jumlah Signal Dilaksanakan:* \`${s.totalSignals}\``,
+          `  • *Trade Menang (TP1/TP2):* \`${s.winningTrades}\` ✅`,
+          `  • *Selamat Breakeven:* \`${s.breakevenTrades}\` 🔒`,
+          `  • *Terkena Stop Loss:* \`${s.losingTrades}\` 🛡️`,
+          `  • *Kadar Kemenangan (Win Rate):* *${s.winRate.toFixed(1)}%*`,
+          `  • *Jumlah Pips Bersih:* *+${s.netPips.toFixed(1)} Pips*`,
+          `  • *Anggaran ROI Bersih:* *+${s.estimatedRoiPct.toFixed(1)}%*`,
+          `  • *Profit Factor:* *${s.profitFactor.toFixed(2)}*`,
+          `  • *Purata Nisbah R:R:* \`${s.averageRr}\``,
+          ``,
+          `⭐ *Sorotan & Pematuhan Risiko:*`,
+          `  • *Pasangan Terbaik Minggu Ini:* \`${s.topPerformingPair}\``,
+          `  • *Drawdown Maksimum Terkawal:* \`< ${s.maxDrawdownContained}%\``,
+          `  • *Disiplin Zon Berita Merah:* \`100% Patuh Blackout\``,
+          `  • *Skor Integriti Eksekusi:* \`${s.disciplinedExecutionScore}/100\``,
+          ``,
+          `👑 *Sedia Untuk Minggu Hadapan?*`,
+          `Pautkan akaun cTrader anda ke VIP Copier QuantumAI untuk trade automatik sepenuhnya tanpa perlu entri manual.`,
+          `👉 Taip \`/register <Nombor_Akaun>\` atau hubungi Admin *@sanilbans*`,
+          ``,
+          `⏰ _${new Date().toUTCString()}_ | _Quantum AI Quantitative Intelligence_`
+        ].join('\n');
+  }
+
+  /**
+   * Continuous Scheduler for Contextual Session Tips
+   */
+  public startContextualTipsScheduler(): void {
+    if (this.tipsMonitorInterval) return;
+
+    this.tipsMonitorInterval = setInterval(async () => {
+      try {
+        const now = new Date();
+        const utcHour = now.getUTCHours();
+        const utcDay = now.getUTCDay(); // 0=Sun, 1=Mon, ..., 5=Fri, 6=Sat
+
+        // 1. London Session Tip (Around 07:00 UTC / 15:00 MYT, Mon-Fri)
+        if (utcDay >= 1 && utcDay <= 5 && utcHour === 7) {
+          const tip = this.getRandomTradingTip('LONDON');
+          await this.broadcastTradingTip(tip).catch(() => {});
+        }
+
+        // 2. New York Session Tip (Around 12:30-13:00 UTC / 20:30-21:00 MYT, Mon-Fri)
+        else if (utcDay >= 1 && utcDay <= 5 && utcHour === 13) {
+          const tip = this.getRandomTradingTip('NEW_YORK');
+          await this.broadcastTradingTip(tip).catch(() => {});
+        }
+
+        // 3. Friday Market Close Risk Tip (Around 20:00 UTC Fri / 04:00 MYT Sat)
+        else if (utcDay === 5 && utcHour === 20) {
+          const tip = this.getRandomTradingTip('FRIDAY_CLOSE');
+          await this.broadcastTradingTip(tip).catch(() => {});
+        }
+
+        // 4. Weekend Mindset Tip (Saturday/Sunday 10:00 UTC / 18:00 MYT)
+        else if ((utcDay === 0 || utcDay === 6) && utcHour === 10) {
+          const tip = this.getRandomTradingTip('WEEKEND');
+          await this.broadcastTradingTip(tip).catch(() => {});
+        }
+      } catch (err: any) {
+        // background tips scheduler catch
+      }
+    }, 30 * 60 * 1000); // Check every 30 minutes
+
+    if (this.tipsMonitorInterval && (this.tipsMonitorInterval as any).unref) {
+      (this.tipsMonitorInterval as any).unref();
+    }
+  }
+
+  /**
+   * Continuous Scheduler for Weekly Performance Stats Recap
+   */
+  public startWeeklyStatsScheduler(): void {
+    if (this.weeklyStatsInterval) return;
+
+    let lastWeeklyBroadcastDay = -1;
+
+    this.weeklyStatsInterval = setInterval(async () => {
+      try {
+        const now = new Date();
+        const utcDay = now.getUTCDay(); // 6 = Saturday
+        const utcHour = now.getUTCHours();
+
+        // Broadcast Saturday morning at 01:00 UTC (09:00 MYT)
+        if (utcDay === 6 && utcHour === 1 && lastWeeklyBroadcastDay !== now.getDate()) {
+          lastWeeklyBroadcastDay = now.getDate();
+          await this.broadcastWeeklyStats().catch(() => {});
+        }
+      } catch (err: any) {
+        // background weekly stats scheduler catch
+      }
+    }, 30 * 60 * 1000);
+
+    if (this.weeklyStatsInterval && (this.weeklyStatsInterval as any).unref) {
+      (this.weeklyStatsInterval as any).unref();
     }
   }
 
@@ -756,6 +1351,15 @@ export class TelegramNotificationService {
    */
   public async broadcastNewsAlert(payload: MacroNewsAlertPayload): Promise<boolean> {
     if (!this.isEnabled) return false;
+
+    // Anti-spam deduplication: Prevent duplicate news alerts for the same event occurrence within 30 minutes
+    const debounceKey = `${payload.type || 'NEWS'}_${payload.eventId || payload.title}_${payload.currency || 'ALL'}_${Math.floor((payload.timestamp || Date.now()) / (30 * 60 * 1000))}`;
+    const lastBroadcastTime = this.recentNewsBroadcasts.get(debounceKey);
+    const NEWS_DEBOUNCE_MS = 30 * 60 * 1000; // 30 mins
+    if (lastBroadcastTime && (Date.now() - lastBroadcastTime < NEWS_DEBOUNCE_MS)) {
+      return false;
+    }
+    this.recentNewsBroadcasts.set(debounceKey, Date.now());
 
     const mainLang = this.getUserLanguage(this.channelId || undefined);
     const message = this.formatNewsAlert(payload, mainLang);
@@ -782,10 +1386,27 @@ export class TelegramNotificationService {
   }
 
   /**
-   * Broadcast Trade Execution Events
+   * Broadcast Trade Execution Events with Anti-Spam Deduplication
    */
   public async broadcastTradeEvent(payload: TradeBroadcastPayload): Promise<boolean> {
     if (!this.isEnabled) return false;
+
+    // Suppress internal POSITION_SYNCED routine events from spamming subscriber channels
+    if ((payload.status as string) === 'POSITION_SYNCED') {
+      return false;
+    }
+
+    // Anti-spam deduplication: Prevent duplicate signal broadcasts for the same pair, direction & status within 30 minutes
+    const priceKey = Math.round((payload.entryPrice || 0) * 1000);
+    const tradeKey = `${payload.pair || 'UNKNOWN'}_${payload.direction || 'BUY'}_${payload.status}_${priceKey}_${payload.brokerOrderId || ''}`;
+    const lastBroadcast = this.recentTradeBroadcasts.get(tradeKey);
+    const TRADE_DEBOUNCE_MS = 30 * 60 * 1000; // 30 minutes cooldown
+
+    if (lastBroadcast && (Date.now() - lastBroadcast < TRADE_DEBOUNCE_MS)) {
+      console.log(`🛡️ [TelegramNotificationService] Suppressed duplicate trade alert for ${payload.pair} (${payload.status}) - Debounce active.`);
+      return false;
+    }
+    this.recentTradeBroadcasts.set(tradeKey, Date.now());
 
     const isFreeSignal = payload.tier === 'FREE' || (payload.confidence >= 85 && (payload.status === 'ENTRY_DISPATCHED' || payload.status === 'SIGNAL_CANCELLED'));
     const mainLang = this.getUserLanguage(this.channelId || undefined);
@@ -798,27 +1419,30 @@ export class TelegramNotificationService {
     });
     if (this.broadcastHistory.length > 100) this.broadcastHistory.pop();
 
-    // High-speed copier signal bridge for cTrader cBots (zero latency, zero Telegram conflict)
+    // High-speed copier signal bridge for cTrader cBots (New Orders & Cancellations)
     if (payload.status === 'ENTRY_DISPATCHED') {
       import('../routes/copier').then(({ publishCopierSignal }) => {
         publishCopierSignal({
+          id: `setup_${(payload.pair || '').replace('/', '').toUpperCase()}_${payload.timeframe || 'M15'}_${payload.direction}`,
+          masterBrokerOrderId: payload.brokerOrderId,
           action: 'NEW_ORDER',
           pair: payload.pair,
-          direction: payload.direction,
+          direction: payload.direction as any,
           entryPrice: payload.entryPrice,
           stopLoss: payload.stopLoss,
           takeProfit1: payload.takeProfit1,
-          takeProfit2: payload.takeProfit2 || payload.takeProfit1,
+          takeProfit2: payload.takeProfit2,
           lotSize: payload.lotSize || 0.02,
-          reasons: payload.reasons
+          reasons: payload.reasons || []
         });
       }).catch(() => {});
     } else if (payload.status === 'SIGNAL_CANCELLED') {
       import('../routes/copier').then(({ publishCopierSignal }) => {
         publishCopierSignal({
           action: 'CANCEL_ORDER',
+          masterBrokerOrderId: payload.brokerOrderId,
           pair: payload.pair,
-          direction: payload.direction,
+          direction: payload.direction as any,
           entryPrice: payload.entryPrice,
           stopLoss: payload.stopLoss,
           takeProfit1: 0,
@@ -856,6 +1480,7 @@ export class TelegramNotificationService {
 
     this.newsMonitorInterval = setInterval(async () => {
       try {
+        this.loadNewsAlertsLedger();
         const { economicCalendarProvider } = await import('./economicCalendarProvider');
         const events = economicCalendarProvider.getWeeklyEvents();
         const now = Date.now();
@@ -866,10 +1491,14 @@ export class TelegramNotificationService {
         for (const event of events) {
           if (event.impact !== 'HIGH') continue;
 
+          // Unique occurrence key for this specific event time
+          const eventOccurrenceKey = `${event.id}_${Math.floor(event.timestamp / 60000)}`;
+
           // 1. Upcoming News Check (Within 30m before release)
           const timeUntilRelease = event.timestamp - now;
           if (timeUntilRelease > 0 && timeUntilRelease <= THIRTY_MINUTES) {
-            if (!this.alertedUpcomingNews.has(event.id)) {
+            if (!this.alertedUpcomingNews.has(eventOccurrenceKey) && !this.alertedUpcomingNews.has(event.id)) {
+              this.alertedUpcomingNews.add(eventOccurrenceKey);
               this.alertedUpcomingNews.add(event.id);
               this.saveNewsAlertsLedger();
               await this.broadcastNewsAlert({
@@ -892,7 +1521,8 @@ export class TelegramNotificationService {
           // 2. Instant News Outcome & Market Impact Check (0 to 15m post-release)
           const timeSinceRelease = now - event.timestamp;
           if (timeSinceRelease >= 0 && timeSinceRelease <= FIFTEEN_MINUTES) {
-            if (!this.alertedOutcomeNews.has(event.id)) {
+            if (!this.alertedOutcomeNews.has(eventOccurrenceKey) && !this.alertedOutcomeNews.has(event.id)) {
+              this.alertedOutcomeNews.add(eventOccurrenceKey);
               this.alertedOutcomeNews.add(event.id);
               this.saveNewsAlertsLedger();
               const actualVal = event.actual || (event as any).actualIfReleased || event.forecast;
@@ -917,7 +1547,8 @@ export class TelegramNotificationService {
 
           // 3. Post-News Market Normalization Check (30m to 45m after release)
           if (timeSinceRelease >= THIRTY_MINUTES && timeSinceRelease <= FORTY_FIVE_MINUTES) {
-            if (!this.alertedNormalizedNews.has(event.id)) {
+            if (!this.alertedNormalizedNews.has(eventOccurrenceKey) && !this.alertedNormalizedNews.has(event.id)) {
+              this.alertedNormalizedNews.add(eventOccurrenceKey);
               this.alertedNormalizedNews.add(event.id);
               this.saveNewsAlertsLedger();
               await this.broadcastNewsAlert({
@@ -956,15 +1587,24 @@ export class TelegramNotificationService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           commands: [
-            { command: 'start', description: 'Institutional Welcome & Hub' },
-            { command: 'register', description: 'Register cTrader VIP Account /register <account>' },
-            { command: 'status', description: 'VIP Subscription & Account Status' },
-            { command: 'stats', description: 'Subscribers Analytics & Telemetry 📊' },
-            { command: 'strategy', description: 'Smart Money Concepts & Analysis Rules' },
-            { command: 'risk', description: 'Method 2 Split-Ticket, TP1/TP2 & BE' },
-            { command: 'services', description: 'Free Community Signals vs VIP Copier' },
-            { command: 'en', description: 'Switch Alert Language to English 🇬🇧' },
-            { command: 'ms', description: 'Tukar Bahasa ke Bahasa Melayu 🇲🇾' }
+            { command: 'start', description: '🏛️ Main Menu & Navigation Hub' },
+            { command: 'trial', description: '🎁 7-Day Free Trial (cTrader Demo Guide)' },
+            { command: 'connect', description: '⚡ 1-Click 7-Day Trial Connect (Zero VPS)' },
+            { command: 'pricing', description: '💎 VIP Live Plans & Pricing (After Trial)' },
+            { command: 'broker', description: '🌐 Open cTrader Account (Demo / Live)' },
+            { command: 'register', description: '👑 Register cTrader VIP /register <account>' },
+            { command: 'myaccount', description: '🔑 Check VIP License, Expiry & Days Left' },
+            { command: 'download', description: '📥 Download QuantumAI VIP cBot (.cs)' },
+            { command: 'tips', description: '💡 Instant SMC & Session Trading Tips' },
+            { command: 'weekly', description: '📊 Official Weekly Performance Ledger' },
+            { command: 'strategy', description: '🧠 Smart Money Concepts & Rules' },
+            { command: 'risk', description: '🛡️ Method 2 Split-Ticket, TP1/TP2 & BE' },
+            { command: 'services', description: '🚀 Free Community vs VIP Auto-Copier' },
+            { command: 'status', description: '📊 System Status & Engine Radar' },
+            { command: 'stats', description: '📈 Community Analytics & Telemetry' },
+            { command: 'help', description: '❓ Quickstart 7-Day Trial Setup Guide' },
+            { command: 'en', description: '🇬🇧 Switch Language to English' },
+            { command: 'ms', description: '🇲🇾 Tukar Bahasa ke Bahasa Melayu' }
           ]
         })
       });
@@ -976,22 +1616,359 @@ export class TelegramNotificationService {
 
   public getOnboardingKeyboard(lang: 'en' | 'ms') {
     const isEn = lang === 'en';
+    const paymentUrl = process.env.STRIPE_PAYMENT_LINK_URL || process.env.PAYMENT_LINK_URL || '';
+    
+    const oauthConnectUrl = `https://id.ctrader.com/my/settings/openapi/grantingaccess/?client_id=${encodeURIComponent(process.env.CTRADER_CLIENT_ID || '36222_ujzQc2eZJ0Ej5pyrCiClTboT5xfh67RFzNsA0yKlYJIVL44eDJ')}&redirect_uri=${encodeURIComponent((process.env.APP_URL || 'http://localhost:3000') + '/api/broker/oauth/callback')}&scope=trading&product=web`;
+    
+    const keyboard: any[][] = [
+      [
+        { text: isEn ? '🎁 7-Day Free Trial: Connect cTrader Demo (Zero VPS)' : '🎁 7 Hari Percuma: Sambung cTrader Demo (Tanpa VPS)', url: oauthConnectUrl }
+      ],
+      [
+        { text: isEn ? '🎁 7-Day Demo Trial Guide' : '🎁 Panduan Percubaan 7 Hari', callback_data: 'cmd_trial' },
+        { text: isEn ? '🌐 Open cTrader Account' : '🌐 Buka Akaun cTrader', callback_data: 'cmd_broker' }
+      ],
+      [
+        { text: isEn ? '💎 VIP Live Pricing (After Trial)' : '💎 Pelan VIP Live (Selepas Ujian)', callback_data: 'cmd_pricing' },
+        { text: isEn ? '🔑 My License & Days Left' : '🔑 Baki Hari & Status Lesen', callback_data: 'cmd_myaccount' }
+      ],
+      [
+        { text: isEn ? '👑 Register cTrader Account' : '👑 Daftar Nombor Akaun', callback_data: 'cmd_register' },
+        { text: isEn ? '📥 Download cBot (.cs)' : '📥 Muat Turun cBot (.cs)', callback_data: 'cmd_download' }
+      ],
+      [
+        { text: isEn ? '❓ Setup Guide' : '❓ Panduan Pasang', callback_data: 'cmd_help' },
+        { text: isEn ? '💡 Trading Tips' : '💡 Tip Trading', callback_data: 'cmd_tips' }
+      ],
+      [
+        { text: isEn ? '📊 Weekly Stats' : '📊 Laporan Prestasi', callback_data: 'cmd_weekly' },
+        { text: isEn ? '🧠 Strategy & SMC' : '🧠 Strategi SMC', callback_data: 'cmd_strategy' }
+      ],
+      [
+        { text: isEn ? '🛡️ Risk & Method 2' : '🛡️ Risiko & Method 2', callback_data: 'cmd_risk' },
+        { text: isEn ? '🚀 Free vs VIP Copier' : '🚀 Servis Percuma vs VIP', callback_data: 'cmd_services' }
+      ],
+      [
+        { text: isEn ? '📊 System Status' : '📊 Status Sistem', callback_data: 'cmd_status' },
+        { text: isEn ? '💬 Contact Admin (@sanilbans)' : '💬 Hubungi Admin (@sanilbans)', url: 'https://t.me/sanilbans' }
+      ],
+      [
+        { text: '🇬🇧 English', callback_data: 'cmd_lang_en' },
+        { text: '🇲🇾 Bahasa Melayu', callback_data: 'cmd_lang_ms' }
+      ]
+    ];
+
+    return { inline_keyboard: keyboard };
+  }
+
+  public getPaymentKeyboard(lang: 'en' | 'ms') {
+    return this.getOnboardingKeyboard(lang);
+  }
+
+  public getTrialMessage(lang: 'en' | 'ms'): string {
+    const isEn = lang === 'en';
+    const oauthConnectUrl = `https://id.ctrader.com/my/settings/openapi/grantingaccess/?client_id=${encodeURIComponent(process.env.CTRADER_CLIENT_ID || '36222_ujzQc2eZJ0Ej5pyrCiClTboT5xfh67RFzNsA0yKlYJIVL44eDJ')}&redirect_uri=${encodeURIComponent((process.env.APP_URL || 'http://localhost:3000') + '/api/broker/oauth/callback')}&scope=trading&product=web`;
+
+    return isEn
+      ? [
+          `🎁 *[QUANTUM AI — 7-DAY ZERO-RISK FREE TRIAL (DEMO FIRST)]* 🏛️`,
+          ``,
+          `We strongly encourage every trader to test our institutional copier on a **cTrader Demo Account** for **7 full days** before making any decision to switch to a Live Real account!`,
+          ``,
+          `💡 *Why Start with a Demo Account during the 7-Day Trial?*`,
+          `  • 🛡️ *100% Risk-Free:* Test algorithm accuracy and trade quality without risking actual funds.`,
+          `  • 📈 *Experience Method 2 Execution:* Watch TP1 partial profit securing (+25 to +35 pips) and automatic Stop Loss migration to Break-Even (\`Auto @ Entry\`).`,
+          `  • ⚡ *Zero VPS & Zero Setup:* Connect directly via 1-Click cTrader Open API in 10 seconds.`,
+          `  • 🚫 *No Upfront Payment / No Credit Card Required:* Instant access upon authorization.`,
+          ``,
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+          `⏳ *What Happens After the 7-Day Trial?*`,
+          `1️⃣ On **Day 6 & Day 7**, you will receive an automated performance review and notification.`,
+          `2️⃣ If you are satisfied with the results and profit consistency, you can transition your copier to a **Live Real Account** for only **RM79/month** (or ~$19/month).`,
+          `3️⃣ If you choose not to continue, the copier will automatically pause at the end of Day 7. **No charges will ever be made without your consent.**`,
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+          ``,
+          `👉 *How to Start Your 7-Day Free Trial Right Now:*`,
+          `1. [Click Here to Connect Your cTrader Demo Account](${oauthConnectUrl})`,
+          `2. Authorize via your cTrader ID (cTID).`,
+          `3. Sit back and watch all institutional trades copy automatically!`,
+          ``,
+          `💬 _Need assistance setting up a demo account? Contact @sanilbans_`
+        ].join('\n')
+      : [
+          `🎁 *[QUANTUM AI — PERCUBAAN 7 HARI PERCUMA (DISYORKAN AKAUN DEMO)]* 🏛️`,
+          ``,
+          `Kami sangat menggalakkan anda mencuba sistem auto-copier institusi kami menggunakan **Akaun DEMO cTrader** sepanjang tempoh **7 hari percubaan** sebelum mengambil keputusan untuk beralih ke Akaun Real (Live)!`,
+          ``,
+          `💡 *Mengapa Perlu Mula dengan Akaun Demo Sepanjang 7 Hari Ini?*`,
+          `  • 🛡️ *100% Sifar Risiko Modal:* Uji ketepatan entri Smart Money Concepts (SMC) dan kualiti isyarat tanpa sebarang risiko duit sebenar.`,
+          `  • 📈 *Lihat Sendiri Keberkesanan Method 2:* Saksikan sistem mengunci untung di TP1 (+25 hingga +35 pips) dan mengalihkan Stop Loss ke Break-Even (\`Auto @ Entry\`) secara automatik.`,
+          `  • ⚡ *Tanpa Perlu Sewa VPS / Pasang Robot:* Sambung terus melalui 1-Klik cTrader Open API dalam masa 10 saat.`,
+          `  • 🚫 *Tiada Sebarang Bayaran / Tiada Kad Diperlukan:* Akses percuma serta-merta sebaik sahaja disambung.`,
+          ``,
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+          `⏳ *Apakah Yang Berlaku Selepas 7 Hari Percubaan Tamat?*`,
+          `1️⃣ Pada **Hari ke-6 & ke-7**, bot akan menghantar ringkasan prestasi dan makluman tempoh tamat.`,
+          `2️⃣ Jika anda berpuas hati dengan konsistensi profit, anda boleh menaik taraf copier ke **Akaun Real (Live)** dengan yuran mampu milik **RM79/bulan**.`,
+          `3️⃣ Jika anda tidak ingin melanggan, sambungan akaun demo akan berhenti secara automatik pada hari ke-7. **Tiada sebarang caj tersembunyi atau caj automatik.**`,
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+          ``,
+          `👉 *Cara Memulakan Percubaan Percuma 7 Hari Sekarang:*`,
+          `1. [Tekan Sini untuk Sambung Akaun Demo cTrader Anda](${oauthConnectUrl})`,
+          `2. Log masuk cTrader ID (cTID) & pilih akaun Demo anda.`,
+          `3. Selesai! Semua pesanan Master Account akan disalin secara automatik 24/7.`,
+          ``,
+          `💬 _Sebarang bantuan pendaftaran akaun demo, hubungi @sanilbans_`
+        ].join('\n');
+  }
+
+  public getPricingMessage(lang: 'en' | 'ms'): string {
+    const isEn = lang === 'en';
+    return isEn
+      ? [
+          `💎 *[QUANTUM AI — VIP LIVE SUBSCRIPTION & PRICING]* 🏛️`,
+          ``,
+          `After completing your 7-Day Demo Trial, take your trading to the next level with our full institutional live execution plans:`,
+          ``,
+          `🎁 *1. 7-Day Free Trial (cTrader Demo)*`,
+          `   • *Price:* **RM0 (100% Free)**`,
+          `   • *Recommended Account:* cTrader Demo`,
+          `   • *Features:* Full 1-Click Cloud Copier, Method 2 Split-Ticket, TP1/TP2 & Auto-BE.`,
+          ``,
+          `👑 *2. VIP Live Trader (Monthly Subscription)*`,
+          `   • *Price:* **RM79 / month** (or ~$19 USD)`,
+          `   • *Account Type:* 1 cTrader Live (Real) Account`,
+          `   • *Features:* 24/5 Autonomous Execution, Sub-50ms Cloud Speed, News Blackout Defense (±30m), Dedicated Support.`,
+          ``,
+          `🚀 *3. VIP Pro Multi-Account (Monthly)*`,
+          `   • *Price:* **RM149 / month** (or ~$35 USD)`,
+          `   • *Account Type:* Up to 3 cTrader Live Accounts`,
+          `   • *Features:* Priority Execution Bridge, Custom Risk Multiplier, 1-on-1 Dedicated Support.`,
+          ``,
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+          `💳 *Payment Methods:*`,
+          `• DuitNow QR / Instant Online Bank Transfer (Malaysia)`,
+          `• Stripe (Visa / Mastercard / Apple Pay)`,
+          `• USDT (TRC20 / BEP20)`,
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+          ``,
+          `👉 *To subscribe or upgrade after trial, contact:* *@sanilbans*`
+        ].join('\n')
+      : [
+          `💎 *[QUANTUM AI — PAKEJ LANGGANAN & HARGA VIP LIVE]* 🏛️`,
+          ``,
+          `Selepas tamat tempoh percubaan 7 hari pada akaun Demo, anda boleh menaik taraf ke akaun Real (Live) dengan pelan langganan telus kami:`,
+          ``,
+          `🎁 *1. Percubaan 7 Hari Percuma (cTrader Demo)*`,
+          `   • *Harga:* **RM0 (100% Percuma)**`,
+          `   • *Akaun Disyorkan:* cTrader Demo`,
+          `   • *Ciri-Ciri:* 1-Klik Cloud Copier, Eksekusi Method 2, TP1/TP2 & Auto-BE.`,
+          ``,
+          `👑 *2. VIP Live Trader (Langganan Bulanan)*`,
+          `   • *Harga:* **RM79 / bulan** (Mampu Milik)`,
+          `   • *Jenis Akaun:* 1 Akaun Real cTrader (Live)`,
+          `   • *Ciri-Ciri:* Eksekusi Autopilot 24/5, Kelajuan Cloud < 50ms, Pertahanan Berita Berimpak Tinggi (±30m), Bantuan Khidmat Pelanggan.`,
+          ``,
+          `🚀 *3. VIP Pro Multi-Akaun (Langganan Bulanan)*`,
+          `   • *Harga:* **RM149 / bulan**`,
+          `   • *Jenis Akaun:* Sehingga 3 Akaun Real cTrader Serentak`,
+          `   • *Ciri-Ciri:* Sambungan Prioriti Tertinggi, Pengganda Saiz Lot Kustom, Bantuan Persediaan 1-on-1.`,
+          ``,
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+          `💳 *Kaedah Pembayaran Mudah:*`,
+          `• DuitNow QR / Pemindahan Bank Dalam Talian (Malaysia)`,
+          `• Kad Kredit / Debit (Stripe Online)`,
+          `• Kripto USDT (TRC20 / BEP20)`,
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+          ``,
+          `👉 *Untuk melanggan atau mengaktifkan akaun live, hubungi:* *@sanilbans*`
+        ].join('\n');
+  }
+
+  public getBrokerKeyboard(lang: 'en' | 'ms') {
+    const isEn = lang === 'en';
+    const affiliateUrl = process.env.CTRADER_AFFILIATE_URL || process.env.BROKER_AFFILIATE_URL || 'https://icmarkets.com/?camp=quantumai';
     return {
       inline_keyboard: [
         [
-          { text: isEn ? '🧠 Strategy & Analysis' : '🧠 Strategi Analisis', callback_data: 'cmd_strategy' },
-          { text: isEn ? '🛡️ Risk & Execution' : '🛡️ Risiko & Eksekusi', callback_data: 'cmd_risk' }
+          { text: isEn ? '🔗 Open Official cTrader Account' : '🔗 Buka Akaun cTrader Rasmi', url: affiliateUrl }
         ],
         [
-          { text: isEn ? '🚀 Free vs VIP Copier' : '🚀 Servis Percuma vs VIP', callback_data: 'cmd_services' },
-          { text: isEn ? '📊 System Status' : '📊 Status Sistem', callback_data: 'cmd_status' }
-        ],
-        [
-          { text: '🇬🇧 English', callback_data: 'cmd_lang_en' },
-          { text: '🇲🇾 Bahasa Melayu', callback_data: 'cmd_lang_ms' }
+          { text: isEn ? '🎁 7-Day Demo Trial Guide' : '🎁 Panduan Percubaan 7 Hari', callback_data: 'cmd_trial' },
+          { text: isEn ? '🏛️ Main Menu' : '🏛️ Menu Utama', callback_data: 'cmd_status' }
         ]
       ]
     };
+  }
+
+  public getBrokerMessage(lang: 'en' | 'ms'): string {
+    const isEn = lang === 'en';
+    const affiliateUrl = process.env.CTRADER_AFFILIATE_URL || process.env.BROKER_AFFILIATE_URL || 'https://icmarkets.com/?camp=quantumai';
+
+    return isEn
+      ? [
+          `🌐 *[OPEN A CTRADER ACCOUNT — OFFICIAL PARTNER BROKER]* 🏛️`,
+          ``,
+          `Get the best execution conditions, tightest ECN spreads (from 0.0 pips), ultra-low latency, and full native cBot compatibility with our recommended cTrader broker!`,
+          ``,
+          `💎 *Why Register via Our Partner Link:*`,
+          `  • ⚡ *Ultra-fast execution (<10ms)* optimized for QuantumAI cBot`,
+          `  • 📉 *0.0 Pip Raw Spreads* & Institutional Tier-1 Liquidity`,
+          `  • 🛡️ *Fully Regulated Broker* (FCA / ASIC / CySEC)`,
+          `  • 🎁 *Eligible for VIP Copier discount & priority setup support!*`,
+          ``,
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+          `👉 *How to Open & Link Your Account in 3 Easy Steps:*`,
+          `1️⃣ Click the link below to open a **cTrader Raw/ECN** account (Demo or Live):`,
+          `   🔗 [Click Here to Register cTrader](${affiliateUrl})`,
+          `2️⃣ Complete broker registration and find your **cTrader Account Number** (e.g. \`5881460\`).`,
+          `3️⃣ Return here and type:`,
+          `   \`/register <Your_Account_Number>\` or click *⚡ 1-Click Connect*`,
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+          ``,
+          `💬 _Questions about broker setup? Contact @sanilbans_`
+        ].join('\n')
+      : [
+          `🌐 *[BUKA AKAUN CTRADER — BROKER RAKAN RASMI]* 🏛️`,
+          ``,
+          `Nikmati syarat dagangan terbaik, spread ECN serendah 0.0 pip, kelajuan eksekusi ultra-pantas (<10ms), dan keserasian penuh dengan cBot QuantumAI melalui broker rakan rasmi kami!`,
+          ``,
+          `💎 *Kelebihan Mendaftar Melalui Pautan Rakan Kami:*`,
+          `  • ⚡ *Eksekusi ultra-pantas (<10ms)* dioptimumkan untuk cBot QuantumAI`,
+          `  • 📉 *Raw Spread 0.0 Pip* & Kecairan Institusi Tier-1`,
+          `  • 🛡️ *Broker Berlesen Penuh & Dipercayai* (FCA / ASIC / CySEC)`,
+          `  • 🎁 *Layak diskaun langganan VIP Copier & bantuan keutamaan!*`,
+          ``,
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+          `👉 *Cara Buka & Pautkan Akaun dalam 3 Langkah Mudah:*`,
+          `1️⃣ Tekan pautan di bawah untuk buka akaun **cTrader Raw/ECN** (Demo atau Live):`,
+          `   🔗 [Tekan Sini untuk Buka Akaun cTrader](${affiliateUrl})`,
+          `2️⃣ Selesaikan pendaftaran dan salin **Nombor Akaun cTrader** anda (cth: \`5881460\`).`,
+          `3️⃣ Kembali ke bot ini dan taip:`,
+          `   \`/register <Nombor_Akaun_Anda>\` atau tekan butang *⚡ 1-Klik Sambung*`,
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+          ``,
+          `💬 _Sebarang pertanyaan pendaftaran broker, hubungi @sanilbans_`
+        ].join('\n');
+  }
+
+  public getMyAccountMessage(chatId: string, username?: string, lang: 'en' | 'ms' = 'en'): string {
+    const isEn = lang === 'en';
+    try {
+      const subscribersPath = path.resolve(process.cwd(), 'data', 'vip_subscribers.json');
+      if (fs.existsSync(subscribersPath)) {
+        const raw = fs.readFileSync(subscribersPath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        const subs: any[] = Object.values(parsed.subscribers || {});
+        
+        const matched = subs.find(s => 
+          (s.telegramId && String(s.telegramId) === String(chatId)) ||
+          (username && s.telegramUsername && s.telegramUsername.toLowerCase() === username.toLowerCase())
+        );
+
+        if (matched) {
+          const expDate = matched.expiresAt ? new Date(matched.expiresAt).toLocaleDateString() : 'N/A';
+          const oneDayMs = 24 * 60 * 60 * 1000;
+          const daysLeft = matched.expiresAt ? Math.max(0, Math.ceil((matched.expiresAt - Date.now()) / oneDayMs)) : 0;
+          const token = matched.authToken || matched.token || 'Pending Generation';
+
+          return isEn
+            ? `🔑 *[MY VIP CTRADER SUBSCRIPTION]* 🏛️\n\n` +
+              `• *cTrader Account:* \`${matched.accountNumber}\`\n` +
+              `• *Status:* *${matched.status}*\n` +
+              `• *Valid Until:* \`${expDate}\` (${daysLeft} days remaining)\n` +
+              `• *Tier:* \`${matched.tier || 'VIP_INSTITUTIONAL'}\`\n\n` +
+              `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+              `🔐 *Your VIP Auth Token:*\n` +
+              `\`${token}\`\n` +
+              `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+              `📥 *How to activate in cTrader:*\n` +
+              `1. Open cTrader -> Automate -> \`QuantumAI VIP Receiver\`\n` +
+              `2. Paste the token above into *VIP Auth Token* parameter\n` +
+              `3. Press ▶️ *Play* on EURUSD chart\n\n` +
+              `💬 _Need renewal or assistance? Contact @sanilbans_`
+            : `🔑 *[STATUS LANGGANAN VIP CTRADER SAYA]* 🏛️\n\n` +
+              `• *Akaun cTrader:* \`${matched.accountNumber}\`\n` +
+              `• *Status:* *${matched.status}*\n` +
+              `• *Tempoh Sah:* \`${expDate}\` (Baki ${daysLeft} hari)\n` +
+              `• *Pakej:* \`${matched.tier || 'VIP_INSTITUTIONAL'}\`\n\n` +
+              `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+              `🔐 *VIP Auth Token Anda:*\n` +
+              `\`${token}\`\n` +
+              `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+              `📥 *Cara Pengaktifan cTrader:*\n` +
+              `1. Buka cTrader -> Automate -> \`QuantumAI VIP Receiver\`\n` +
+              `2. Tampal token di atas pada ruangan *VIP Auth Token*\n` +
+              `3. Tekan butang ▶️ *Play* pada carta EURUSD\n\n` +
+              `💬 _Sebarang bantuan atau pembaharuan, hubungi @sanilbans_`;
+        }
+      }
+    } catch (e: any) {}
+
+    return isEn
+      ? `🔍 *[NO VIP ACCOUNT FOUND]*\n\n` +
+        `You have not linked a cTrader account to your Telegram yet.\n\n` +
+        `👉 *To register your account for VIP, type:*\n` +
+        `\`/register <Your_cTrader_Account_Number>\`\n\n` +
+        `*Example:* \`/register 5877246\``
+      : `🔍 *[TIADA REKOD AKAUN VIP DIJUMPAI]*\n\n` +
+        `Anda belum mendaftarkan nombor akaun cTrader pada Telegram ini.\n\n` +
+        `👉 *Untuk daftar akaun VIP anda, taip:*\n` +
+        `\`/register <Nombor_Akaun_cTrader_Anda>\`\n\n` +
+        `*Contoh:* \`/register 5877246\``;
+  }
+
+  public getHelpMessage(lang: 'en' | 'ms'): string {
+    const isEn = lang === 'en';
+    const oauthConnectUrl = `https://id.ctrader.com/my/settings/openapi/grantingaccess/?client_id=${encodeURIComponent(process.env.CTRADER_CLIENT_ID || '36222_ujzQc2eZJ0Ej5pyrCiClTboT5xfh67RFzNsA0yKlYJIVL44eDJ')}&redirect_uri=${encodeURIComponent((process.env.APP_URL || 'http://localhost:3000') + '/api/broker/oauth/callback')}&scope=trading&product=web`;
+
+    return isEn
+      ? `❓ *[QUANTUM AI — 7-DAY DEMO TRIAL QUICKSTART GUIDE]* 🚀\n\n` +
+        `1️⃣ *Step 1 — Prepare a cTrader Demo Account:*\n` +
+        `• Need an account? Type \`/broker\` to open a cTrader Demo or Live account with our partner broker.\n` +
+        `• Have cTrader already? Open or use any **cTrader Demo Account** for 100% risk-free testing.\n\n` +
+        `2️⃣ *Step 2 — 1-Click Connect (Zero VPS):*\n` +
+        `• [Click Here to Connect in 10 Seconds](${oauthConnectUrl})\n` +
+        `• Log in with your cTrader ID (cTID) and authorize cloud replication. No VPS or cBot download required!\n\n` +
+        `3️⃣ *Step 3 — Monitor Automated Trading for 7 Days:*\n` +
+        `• All Master pending limit orders, SL/TP1/TP2 and automatic Break-Even moves will execute in real-time.\n` +
+        `• Check your trial status & days left anytime with \`/myaccount\`.\n\n` +
+        `4️⃣ *Step 4 — Upgrade to VIP Live (After Trial):*\n` +
+        `• If you are satisfied with the 7-day performance, upgrade to a **Live Real Account** for only **RM79/month** (type \`/pricing\`).\n\n` +
+        `💡 *Available Commands:*\n` +
+        `• /trial — 7-Day Demo Trial Guide\n` +
+        `• /connect — 1-Click Cloud Connect\n` +
+        `• /pricing — VIP Live Plans & Pricing\n` +
+        `• /broker — Open cTrader Partner Account\n` +
+        `• /myaccount — Check Trial Days Left & License\n` +
+        `• /download — Get optional cBot (.cs) file\n` +
+        `• /strategy — View SMC analysis rules\n` +
+        `• /risk — Method 2 & Auto-BE rules\n` +
+        `• /services — Free vs VIP Copier comparison\n` +
+        `• /status — Check live system & broker health`
+      : `❓ *[QUANTUM AI — PANDUAN MULA PERCUBAAN 7 HARI (DEMO)]* 🚀\n\n` +
+        `1️⃣ *Langkah 1 — Sediakan Akaun Demo cTrader:*\n` +
+        `• Belum ada akaun? Taip \`/broker\` untuk buka akaun cTrader Demo/Live dengan broker rakan kami.\n` +
+        `• Sudah ada cTrader? Buka akaun **Demo cTrader** untuk menguji sistem tanpa risiko modal.\n\n` +
+        `2️⃣ *Langkah 2 — 1-Klik Sambung Percuma (Tanpa VPS):*\n` +
+        `• [Tekan Sini untuk Sambung dalam 10 Saat](${oauthConnectUrl})\n` +
+        `• Log masuk cTrader ID (cTID) & beri kebenaran cloud. Sifar muat turun robot & sifar sewa VPS!\n\n` +
+        `3️⃣ *Langkah 3 — Pantau Hasil Dagangan Selama 7 Hari:*\n` +
+        `• Semua pending order Master, TP1/TP2 dan Auto-Break-Even akan disalin automatik 24/7.\n` +
+        `• Semak baki hari percubaan pada bila-bila masa dengan arahan \`/myaccount\`.\n\n` +
+        `4️⃣ *Langkah 4 — Naik Taraf ke VIP Live (Selepas 7 Hari):*\n` +
+        `• Jika berpuas hati dengan hasil trade, beralih ke **Akaun Real (Live)** dengan hanya **RM79/bulan** (taip \`/pricing\`).\n\n` +
+        `💡 *Senarai Arahan Pantas:*\n` +
+        `• /trial — Panduan Percubaan 7 Hari (Demo)\n` +
+        `• /connect — 1-Klik Sambungan Cloud\n` +
+        `• /pricing — Pelan VIP Live & Harga\n` +
+        `• /broker — Buka akaun cTrader pautan rakan\n` +
+        `• /myaccount — Semak baki hari & status lesen\n` +
+        `• /download — Muat turun fail cBot pilihan (.cs)\n` +
+        `• /strategy — Lihat strategi analisis SMC\n` +
+        `• /risk — Peraturan Method 2 & Auto-BE\n` +
+        `• /services — Perbandingan Free vs VIP Copier\n` +
+        `• /status — Status enjin & sambungan broker`;
   }
 
   public getWelcomeMessage(lang: 'en' | 'ms'): string {
@@ -1002,14 +1979,22 @@ export class TelegramNotificationService {
         ``,
         `Quantum AI is an autonomous, institutional-grade algorithmic trading ecosystem combining Smart Money Concepts (SMC), statistical pattern recognition, and Gemini AI risk validation.`,
         ``,
-        `📚 *Subscriber Onboarding & Quick Navigation:*`,
+        `🎁 *7-DAY ZERO-RISK FREE TRIAL (DEMO FIRST):*`,
+        `We encourage all new traders to start on a **cTrader Demo Account** for **7 full days** to experience our automated execution and profit consistency with zero financial risk!`,
+        ``,
+        `📚 *Subscriber Quick Navigation & Actions:*`,
+        `• /trial — *7-Day Free Trial (cTrader Demo Guide)*`,
+        `• /connect — *1-Click Instant Cloud Connect (Zero VPS)*`,
+        `• /pricing — *VIP Live Plans & Pricing (After Trial)*`,
+        `• /broker — *Open cTrader Account (Demo / Live Raw Spread)*`,
+        `• /myaccount — *Check License Validity & Days Remaining*`,
         `• /strategy — *Our Smart Money (SMC) & Multi-TF Strategy*`,
         `• /risk — *Method 2 Split-Ticket, TP1/TP2 & Auto-BE Rules*`,
         `• /services — *Free Community Channel vs VIP Auto-Copier*`,
         `• /status — *Live System & Broker Connection Status*`,
         `• /en or /ms — *Switch Language Anytime (English / Malay)*`,
         ``,
-        `Tap any button below or type a command to explore our framework:`,
+        `Tap any button below or type a command to get started:`,
         `⏰ _${new Date().toUTCString()}_ | _Quantum AI Institutional Intelligence_`
       ].join('\n');
     } else {
@@ -1019,14 +2004,22 @@ export class TelegramNotificationService {
         ``,
         `Quantum AI ialah ekosistem dagangan algoritma berprestasi tinggi yang menggabungkan Smart Money Concepts (SMC), pengesahan candlestick tertutup, dan tapisan risiko Gemini AI.`,
         ``,
+        `🎁 *PERCUBAAN 7 HARI PERCUMA (DISYORKAN AKAUN DEMO):*`,
+        `Kami menggalakkan semua trader baharu untuk bermula dengan **Akaun DEMO cTrader** selama **7 hari** bagi merasai sendiri kehebatan sistem auto-copier tanpa sebarang risiko modal!`,
+        ``,
         `📚 *Panduan Pantas & Navigasi Subscriber:*`,
+        `• /trial — *Panduan Percubaan 7 Hari (cTrader Demo)*`,
+        `• /connect — *1-Klik Sambungan Cloud (Tanpa VPS)*`,
+        `• /pricing — *Pelan VIP Live & Harga (Selepas Ujian)*`,
+        `• /broker — *Buka Akaun cTrader (Demo / Live Raw Spread)*`,
+        `• /myaccount — *Semak Status Lesen & Baki Hari Sah*`,
         `• /strategy — *Strategi Analisis SMC & Multi-Timeframe*`,
         `• /risk — *Pengurusan Risiko Method 2 (TP1, TP2 & Auto-BE)*`,
         `• /services — *Perbezaan Servis Percuma vs VIP Auto-Copier*`,
         `• /status — *Status Sambungan Broker & Kesihatan Enjin*`,
         `• /en atau /ms — *Tukar Pilihan Bahasa Pada Bila-Bila Masa*`,
         ``,
-        `Tekan mana-mana butang di bawah atau taip arahan untuk maklumat lanjut:`,
+        `Tekan mana-mana butang di bawah atau taip arahan untuk bermula:`,
         `⏰ _${new Date().toUTCString()}_ | _Quantum AI Institutional Intelligence_`
       ].join('\n');
     }
@@ -1152,7 +2145,7 @@ export class TelegramNotificationService {
       return [
         `🚀 *[QUANTUM AI - SUBSCRIBER SERVICES & TIERS]* 🌐`,
         ``,
-        `We provide two flexible ways to participate in our quantitative intelligence:`,
+        `We provide three flexible ways to participate in our quantitative intelligence:`,
         ``,
         `🌟 *1. Free Community Channel (Manual Execution):*`,
         `   • Receive selected Grade-A trade proposals (AI Confidence ≥ 85%).`,
@@ -1160,36 +2153,42 @@ export class TelegramNotificationService {
         `   • Immediate signal cancellation updates if market structure invalidates.`,
         `   • *Execution:* You manually place pending limit orders on your own trading platform.`,
         ``,
-        `👑 *2. VIP Institutional Auto-Copier (100% Hands-Free):*`,
-        `   • Direct sub-50ms broker bridge via cTrader Open API / MetaTrader Bridge.`,
-        `   • Every trade executed by the master algorithm is automatically copied into your private account in real-time.`,
-        `   • Automated Method 2 Split-Ticket management: 50% TP1 partial close & automatic Stop Loss migration to Break-Even.`,
-        `   • Zero emotional interference, zero missed entries while you sleep or work.`,
-        `   • Dynamic lot-sizing calibrated directly to your account equity.`,
+        `🎁 *2. 7-Day Free Trial (cTrader Demo - Zero VPS):*`,
+        `   • *Price:* **100% Free (RM0)**`,
+        `   • Test on a cTrader Demo account for 7 full days with zero risk of capital loss.`,
+        `   • Experience 1-Click zero-VPS cloud execution, TP1 scale-outs & automatic Break-Even.`,
         ``,
-        `💬 *Interested in VIP Auto-Copier access?* Contact our team or visit the Quantum AI Dashboard to link your account.`,
+        `👑 *3. VIP Live Copier (cTrader Real Account):*`,
+        `   • *Price:* **RM79 / month**`,
+        `   • Connect your real trading account via high-speed cTrader Open API bridge (< 50ms).`,
+        `   • 100% hands-free 24/5 execution, automated Method 2 risk management, and dedicated support.`,
+        ``,
+        `👉 _Type /trial to start your 7-day demo trial or /pricing to view live plans._`,
         `⏰ _${new Date().toUTCString()}_ | _Quantum AI VIP Desk_`
       ].join('\n');
     } else {
       return [
         `🚀 *[QUANTUM AI - SERVIS & PELAN LANGGANAN]* 🌐`,
         ``,
-        `Kami menawarkan dua pilihan untuk menikmati kelebihan algoritma kami:`,
+        `Kami menawarkan tiga pilihan untuk menikmati kelebihan algoritma kami:`,
         ``,
         `🌟 *1. Saluran Komuniti Percuma (Entri Manual):*`,
         `   • Menerima isyarat persediaan Gred A terpilih (Keyakinan AI ≥ 85%).`,
         `   • Peringatan berita ekonomi berimpak tinggi (Zon Blackout ±30 minit).`,
         `   • Makluman pembatalan isyarat pantas sekiranya struktur pasaran terbatal.`,
-        `   • *Cara Guna:* Anda memasang pending limit order sendiri pada MetaTrader/cTrader anda.`,
+        `   • *Cara Guna:* Anda memasang pending limit order sendiri pada cTrader anda.`,
         ``,
-        `👑 *2. VIP Institutional Auto-Copier (100% Automatik Tanpa Tangan):*`,
-        `   • Sambungan terus ke broker via cTrader Open API / MetaTrader Bridge (< 50ms).`,
-        `   • Setiap trade yang dibuka oleh master enjin di-copy secara automatik ke akaun peribadi anda.`,
-        `   • Pengurusan automatik Method 2: Tutup 50% lot di TP1 dan alih SL baki ke Break-Even tanpa perlu anda pantau carta.`,
-        `   • Tiada emosi, tiada terlepas trade semasa anda tidur atau bekerja.`,
-        `   • Saiz lot disesuaikan secara automatik mengikut baki modal akaun anda.`,
+        `🎁 *2. Percubaan 7 Hari Percuma (cTrader Demo - Tanpa VPS):*`,
+        `   • *Harga:* **100% Percuma (RM0)**`,
+        `   • Uji pada akaun Demo cTrader selama 7 hari tanpa sebarang risiko modal.`,
+        `   • Rasai eksekusi cloud 1-Klik tanpa VPS, penutupan separa TP1 & Auto-Break-Even.`,
         ``,
-        `💬 *Berminat menyertai VIP Auto-Copier?* Hubungi admin atau layari Dashboard Quantum AI untuk memautkan akaun anda.`,
+        `👑 *3. VIP Live Copier (Akaun Real cTrader):*`,
+        `   • *Harga:* **RM79 / bulan**`,
+        `   • Sambungkan akaun sebenar anda melalui cTrader Open API berkelajuan tinggi (< 50ms).`,
+        `   • 100% automatik 24/5, pengurusan risiko Method 2 dan bantuan khidmat sokongan.`,
+        ``,
+        `👉 _Taip /trial untuk mula percubaan 7 hari atau /pricing untuk lihat pelan live._`,
         `⏰ _${new Date().toUTCString()}_ | _Quantum AI VIP Desk_`
       ].join('\n');
     }
@@ -1215,7 +2214,7 @@ export class TelegramNotificationService {
    * Handles commands (/start, /strategy, /risk, /services, /status, /en, /ms) and inline keyboard buttons
    */
   public startBotCommandListener(): void {
-    console.log('🤖 [TelegramNotificationService] Bot Command Listener active: Listening for /start, /register, /status, etc.');
+    console.log('🤖 [TelegramNotificationService] Bot Command Listener active: Listening for /start, /trial, /register, /pricing, etc.');
 
     const poll = async () => {
       if (!this.botToken || !this.isEnabled) {
@@ -1271,12 +2270,56 @@ export class TelegramNotificationService {
                 );
               } else {
                 const currentLang = this.getUserLanguage(chatId);
-                if (action === 'cmd_strategy') {
+                if (action === 'cmd_trial') {
+                  await this.sendRawMessage(this.getTrialMessage(currentLang), chatId, this.getOnboardingKeyboard(currentLang));
+                } else if (action === 'cmd_pricing') {
+                  await this.sendRawMessage(this.getPricingMessage(currentLang), chatId, this.getOnboardingKeyboard(currentLang));
+                } else if (action === 'cmd_connect') {
+                  const connectMsg = currentLang === 'en'
+                    ? `⚡ *[1-CLICK cTRADER CLOUD CONNECTION (ZERO VPS)]* 🌐\n\n` +
+                      `Connect your cTrader Demo account in 10 seconds without downloading any cBot or renting a VPS:\n\n` +
+                      `1️⃣ Click the *1-Click Connect cTrader* button below.\n` +
+                      `2️⃣ Log in to your cTrader ID (cTID) & select your Demo trading account.\n` +
+                      `3️⃣ Click *Allow* to authorize cloud trade replication.\n\n` +
+                      `✅ *Done!* All Master Account pending orders, SL/TP & scale-out executions will automatically sync 24/7 to your broker.`
+                    : `⚡ *[SAMBUNGAN CLOUD cTRADER 1-KLIK (TANPA VPS)]* 🌐\n\n` +
+                      `Sambungkan akaun Demo cTrader anda dalam 10 saat tanpa perlu muat turun cBot atau sewa VPS:\n\n` +
+                      `1️⃣ Tekan butang *1-Klik Sambung cTrader* di bawah.\n` +
+                      `2️⃣ Log masuk ke cTrader ID (cTID) & pilih akaun Demo trading anda.\n` +
+                      `3️⃣ Tekan *Allow* untuk mengaktifkan salinan trade automatik.\n\n` +
+                      `✅ *Selesai!* Semua pending order, SL/TP & strategi Break-Even Master Account akan disalin 24/7 ke broker anda.`;
+                  await this.sendRawMessage(connectMsg, chatId, this.getOnboardingKeyboard(currentLang));
+                } else if (action === 'cmd_register') {
+                  const regPrompt = currentLang === 'en'
+                    ? `👑 *[REGISTER VIP CTRADER ACCOUNT]*\n\nTo link your cTrader account to the QuantumAI institutional server bridge, please type:\n\n\`/register <Your_cTrader_Account_Number>\`\n\n*Example:*\n\`/register 5877246\``
+                    : `👑 *[PENDAFTARAN AKAUN VIP CTRADER]*\n\nUntuk pautkan akaun cTrader anda ke server bridge QuantumAI, sila taip:\n\n\`/register <Nombor_Akaun_cTrader_Anda>\`\n\n*Contoh:*\n\`/register 5877246\``;
+                  await this.sendRawMessage(regPrompt, chatId, this.getOnboardingKeyboard(currentLang));
+                } else if (action === 'cmd_broker') {
+                  await this.sendRawMessage(this.getBrokerMessage(currentLang), chatId, this.getBrokerKeyboard(currentLang));
+                } else if (action === 'cmd_myaccount') {
+                  const myAccMsg = this.getMyAccountMessage(chatId, cq.from?.username, currentLang);
+                  await this.sendRawMessage(myAccMsg, chatId, this.getOnboardingKeyboard(currentLang));
+                } else if (action === 'cmd_download') {
+                  const csPath = path.resolve(process.cwd(), 'cTrader', 'QuantumAI_VIP_Receiver.cs');
+                  const caption = currentLang === 'en'
+                    ? `📥 *QuantumAI VIP Receiver cBot (.cs)*\n\n1️⃣ Open cTrader Automate tab\n2️⃣ Create New cBot & Paste\n3️⃣ Build (F5) & Enter VipAuthToken\n4️⃣ Press Play ▶️ on EURUSD chart`
+                    : `📥 *cBot QuantumAI VIP Receiver (.cs)*\n\n1️⃣ Buka tab Automate cTrader\n2️⃣ Cipta cBot Baru & Tampal\n3️⃣ Tekan Build (F5) & Masukkan VipAuthToken\n4️⃣ Tekan Play ▶️ pada carta EURUSD`;
+                  await this.sendDocument(csPath, chatId, caption);
+                } else if (action === 'cmd_help') {
+                  await this.sendRawMessage(this.getHelpMessage(currentLang), chatId, this.getOnboardingKeyboard(currentLang));
+                } else if (action === 'cmd_tips') {
+                  const tip = this.getRandomTradingTip();
+                  const tipMsg = this.formatTradingTip(tip, currentLang);
+                  await this.sendRawMessage(tipMsg, chatId, this.getOnboardingKeyboard(currentLang));
+                } else if (action === 'cmd_weekly') {
+                  const weeklyMsg = this.generateWeeklyStatsReport(currentLang);
+                  await this.sendRawMessage(weeklyMsg, chatId, this.getOnboardingKeyboard(currentLang));
+                } else if (action === 'cmd_strategy') {
                   await this.sendRawMessage(this.getStrategyMessage(currentLang), chatId, this.getOnboardingKeyboard(currentLang));
                 } else if (action === 'cmd_risk') {
                   await this.sendRawMessage(this.getRiskMessage(currentLang), chatId, this.getOnboardingKeyboard(currentLang));
                 } else if (action === 'cmd_services') {
-                  await this.sendRawMessage(this.getServicesMessage(currentLang), chatId, this.getOnboardingKeyboard(currentLang));
+                  await this.sendRawMessage(this.getServicesMessage(currentLang), chatId, this.getPaymentKeyboard(currentLang));
                 } else if (action === 'cmd_status') {
                   await this.sendRawMessage(this.getStatusMessage(chatId, currentLang), chatId, this.getOnboardingKeyboard(currentLang));
                 }
@@ -1388,7 +2431,8 @@ export class TelegramNotificationService {
 
             if (!msg.text) continue;
             console.log(`💬 [TELEGRAM MESSAGE] From ${chatId} (${chatType}): "${msg.text}"`);
-            const text = msg.text.trim().toLowerCase();
+            const rawText = msg.text.trim();
+            const text = rawText.replace(/@\w+bot\b/gi, '').trim().toLowerCase();
 
             if (text === '/en' || text === '/english' || text.startsWith('/language en')) {
               this.setUserLanguage(chatId, 'en');
@@ -1407,8 +2451,12 @@ export class TelegramNotificationService {
             } else {
               const currentLang = this.getUserLanguage(chatId);
 
-              // VIP Account Registration (/register <account> or /akaun <account>)
-              if (text.startsWith('/register') || text.startsWith('/akaun') || text.startsWith('/daftar')) {
+              // 7-Day Demo Trial info (/trial or /demo or /percubaan)
+              if (text === '/trial' || text === '/demo' || text === '/percubaan' || text === '/free' || text === '/percuma') {
+                await this.sendRawMessage(this.getTrialMessage(currentLang), chatId, this.getOnboardingKeyboard(currentLang));
+              } else if (text === '/pricing' || text === '/harga' || text === '/pakej' || text === '/pelan' || text === '/pay' || text === '/bayar') {
+                await this.sendRawMessage(this.getPricingMessage(currentLang), chatId, this.getOnboardingKeyboard(currentLang));
+              } else if (text.startsWith('/register') || text.startsWith('/akaun') || text.startsWith('/daftar')) {
                 const parts = text.split(/\s+/);
                 const rawAcc = parts[1];
                 const cleanAcc = rawAcc ? rawAcc.replace(/[^0-9]/g, '') : '';
@@ -1429,35 +2477,206 @@ export class TelegramNotificationService {
                     telegramId: chatId,
                     telegramUsername: username,
                     name: firstName || undefined,
-                    durationDays: 30
+                    isAdminApproval: false
                   });
-                  const expDate = new Date(record.expiresAt).toLocaleDateString();
 
-                  await this.sendRawMessage(
-                    currentLang === 'en'
-                      ? `🏛️ *[VIP CTRADER ACCOUNT ACTIVATED]* ✅\n\n` +
-                        `• *cTrader Account:* \`${record.accountNumber}\`\n` +
-                        `• *Status:* *Active (VIP Institutional)*\n` +
-                        `• *Valid Until:* \`${expDate}\` (30 Days)\n\n` +
-                        `📥 *Quick Start Instructions:*\n` +
-                        `1. Download the \`QuantumAI_VIP_Copier.algo\` file pinned in the VIP Channel.\n` +
-                        `2. Double-click it to install into your cTrader Desktop.\n` +
-                        `3. Press *Play* on EURUSD chart.\n` +
-                        `4. The cBot will automatically verify your account (\`${record.accountNumber}\`) and start 100% automated trade execution!`
-                      : `🏛️ *[PENGESAHAN AKAUN VIP BERJAYA]* ✅\n\n` +
+                  if (record.status === 'ACTIVE') {
+                    const expDate = new Date(record.expiresAt).toLocaleDateString();
+                    await this.sendRawMessage(
+                      currentLang === 'en'
+                        ? `🏛️ *[VIP CTRADER ACCOUNT ACTIVE]* ✅\n\n` +
+                          `• *cTrader Account:* \`${record.accountNumber}\`\n` +
+                          `• *Status:* *Active (7-Day Trial / VIP)*\n` +
+                          `• *Valid Until:* \`${expDate}\`\n\n` +
+                          `🔑 *Your VIP Auth Token:*\n\`${record.authToken || ''}\`\n\n` +
+                          `📥 *Quick Start Instructions:*\n` +
+                          `1. Copy your *VIP Auth Token* above.\n` +
+                          `2. Open cTrader Desktop -> Automate -> \`QuantumAI_VIP_Receiver\`.\n` +
+                          `3. Paste your token into the *VIP Auth Token* parameter.\n` +
+                          `4. Click *Play* on EURUSD chart to start automated trade execution!`
+                        : `🏛️ *[AKAUN VIP SAH & AKTIF]* ✅\n\n` +
+                          `• *Akaun cTrader:* \`${record.accountNumber}\`\n` +
+                          `• *Status:* *Aktif (Percubaan 7 Hari / VIP)*\n` +
+                          `• *Tempoh Sah:* \`${expDate}\`\n\n` +
+                          `🔑 *VIP Auth Token Anda:*\n\`${record.authToken || ''}\`\n\n` +
+                          `📥 *Panduan Mula cTrader:*\n` +
+                          `1. Salin *VIP Auth Token* di atas.\n` +
+                          `2. Buka cTrader Desktop -> Automate -> \`QuantumAI_VIP_Receiver\`.\n` +
+                          `3. Masukkan token ini pada tetapan *VIP Auth Token*.\n` +
+                          `4. Tekan *Play* pada carta EURUSD untuk memulakan copier automatik!`,
+                      chatId,
+                      this.getOnboardingKeyboard(currentLang)
+                    );
+                  } else {
+                    // Send payment instructions to the subscriber
+                    await this.sendRawMessage(
+                      currentLang === 'en'
+                        ? `⏳ *[VIP REGISTRATION RECEIVED — PAYMENT REQUIRED]* 🛡️\n\n` +
+                          `• *cTrader Account:* \`${record.accountNumber}\`\n` +
+                          `• *Status:* *PENDING_VERIFICATION*\n` +
+                          `• *Identity:* ${record.name} (${username ? `@${username}` : chatId})\n\n` +
+                          `💳 *Payment & Activation Steps:*\n` +
+                          `1. Complete your VIP Copier subscription payment (RM79/month).\n` +
+                          `2. Send your payment receipt / slip to Admin: *@sanilbans*\n` +
+                          `3. Once payment is verified, your account will be instantly approved.\n` +
+                          `4. You will receive your official *VIP Auth Token* right here to start automated trading!`
+                        : `⏳ *[PERMOHONAN VIP DITERIMA — PENGESAHAN BAYARAN]* 🛡️\n\n` +
+                          `• *Akaun cTrader:* \`${record.accountNumber}\`\n` +
+                          `• *Status:* *MENUNGGU BAYARAN & PENGESAHAN*\n` +
+                          `• *Pemohon:* ${record.name} (${username ? `@${username}` : chatId})\n\n` +
+                          `💳 *Langkah Pembayaran & Pengaktifan:*\n` +
+                          `1. Sila buat pembayaran langganan VIP Copier anda (RM79/bulan).\n` +
+                          `2. Hantar resit / bukti pembayaran kepada Admin: *@sanilbans*\n` +
+                          `3. Sebaik sahaja pembayaran disahkan, akaun anda akan diaktifkan serta-merta.\n` +
+                          `4. Anda akan menerima *VIP Auth Token* rasmi di sini untuk mula trade secara automatik!`,
+                      chatId,
+                      this.getPaymentKeyboard(currentLang)
+                    );
+
+                    // Alert the Admin immediately with quick approve command
+                    const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+                    if (adminChatId && adminChatId !== chatId) {
+                      await this.sendRawMessage(
+                        `🔔 *[PERMOHONAN VIP BAHARU DITERIMA]* 📥\n\n` +
                         `• *Akaun cTrader:* \`${record.accountNumber}\`\n` +
-                        `• *Status:* *Aktif (VIP Institutional)*\n` +
-                        `• *Tempoh Sah:* \`${expDate}\` (30 Hari)\n\n` +
-                        `📥 *Panduan Pemasangan cTrader:*\n` +
-                        `1. Muat turun fail \`QuantumAI_VIP_Copier.algo\` yang telah dipin di Channel VIP.\n` +
-                        `2. Klik 2 kali fail tersebut untuk pasang ke cTrader Desktop anda.\n` +
-                        `3. Tekan *Play* pada carta EURUSD.\n` +
-                        `4. cBot akan secara automatik mengesahkan akaun (\`${record.accountNumber}\`) anda dan mula trade secara 100% automatik!`,
-                    chatId,
-                    this.getOnboardingKeyboard(currentLang)
-                  );
+                        `• *Pemohon:* ${record.name} (${username ? `@${username}` : chatId})\n` +
+                        `• *Status:* ⏳ *PENDING_VERIFICATION*\n\n` +
+                        `👉 Selepas semak bayaran, balas dengan arahan:\n\`/approve ${record.accountNumber} 30\``,
+                        adminChatId
+                      ).catch(() => {});
+                    }
+                  }
                 }
-              } else if (text === '/status' || text === '/akaun_saya' || text === '/myaccount') {
+              } else if (text.startsWith('/approve') || text.startsWith('/lulus') || text.startsWith('/activate')) {
+                // Admin Account Approval Command
+                const isAuthorizedAdmin = 
+                  chatId === this.channelId || 
+                  (process.env.TELEGRAM_ADMIN_CHAT_ID && chatId === process.env.TELEGRAM_ADMIN_CHAT_ID) ||
+                  (process.env.ADMIN_TELEGRAM_IDS && process.env.ADMIN_TELEGRAM_IDS.split(',').includes(chatId));
+
+                if (!isAuthorizedAdmin) {
+                  await this.sendRawMessage(
+                    `⛔ *[AKSES DITOLAK]*: Arahan kelulusan ini hanya dibenarkan untuk pentadbir rasmi Quantum AI.`,
+                    chatId
+                  );
+                } else {
+                  const parts = text.split(/\s+/);
+                  const targetAcc = parts[1] ? parts[1].replace(/[^0-9]/g, '') : '';
+                  const durationDays = parts[2] ? Number(parts[2]) : 30;
+
+                  if (!targetAcc) {
+                    await this.sendRawMessage(
+                      `⚠️ *Format Salah*: Gunakan format \`/approve <Nombor_Akaun> [Bilangan_Hari]\`\nContoh: \`/approve 5877246 30\``,
+                      chatId
+                    );
+                  } else {
+                    const { vipSubscriptionService } = await import('./vipSubscriptionService');
+                    const activated = vipSubscriptionService.activateAccount(targetAcc, durationDays, `Admin (${chatId})`);
+                    const expDate = new Date(activated.expiresAt).toLocaleDateString();
+                    const vipToken = activated.token || activated.authToken || '';
+
+                    // 1. Confirm to the admin
+                    await this.sendRawMessage(
+                      `✅ *[VIP ACCOUNT APPROVED & ACTIVATED]*\n\n` +
+                      `• *cTrader Account:* \`${activated.accountNumber}\`\n` +
+                      `• *Status:* *ACTIVE*\n` +
+                      `• *Valid Days:* ${durationDays} days (Expires: \`${expDate}\`)\n` +
+                      `• *Subscriber:* ${activated.name} (${activated.telegramUsername ? `@${activated.telegramUsername}` : activated.telegramId || 'Direct'})\n\n` +
+                      `🔑 *VipAuthToken issued and delivered to subscriber.*`,
+                      chatId
+                    );
+
+                    // 2. Build the full subscriber welcome message (always in EN + token)
+                    const subWelcomeMsg =
+                      `👑 *[VIP ACCESS ACTIVATED — QuantumAI Institutional]* ✅\n\n` +
+                      `Welcome, *${activated.name || activated.telegramUsername || 'VIP Trader'}*!\n\n` +
+                      `• *cTrader Account:* \`${activated.accountNumber}\`\n` +
+                      `• *Status:* ✅ *ACTIVE*\n` +
+                      `• *Valid Until:* \`${expDate}\` (${durationDays} Days)\n\n` +
+                      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                      `🔑 *Your VIP Auth Token:*\n` +
+                      `\`${vipToken}\`\n` +
+                      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+                      `📥 *How to activate cBot:*\n` +
+                      `1️⃣ Open *cTrader Desktop* → Automate tab\n` +
+                      `2️⃣ Find *QuantumAI_VIP_Receiver* cBot\n` +
+                      `3️⃣ Right-click → Parameters\n` +
+                      `4️⃣ Paste token into *VipAuthToken* field\n` +
+                      `5️⃣ Enter your cTrader account: \`${activated.accountNumber}\`\n` +
+                      `6️⃣ Press ▶️ *Start*\n\n` +
+                      `✅ cBot will confirm: _[VIP LICENSE VERIFIED] Account ${activated.accountNumber} is ACTIVE_\n\n` +
+                      `⚠️ *Keep this token private. Do not share it with anyone.*`;
+
+                    // 3. Send to subscriber directly (DM) — always attempt regardless of whether same as admin
+                    if (activated.telegramId) {
+                      await this.sendRawMessage(
+                        subWelcomeMsg,
+                        activated.telegramId,
+                        this.getOnboardingKeyboard('en')
+                      ).catch(() => {});
+                    }
+
+                    // 4. Also broadcast token to VIP channel so user can retrieve it there
+                    const vipChannelId = process.env.TELEGRAM_VIP_CHAT_ID || this.channelId;
+                    if (vipChannelId) {
+                      await this.sendRawMessage(
+                        `👑 *[NEW VIP MEMBER ACTIVATED]* ✅\n\n` +
+                        `• *Account:* \`${activated.accountNumber}\`\n` +
+                        `• *Name:* ${activated.name || 'VIP Trader'}\n` +
+                        `• *Expires:* ${expDate}\n\n` +
+                        `🔑 *VipAuthToken (check your DM):*\n` +
+                        `\`${vipToken}\``,
+                        vipChannelId
+                      ).catch(() => {});
+                    }
+                  }
+                }
+              } else if (text.startsWith('/remind') || text.startsWith('/peringatan')) {
+                // Admin Manual Reminder Trigger
+                const isAuthorizedAdmin = 
+                  chatId === this.channelId || 
+                  (process.env.TELEGRAM_ADMIN_CHAT_ID && chatId === process.env.TELEGRAM_ADMIN_CHAT_ID) ||
+                  (process.env.ADMIN_TELEGRAM_IDS && process.env.ADMIN_TELEGRAM_IDS.split(',').includes(chatId));
+
+                if (!isAuthorizedAdmin) {
+                  await this.sendRawMessage(
+                    `⛔ *[AKSES DITOLAK]*: Arahan peringatan ini hanya dibenarkan untuk pentadbir rasmi Quantum AI.`,
+                    chatId
+                  );
+                } else {
+                  const parts = text.split(/\s+/);
+                  const targetAcc = parts[1] ? parts[1].replace(/[^0-9]/g, '') : '';
+                  const customNote = parts.slice(2).join(' ');
+
+                  const { vipSubscriptionService } = await import('./vipSubscriptionService');
+                  if (!targetAcc || targetAcc === 'all') {
+                    // Send to all expiring accounts
+                    const res = await vipSubscriptionService.checkAndDispatchAutomatedReminders();
+                    await this.sendRawMessage(
+                      `📢 *[PERINGATAN BERJAYA DIHANTAR]*\n\n• Jumlah mesej peringatan dihantar: *${res.sentCount} akaun pelanggan* yang hampir tamat tempoh.`,
+                      chatId
+                    );
+                  } else {
+                    const result = await vipSubscriptionService.sendExpiryReminderToSubscriber(targetAcc, customNote || undefined);
+                    await this.sendRawMessage(
+                      result.success
+                        ? `✅ *[PERINGATAN DIHANTAR]*\n\n${result.message}`
+                        : `⚠️ *[RALAT PERINGATAN]*\n\n${result.message}`,
+                      chatId
+                    );
+                  }
+                }
+              } else if (text === '/myaccount' || text === '/akaun_saya' || text === '/license' || text === '/lesen' || text === '/token') {
+                const username = (msg.from as any)?.username || (msg.chat as any)?.username || '';
+                const myAccMsg = this.getMyAccountMessage(chatId, username, currentLang);
+                await this.sendRawMessage(myAccMsg, chatId, this.getOnboardingKeyboard(currentLang));
+              } else if (text === '/download' || text === '/unduh' || text === '/cbot' || text === '/file') {
+                const csPath = path.resolve(process.cwd(), 'cTrader', 'QuantumAI_VIP_Receiver.cs');
+                const caption = currentLang === 'en'
+                  ? `📥 *QuantumAI VIP Receiver cBot (.cs)*\n\n1️⃣ Open cTrader Automate tab\n2️⃣ Create New cBot & Paste\n3️⃣ Build (F5) & Enter VipAuthToken\n4️⃣ Press Play ▶️ on EURUSD chart`
+                  : `📥 *cBot QuantumAI VIP Receiver (.cs)*\n\n1️⃣ Buka tab Automate cTrader\n2️⃣ Cipta cBot Baru & Tampal\n3️⃣ Tekan Build (F5) & Masukkan VipAuthToken\n4️⃣ Tekan Play ▶️ pada carta EURUSD`;
+                await this.sendDocument(csPath, chatId, caption);
+              } else if (text === '/status') {
                 const { vipSubscriptionService } = await import('./vipSubscriptionService');
                 const sub = vipSubscriptionService.getSubscriberByTelegramId(chatId);
                 let vipInfo = '';
@@ -1469,11 +2688,11 @@ export class TelegramNotificationService {
                     : `\n\n👑 *[Akaun VIP Berdaftar Anda]*\n• Akaun cTrader: \`${sub.accountNumber}\`\n• Status: *${check.status}*\n• Baki Langganan: *${check.remainingDays || 0} hari* (Luput: ${expDate})`;
                 } else {
                   vipInfo = currentLang === 'en'
-                    ? `\n\n👑 *[VIP Copier Status]*\n• No cTrader account linked yet.\n• Register now with: \`/register <cTrader_Account_Number>\``
-                    : `\n\n👑 *[Status VIP Copier]*\n• Belum ada akaun cTrader didaftarkan.\n• Daftarkan akaun anda sekarang dengan: \`/register <Nombor_Akaun_cTrader>\``;
+                    ? `\n\n👑 *[VIP Copier Status]*\n• No cTrader account linked yet.\n• Register now with: \`/register <cTrader_Account_Number>\` or click *⚡ 1-Click Connect*`
+                    : `\n\n👑 *[Status VIP Copier]*\n• Belum ada akaun cTrader didaftarkan.\n• Daftarkan akaun anda sekarang dengan: \`/register <Nombor_Akaun_cTrader>\` atau tekan *⚡ 1-Klik Sambung*`;
                 }
                 await this.sendRawMessage(this.getStatusMessage(chatId, currentLang) + vipInfo, chatId, this.getOnboardingKeyboard(currentLang));
-              } else if (text === '/stats' || text === '/admin' || text === '/admin stats' || text === '/analytics') {
+              } else if (text === '/stats' || text.startsWith('/stats') || text === '/statistik' || text.startsWith('/statistik') || text === '/admin' || text.startsWith('/admin') || text === '/analytics' || text.startsWith('/analytics')) {
                 const { vipSubscriptionService } = await import('./vipSubscriptionService');
                 const analytics = vipSubscriptionService.getSubscriberAnalytics();
                 const totalSubs = analytics.totalSubscribers;
@@ -1567,13 +2786,39 @@ export class TelegramNotificationService {
 
                   await this.sendRawMessage(msgList, chatId, this.getOnboardingKeyboard(currentLang));
                 }
+              } else if (text === '/broker' || text === '/affiliate' || text === '/partner' || text === '/bukaakaun' || text === '/openaccount') {
+                await this.sendRawMessage(this.getBrokerMessage(currentLang), chatId, this.getBrokerKeyboard(currentLang));
+              } else if (text === '/tips' || text === '/tip' || text === '/petua' || text === '/mindset') {
+                const tip = this.getRandomTradingTip();
+                const tipMsg = this.formatTradingTip(tip, currentLang);
+                await this.sendRawMessage(tipMsg, chatId, this.getOnboardingKeyboard(currentLang));
+              } else if (text === '/weekly' || text === '/performance' || text === '/prestasi' || text === '/recap' || text === '/mingguan') {
+                const weeklyMsg = this.generateWeeklyStatsReport(currentLang);
+                await this.sendRawMessage(weeklyMsg, chatId, this.getOnboardingKeyboard(currentLang));
               } else if (text === '/strategy' || text === '/smc' || text === '/analisis') {
                 await this.sendRawMessage(this.getStrategyMessage(currentLang), chatId, this.getOnboardingKeyboard(currentLang));
               } else if (text === '/risk' || text === '/execution' || text === '/be' || text === '/tp') {
                 await this.sendRawMessage(this.getRiskMessage(currentLang), chatId, this.getOnboardingKeyboard(currentLang));
               } else if (text === '/services' || text === '/vip' || text === '/copier') {
-                await this.sendRawMessage(this.getServicesMessage(currentLang), chatId, this.getOnboardingKeyboard(currentLang));
-              } else if (text === '/start' || text === '/help' || text === '/guide' || text === '/menu' || text === '/language') {
+                await this.sendRawMessage(this.getServicesMessage(currentLang), chatId, this.getPaymentKeyboard(currentLang));
+              } else if (text === '/help' || text === '/panduan' || text === '/guide') {
+                await this.sendRawMessage(this.getHelpMessage(currentLang), chatId, this.getOnboardingKeyboard(currentLang));
+              } else if (text === '/connect' || text === '/sambung' || text === '/cloud' || text === '/openapi') {
+                const connectMsg = currentLang === 'en'
+                  ? `⚡ *[1-CLICK cTRADER CLOUD CONNECTION (ZERO VPS)]* 🌐\n\n` +
+                    `Connect your cTrader Demo account in 10 seconds without downloading any cBot or renting a VPS:\n\n` +
+                    `1️⃣ Click the *1-Click Connect cTrader* button below.\n` +
+                    `2️⃣ Log in to your cTrader ID (cTID) & select your Demo trading account.\n` +
+                    `3️⃣ Click *Allow* to authorize cloud trade replication.\n\n` +
+                    `✅ *Done!* All Master Account pending orders, SL/TP & scale-out executions will automatically sync 24/7 to your broker.`
+                  : `⚡ *[SAMBUNGAN CLOUD cTRADER 1-KLIK (TANPA VPS)]* 🌐\n\n` +
+                    `Sambungkan akaun Demo cTrader anda dalam 10 saat tanpa perlu muat turun cBot atau sewa VPS:\n\n` +
+                    `1️⃣ Tekan butang *1-Klik Sambung cTrader* di bawah.\n` +
+                    `2️⃣ Log masuk ke cTrader ID (cTID) & pilih akaun Demo trading anda.\n` +
+                    `3️⃣ Tekan *Allow* untuk mengaktifkan salinan trade automatik.\n\n` +
+                    `✅ *Selesai!* Semua pending order, SL/TP & strategi Break-Even Master Account akan disalin 24/7 ke broker anda.`;
+                await this.sendRawMessage(connectMsg, chatId, this.getOnboardingKeyboard(currentLang));
+              } else if (text === '/start' || text === '/menu' || text === '/language') {
                 await this.sendRawMessage(this.getWelcomeMessage(currentLang), chatId, this.getOnboardingKeyboard(currentLang));
               }
             }

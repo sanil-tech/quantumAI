@@ -12,6 +12,7 @@ import { EconomicCalendarWidget } from './EconomicCalendarWidget';
 import { InteractiveTradeStatisticsCockpit } from './InteractiveTradeStatisticsCockpit';
 import { CTraderBrokerConnectionHub } from './CTraderBrokerConnectionHub';
 import { CommercialOnboardingModal } from './onboarding/CommercialOnboardingModal';
+import { VipSubscriberCockpit } from './VipSubscriberCockpit';
 
 interface UserDashboardProps {
   currentPrice: number;
@@ -56,25 +57,29 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   onSyncToRiskCalc,
   onLogToJournal
 }) => {
-  const [activeTab, setActiveTab] = useState<'TERMINAL' | 'STATISTICS' | 'ECONOMIC_CALENDAR' | 'BROKER_CONNECT'>('TERMINAL');
+  const [activeTab, setActiveTab] = useState<'VIP_COCKPIT' | 'TERMINAL' | 'STATISTICS' | 'ECONOMIC_CALENDAR' | 'BROKER_CONNECT'>('VIP_COCKPIT');
   const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(false);
 
   // Broker and Trader State from Backend
-  const [brokerConn, setBrokerConn] = useState<any>({
-    accountNumber: '5881460',
-    brokerName: 'Spotware cTrader Open API',
-    platform: 'CTRADER',
-    serverHost: 'demo.ctraderapi.com:5035',
-    environment: 'DEMO',
-    isConnected: true,
-    latencyMs: 38,
-    liveBalance: 990.73,
-    liveEquity: 990.73,
-    maxDailyLossDollars: 250.00
+  const [brokerConn, setBrokerConn] = useState<any>(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const acc = urlParams.get('account') || localStorage.getItem('vip_account_id') || '5916063';
+    return {
+      accountNumber: acc,
+      brokerName: 'Spotware cTrader Open API',
+      platform: 'CTRADER',
+      serverHost: 'demo.ctraderapi.com:5035',
+      environment: 'DEMO',
+      isConnected: true,
+      latencyMs: 35,
+      liveBalance: 0,
+      liveEquity: 0,
+      maxDailyLossDollars: 250.00
+    };
   });
 
   const [traderProfile, setTraderProfile] = useState<any>({
-    fullName: 'QuantumAI Subscriber',
+    fullName: 'QuantumAI VIP Subscriber',
     accountType: 'INSTITUTIONAL AI DEMO',
     riskTolerance: 'BALANCED'
   });
@@ -118,9 +123,12 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   const fetchDashboardState = async () => {
     setIsLoadingTrades(true);
     try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const activeAcc = urlParams.get('account') || localStorage.getItem('vip_account_id') || brokerConn.accountNumber || '5916063';
+
       const [autoRes, brokerRes, profileRes, obsTradesRes, ecoRes, ksRes] = await Promise.all([
-        fetch('/api/autotrader/state').catch(() => null),
-        fetch('/api/broker/status').catch(() => null),
+        fetch(`/api/autotrader/state?accountId=${activeAcc}`).catch(() => null),
+        fetch(`/api/broker/status?accountId=${activeAcc}`).catch(() => null),
         fetch('/api/trader/profile').catch(() => null),
         fetch('/api/forex/learning/observatory/observations').catch(() => null),
         fetch('/api/forex/economic-calendar').catch(() => null),
@@ -227,7 +235,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                   100% BROKER VERIFIED
                 </span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
-                  cTrader Open API #{brokerConn.accountNumber || '5881460'}
+                  cTrader Open API #{brokerConn.accountNumber || '5916063'}
                 </span>
               </div>
               <p className="text-xs text-slate-400 font-mono mt-0.5 flex items-center gap-2 flex-wrap">
@@ -253,7 +261,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                 Baki cTrader
               </span>
               <span className="text-sm sm:text-base font-black text-emerald-400">
-                ${Number(brokerConn.liveBalance || 990.73).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                ${Number(brokerConn.liveBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
 
@@ -263,25 +271,18 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                 Ekuiti Semasa
               </span>
               <span className="text-sm sm:text-base font-black text-cyan-300">
-                ${Number(brokerConn.liveEquity || brokerConn.liveBalance || 990.73).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                ${Number(brokerConn.liveEquity || brokerConn.liveBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
 
-            {/* Circuit Breaker Kill-Switch */}
-            <button
-              onClick={handleToggleKillSwitch}
-              className={`p-2.5 sm:px-3.5 sm:py-2 rounded-xl border font-bold flex items-center gap-1.5 transition cursor-pointer shadow-sm ${
-                killSwitchActive
-                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/60 ring-1 ring-rose-500/40 animate-pulse'
-                  : 'bg-slate-950/80 hover:bg-slate-850 text-slate-300 border-slate-800 hover:border-slate-700'
-              }`}
-              title="Brek Keselamatan: Klik untuk menyekat atau membenarkan pesanan AI"
-            >
-              <Power className={`w-3.5 h-3.5 ${killSwitchActive ? 'text-rose-400' : 'text-emerald-400'}`} />
-              <span className="text-[11px]">
-                {killSwitchActive ? 'CIRCUIT TRIPPED (BLOCKED)' : 'SAFETY GATE: ARMED'}
-              </span>
-            </button>
+            {/* Customer Protection Shield Badge */}
+            <div className="p-2.5 sm:px-3.5 sm:py-2 rounded-xl border border-emerald-500/40 bg-emerald-950/40 font-bold flex items-center gap-2 shadow-sm">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <div className="flex flex-col">
+                <span className="text-[9px] text-slate-400 uppercase font-bold">PERLINDUNGAN AI</span>
+                <span className="text-[11px] font-black text-emerald-300">100% SECURE NON-CUSTODIAL</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -291,6 +292,18 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
         <div className="mt-4 pt-3.5 border-t border-white/[0.06] flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-1.5 bg-slate-950/90 p-1 rounded-xl border border-white/[0.08] shadow-inner">
             <button
+              onClick={() => setActiveTab('VIP_COCKPIT')}
+              className={`px-4 py-2 rounded-lg text-xs font-black transition flex items-center gap-2 cursor-pointer ${
+                activeTab === 'VIP_COCKPIT'
+                  ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white shadow-lg shadow-emerald-950/50'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
+              <span>1. Portal VIP Saya (Personal Cockpit)</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('TERMINAL')}
               className={`px-4 py-2 rounded-lg text-xs font-black transition flex items-center gap-2 cursor-pointer ${
                 activeTab === 'TERMINAL'
@@ -299,7 +312,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
               }`}
             >
               <Zap className="w-3.5 h-3.5 text-cyan-300" />
-              <span>1. Terminal AI Live (Trading Desk)</span>
+              <span>2. Terminal Analisis AI</span>
             </button>
 
             <button
@@ -311,7 +324,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
               }`}
             >
               <History className="w-3.5 h-3.5 text-emerald-300" />
-              <span>2. Rekod &amp; Prestasi Disahkan (Track Record)</span>
+              <span>3. Rekod &amp; Prestasi Disahkan</span>
               {closedTrades.length > 0 && (
                 <span className="px-1.5 py-0.2 rounded-full text-[9px] font-mono font-black bg-emerald-400 text-slate-950">
                   {closedTrades.length}
@@ -328,7 +341,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
               }`}
             >
               <Calendar className="w-3.5 h-3.5 text-amber-300" />
-              <span>3. Kalendar Berita &amp; Makro (Live Risk)</span>
+              <span>4. Kalendar Berita &amp; Makro</span>
               {economicEvents.filter(e => e.impact === 'HIGH').length > 0 && (
                 <span className="px-1.5 py-0.2 rounded-full text-[9px] font-mono font-black bg-rose-500 text-white">
                   {economicEvents.filter(e => e.impact === 'HIGH').length}
@@ -345,7 +358,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                 }`}
               >
                 <Cpu className="w-3.5 h-3.5 text-purple-300" />
-                <span>4. Pautan Broker &amp; Profil</span>
+                <span>5. Pautan Broker &amp; Profil</span>
               </button>
             </div>
 
@@ -368,7 +381,17 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
         </div>
 
         {/* ========================================================================= */}
-        {/* 3. TAB 1: TERMINAL AI LIVE (FULL COMMAND CENTER WITH ZERO DUPLICATION)    */}
+        {/* 3. TAB 1: VIP SUBSCRIBER PERSONAL COCKPIT                                  */}
+        {/* ========================================================================= */}
+        {activeTab === 'VIP_COCKPIT' && (
+          <VipSubscriberCockpit
+            isMalay={isMalay}
+            onOpenBrokerConnect={onOpenBrokerModal}
+          />
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 2: TERMINAL AI LIVE (FULL COMMAND CENTER)                             */}
         {/* ========================================================================= */}
         {activeTab === 'TERMINAL' && (
           <DemoTraderCommandCenter

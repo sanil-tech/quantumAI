@@ -101,26 +101,33 @@ export const Header: React.FC<HeaderProps> = ({
     connected: boolean;
     accountNumber: string;
     environment: string;
-  }>({
-    balance: 990.73,
-    equity: 990.73,
-    connected: true,
-    accountNumber: '5881460',
-    environment: 'DEMO'
+  }>(() => {
+    const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+    const acc = urlParams.get('account') || (typeof localStorage !== 'undefined' ? localStorage.getItem('vip_account_id') : null) || '';
+    return {
+      balance: 0,
+      equity: 0,
+      connected: false,
+      accountNumber: acc,
+      environment: 'DEMO'
+    };
   });
 
   useEffect(() => {
     let isMounted = true;
     const fetchStatus = () => {
-      fetch('/api/broker/status')
+      const urlParams = new URLSearchParams(window.location.search);
+      const acc = urlParams.get('account') || localStorage.getItem('vip_account_id') || '';
+      const endpoint = acc ? `/api/broker/status?accountId=${acc}` : '/api/broker/status';
+      fetch(endpoint)
         .then(r => r.json())
         .then(d => {
           if (isMounted && d) {
             setBrokerInfo({
-              balance: Number(d.liveBalance ?? d.balance ?? 990.73),
-              equity: Number(d.liveEquity ?? d.equity ?? d.balance ?? 990.73),
+              balance: Number(d.liveBalance ?? d.balance ?? 0),
+              equity: Number(d.liveEquity ?? d.equity ?? d.balance ?? 0),
               connected: Boolean(d.connected ?? true),
-              accountNumber: String(d.accountNumber || '5881460'),
+              accountNumber: String(d.accountNumber || acc),
               environment: String(d.environment || 'DEMO')
             });
           }

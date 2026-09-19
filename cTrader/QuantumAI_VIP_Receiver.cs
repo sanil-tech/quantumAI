@@ -10,19 +10,13 @@ using cAlgo.API.Internals;
 namespace cAlgo.Robots
 {
     [Robot(TimeZone = TimeZones.UTC, AccessRights = AccessRights.FullAccess)]
-    public class QuantumAIVIPReceiver : Robot
+    public class QuantumAIVIPV30 : Robot
     {
-        [Parameter("Use Direct Server Bridge (Recommended)", Group = "Connection Mode", DefaultValue = true)]
-        public bool UseServerDirectBridge { get; set; }
-
         [Parameter("QuantumAI Server URL", Group = "Connection Mode", DefaultValue = "http://localhost:3000")]
         public string ServerUrl { get; set; }
 
-        [Parameter("Bot Token (Fallback)", Group = "Telegram Config", DefaultValue = "8916696582:AAH4I20Cy3oz94_-sdtSHCJ01e9M818W_uc")]
-        public string BotToken { get; set; }
-
-        [Parameter("VIP Channel ID (Fallback)", Group = "Telegram Config", DefaultValue = "-1004344482481")]
-        public string ChannelId { get; set; }
+        [Parameter("VIP Auth Token", Group = "VIP Licensing", DefaultValue = "")]
+        public string VipAuthToken { get; set; }
 
         [Parameter("Polling Interval (Sec)", Group = "Connection Mode", DefaultValue = 2, MinValue = 1, MaxValue = 10)]
         public int PollingIntervalSec { get; set; }
@@ -39,44 +33,49 @@ namespace cAlgo.Robots
         [Parameter("Max Spread (Pips)", Group = "Protection", DefaultValue = 3.5)]
         public double MaxSpreadPips { get; set; }
 
-        private long _lastUpdateId = 0;
+        private string _accountNumber = string.Empty;
         private long _lastSignalTimestamp = 0;
         private int _isPolling = 0;
+        private int _revalidationCounter = 0;
         private readonly HashSet<string> _processedSignalIds = new HashSet<string>();
+        private readonly object _syncLock = new object();
 
         protected override void OnStart()
         {
+            // Cache account number on main thread to avoid non-main thread API violations
+            _accountNumber = Account.Number.ToString();
+
             // Enable modern TLS security for WebClient
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
+            // Production Transport Security: Enforce HTTPS for non-local environments
+            if (!ServerUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase) &&
+                !ServerUrl.StartsWith("http://localhost", StringComparison.OrdinalIgnoreCase) &&
+                !ServerUrl.StartsWith("http://127.0.0.1", StringComparison.OrdinalIgnoreCase))
+            {
+                Print("⛔ [SECURITY VIOLATION]: Production connection must use HTTPS! Plain HTTP is disabled in production.");
+                Stop();
+                return;
+            }
+
             Print("=================================================");
-            Print("🏛️ [QUANTUM AI] VIP Copier Receiver Started");
-            Print($"👤 Checking Account License for cTrader Account: {Account.Number}...");
+            Print("🏛️ [QUANTUM AI] VIP Copier V3.0 — Institutional Bridge Started");
+            Print($"👤 Checking Account License for cTrader Account: {_accountNumber}...");
 
-            // 1. Verify VIP License Whitelist
-            if (UseServerDirectBridge)
+            // 1. Verify VIP License Whitelist & Cryptographic Token
+            bool isLicensed = VerifyVipLicense();
+            if (!isLicensed)
             {
-                bool isLicensed = VerifyVipLicense();
-                if (!isLicensed)
-                {
-                    Print("=================================================");
-                    Print($"⛔ [AKSES DITOLAK]: Akaun {Account.Number} TIDAK BERDAFTAR dalam langganan VIP Quantum AI!");
-                    Print($"💬 Sila daftarkan nombor akaun anda melalui Telegram: @MyQuantumAIBot (Taip: /register {Account.Number})");
-                    Print("=================================================");
-                    Stop();
-                    return;
-                }
+                Print("=================================================");
+                Print($"⛔ [AKSES DITOLAK]: Akaun {_accountNumber} TIDAK BERDAFTAR, token tidak sah, atau belum diaktifkan dalam langganan VIP Quantum AI!");
+                Print($"💬 Sila daftarkan nombor akaun anda melalui Telegram: @MyQuantumAIBot (Taip: /register {_accountNumber})");
+                Print("=================================================");
+                Stop();
+                return;
             }
 
-            if (UseServerDirectBridge)
-            {
-                Print($"⚡ Connection Mode: Direct Server Bridge ({ServerUrl})");
-                Print("🛡️ Status: 0ms Latency | Zero Telegram Conflict");
-            }
-            else
-            {
-                Print($"📡 Connection Mode: Telegram Channel Polling ({ChannelId})");
-            }
+            Print($"⚡ Connection Mode: Authorized Direct Server Bridge ({ServerUrl})");
+            Print("🛡️ Status: Direct Backend Bridge | Zero Third-Party Conflict");
             Print($"⚖️ Risk Protocol: Method 2 Split-Ticket (Lot: {TotalLotSize})");
             Print("=================================================");
 
@@ -91,12 +90,20 @@ namespace cAlgo.Robots
         {
             try
             {
-                string verifyUrl = $"{ServerUrl.TrimEnd('/')}/api/copier/verify?account={Account.Number}";
+                if (string.IsNullOrWhiteSpace(VipAuthToken))
+                {
+                    Print("⛔ [AKSES DITOLAK]: 'VIP Auth Token' kosong! Sila masukkan token kriptografik VIP anda.");
+                    return false;
+                }
+
+                string acc = string.IsNullOrEmpty(_accountNumber) ? Account.Number.ToString() : _accountNumber;
+                string verifyUrl = $"{ServerUrl.TrimEnd('/')}/api/copier/verify?account={acc}&token={Uri.EscapeDataString(VipAuthToken)}";
                 string response = string.Empty;
 
                 using (var wc = new WebClient())
                 {
                     wc.Headers[HttpRequestHeader.UserAgent] = "cTrader-QuantumAI-LicenseChecker";
+                    wc.Headers[HttpRequestHeader.Authorization] = $"Bearer {VipAuthToken}";
                     response = wc.DownloadString(verifyUrl);
                 }
 
@@ -104,7 +111,7 @@ namespace cAlgo.Robots
                 {
                     var daysMatch = Regex.Match(response, "\"remainingDays\":(\\d+)");
                     string days = daysMatch.Success ? daysMatch.Groups[1].Value : "30";
-                    Print($"✅ [VIP LICENSE CONFIRMED]: Akaun {Account.Number} Sah & Aktif! Baki langganan: {days} hari.");
+                    Print($"✅ [VIP LICENSE CONFIRMED]: Akaun {acc} Sah & Aktif! Baki langganan: {days} hari.");
                     return true;
                 }
 
@@ -124,6 +131,19 @@ namespace cAlgo.Robots
 
         protected override void OnTimer()
         {
+            // Periodic License Re-validation: every 150 poll cycles (~5 minutes at 2s)
+            Interlocked.Increment(ref _revalidationCounter);
+            if (_revalidationCounter >= 150)
+            {
+                _revalidationCounter = 0;
+                if (!VerifyVipLicense())
+                {
+                    Print("⛔ [AKSES DITOLAK]: Langganan VIP telah tamat tempoh atau digantung. cBot dihentikan serta-merta.");
+                    Stop();
+                    return;
+                }
+            }
+
             // Atomic thread-safe lock: guarantees only 1 request at a time
             if (Interlocked.CompareExchange(ref _isPolling, 1, 0) != 0) return;
 
@@ -131,16 +151,9 @@ namespace cAlgo.Robots
             {
                 try
                 {
-                    if (UseServerDirectBridge)
-                    {
-                        PollServerBridge();
-                    }
-                    else
-                    {
-                        PollTelegramUpdates();
-                    }
+                    PollServerBridge();
 
-                    // Check Break-Even across all open positions for all pairs
+                    // Check Break-Even on main thread
                     if (AutoBreakEvenOnTP1)
                     {
                         BeginInvokeOnMainThread(CheckAutoBreakEven);
@@ -148,14 +161,7 @@ namespace cAlgo.Robots
                 }
                 catch (WebException wex)
                 {
-                    if (wex.Message.Contains("409"))
-                    {
-                        Print("⚠️ [Telegram 409 Conflict]: Sesi lama sedang dilepaskan. Sila gunakan 'Direct Server Bridge' untuk kestabilan 100%.");
-                    }
-                    else
-                    {
-                        Print($"⚠️ [Connection Web Error]: {wex.Message}");
-                    }
+                    Print($"⚠️ [Connection Web Error]: {wex.Message}");
                 }
                 catch (Exception ex)
                 {
@@ -178,175 +184,125 @@ namespace cAlgo.Robots
 
         private void CheckAutoBreakEven()
         {
-            foreach (var pos in Positions)
+            try
             {
-                if (pos.Label.StartsWith("QAI_T2_"))
+                foreach (var pos in Positions)
                 {
-                    string tradeTag = pos.Label.Substring(7);
-                    
-                    // Check if Ticket 1 for this tag has been closed in profit
-                    var historyMatch = History.FindLast($"QAI_T1_{tradeTag}");
-                    if (historyMatch != null && historyMatch.GrossProfit > 0)
+                    if (pos.Label.StartsWith("QAI_T2_"))
                     {
-                        // Ticket 1 closed in profit, move Ticket 2 Stop Loss to Entry (Break-Even)
-                        if (pos.TradeType == TradeType.Buy && (pos.StopLoss == null || pos.StopLoss < pos.EntryPrice))
+                        string tradeTag = pos.Label.Substring(7);
+                        
+                        // Check if Ticket 1 for this tag has been closed in profit
+                        var historyMatch = History.FindLast($"QAI_T1_{tradeTag}");
+                        if (historyMatch != null && historyMatch.GrossProfit > 0)
                         {
-                            ModifyPosition(pos, pos.EntryPrice, pos.TakeProfit);
-                            Print($"🛡️ [AUTO BREAK-EVEN] Ticket 2 ({pos.SymbolName}) SL moved to Entry: {pos.EntryPrice}");
-                        }
-                        else if (pos.TradeType == TradeType.Sell && (pos.StopLoss == null || pos.StopLoss > pos.EntryPrice))
-                        {
-                            ModifyPosition(pos, pos.EntryPrice, pos.TakeProfit);
-                            Print($"🛡️ [AUTO BREAK-EVEN] Ticket 2 ({pos.SymbolName}) SL moved to Entry: {pos.EntryPrice}");
+                            // Ticket 1 closed in profit, move Ticket 2 Stop Loss to Entry (Break-Even)
+                            if (pos.TradeType == TradeType.Buy && (pos.StopLoss == null || pos.StopLoss < pos.EntryPrice))
+                            {
+                                ModifyPosition(pos, pos.EntryPrice, pos.TakeProfit);
+                                Print($"🛡️ [AUTO BREAK-EVEN] Ticket 2 ({pos.SymbolName}) SL moved to Entry: {pos.EntryPrice}");
+                            }
+                            else if (pos.TradeType == TradeType.Sell && (pos.StopLoss == null || pos.StopLoss > pos.EntryPrice))
+                            {
+                                ModifyPosition(pos, pos.EntryPrice, pos.TakeProfit);
+                                Print($"🛡️ [AUTO BREAK-EVEN] Ticket 2 ({pos.SymbolName}) SL moved to Entry: {pos.EntryPrice}");
+                            }
                         }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                Print($"⚠️ [Auto-BE Error]: {ex.Message}");
             }
         }
 
         private void PollServerBridge()
         {
-            string url = $"{ServerUrl.TrimEnd('/')}/api/copier/signal?since={_lastSignalTimestamp}";
-            string response = string.Empty;
-
-            using (var webClient = new WebClient())
-            {
-                webClient.Headers[HttpRequestHeader.UserAgent] = "cTrader-QuantumAI-Bridge";
-                response = webClient.DownloadString(url);
-            }
-
-            if (string.IsNullOrEmpty(response) || !response.Contains("\"hasSignal\":true")) return;
-
-            // Extract JSON fields using regex
-            var idMatch = Regex.Match(response, "\"id\":\"(.*?)\"");
-            var actionMatch = Regex.Match(response, "\"action\":\"(NEW_ORDER|CANCEL_ORDER)\"");
-            var pairMatch = Regex.Match(response, "\"pair\":\"([A-Za-z0-9_\\/]+)\"");
-            var dirMatch = Regex.Match(response, "\"direction\":\"(BUY|SELL)\"");
-            var entryMatch = Regex.Match(response, "\"entryPrice\":([0-9\\.]+)");
-            var slMatch = Regex.Match(response, "\"stopLoss\":([0-9\\.]+)");
-            var tp1Match = Regex.Match(response, "\"takeProfit1\":([0-9\\.]+)");
-            var tp2Match = Regex.Match(response, "\"takeProfit2\":([0-9\\.]+)");
-            var tsMatch = Regex.Match(response, "\"timestamp\":(\\d+)");
-
-            string signalId = idMatch.Success ? idMatch.Groups[1].Value : string.Empty;
-            if (!string.IsNullOrEmpty(signalId) && _processedSignalIds.Contains(signalId))
-            {
-                return;
-            }
-
-            if (tsMatch.Success)
-            {
-                long sigTs = long.Parse(tsMatch.Groups[1].Value);
-                _lastSignalTimestamp = sigTs;
-
-                // Signal Freshness Check: Skip signals older than 15 minutes to prevent replaying stale setups on startup
-                long nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                if ((nowMs - sigTs) > (15 * 60 * 1000))
-                {
-                    return;
-                }
-            }
-
-            if (!pairMatch.Success) return;
-            string pair = pairMatch.Groups[1].Value;
-
-            // Handle cancellation signal
-            if (actionMatch.Success && actionMatch.Groups[1].Value == "CANCEL_ORDER")
-            {
-                if (!string.IsNullOrEmpty(signalId)) _processedSignalIds.Add(signalId);
-                BeginInvokeOnMainThread(() => CancelSignalOrders(pair));
-                return;
-            }
-
-            if (!dirMatch.Success || !slMatch.Success || !tp1Match.Success) return;
-
-            if (!string.IsNullOrEmpty(signalId))
-            {
-                _processedSignalIds.Add(signalId);
-            }
-
-            TradeType tradeType = dirMatch.Groups[1].Value == "BUY" ? TradeType.Buy : TradeType.Sell;
-            double entryPrice = entryMatch.Success ? double.Parse(entryMatch.Groups[1].Value) : 0.0;
-            double stopLoss = double.Parse(slMatch.Groups[1].Value);
-            double takeProfit1 = double.Parse(tp1Match.Groups[1].Value);
-            double? takeProfit2 = tp2Match.Success ? (double?)double.Parse(tp2Match.Groups[1].Value) : null;
-
-            BeginInvokeOnMainThread(() => ExecuteSignalTrade(pair, tradeType, entryPrice, stopLoss, takeProfit1, takeProfit2));
-        }
-
-        private void PollTelegramUpdates()
-        {
-            string url = $"https://api.telegram.org/bot{BotToken}/getUpdates?offset={_lastUpdateId + 1}&limit=10&timeout=0";
-            string response = string.Empty;
-
-            using (var webClient = new WebClient())
-            {
-                webClient.Headers[HttpRequestHeader.UserAgent] = "cTrader-QuantumAI-Copier";
-                response = webClient.DownloadString(url);
-            }
-
-            if (string.IsNullOrEmpty(response) || !response.Contains("\"ok\":true")) return;
-
-            // Extract update_id
-            var updateIdMatches = Regex.Matches(response, "\"update_id\":(\\d+)");
-            foreach (Match m in updateIdMatches)
-            {
-                long uid = long.Parse(m.Groups[1].Value);
-                if (uid > _lastUpdateId) _lastUpdateId = uid;
-            }
-
-            // Extract channel posts
-            var postMatches = Regex.Matches(response, "\"channel_post\":\\{(.*?)\"text\":\"(.*?)\"", RegexOptions.Singleline);
-            foreach (Match match in postMatches)
-            {
-                string postMeta = match.Groups[1].Value;
-                string textRaw = match.Groups[2].Value;
-                string text = Regex.Unescape(textRaw);
-
-                if (!postMeta.Contains(ChannelId)) continue;
-
-                if (text.Contains("QUANTUM AI"))
-                {
-                    BeginInvokeOnMainThread(() => ProcessTelegramSignal(text));
-                }
-            }
-        }
-
-        private void ProcessTelegramSignal(string msg)
-        {
             try
             {
-                var pairMatch = Regex.Match(msg, @"([A-Z]{3})[ /]?([A-Z]{3})");
-                if (!pairMatch.Success) return;
-                string pair = $"{pairMatch.Groups[1].Value}/{pairMatch.Groups[2].Value}";
+                if (string.IsNullOrWhiteSpace(VipAuthToken)) return;
 
-                // Check if signal was cancelled
-                if (msg.Contains("SIGNAL CANCELLED") || msg.Contains("DIBATALKAN"))
+                string url = $"{ServerUrl.TrimEnd('/')}/api/copier/signal?account={_accountNumber}&token={Uri.EscapeDataString(VipAuthToken)}&since={_lastSignalTimestamp}";
+                string response = string.Empty;
+
+                using (var webClient = new WebClient())
                 {
-                    CancelSignalOrders(pair);
+                    webClient.Headers[HttpRequestHeader.UserAgent] = "cTrader-QuantumAI-Bridge";
+                    webClient.Headers[HttpRequestHeader.Authorization] = $"Bearer {VipAuthToken}";
+                    response = webClient.DownloadString(url);
+                }
+
+                if (string.IsNullOrEmpty(response) || !response.Contains("\"hasSignal\":true")) return;
+
+                // Extract JSON fields using regex
+                var idMatch = Regex.Match(response, "\"id\":\"(.*?)\"");
+                var actionMatch = Regex.Match(response, "\"action\":\"(NEW_ORDER|CANCEL_ORDER)\"");
+                var pairMatch = Regex.Match(response, "\"pair\":\"([A-Za-z0-9_\\/]+)\"");
+                var dirMatch = Regex.Match(response, "\"direction\":\"(BUY|SELL)\"");
+                var entryMatch = Regex.Match(response, "\"entryPrice\":([0-9\\.]+)");
+                var slMatch = Regex.Match(response, "\"stopLoss\":([0-9\\.]+)");
+                var tp1Match = Regex.Match(response, "\"takeProfit1\":([0-9\\.]+)");
+                var tp2Match = Regex.Match(response, "\"takeProfit2\":([0-9\\.]+)");
+                var tsMatch = Regex.Match(response, "\"timestamp\":(\\d+)");
+
+                string signalId = idMatch.Success ? idMatch.Groups[1].Value : string.Empty;
+                lock (_syncLock)
+                {
+                    if (!string.IsNullOrEmpty(signalId) && _processedSignalIds.Contains(signalId))
+                    {
+                        return;
+                    }
+                }
+
+                if (tsMatch.Success)
+                {
+                    long sigTs = long.Parse(tsMatch.Groups[1].Value);
+                    _lastSignalTimestamp = sigTs;
+
+                    // Signal Freshness Check: Accept valid setups within 2-hour Time-To-Live (TTL) window
+                    long nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                    if ((nowMs - sigTs) > (2 * 60 * 60 * 1000))
+                    {
+                        return;
+                    }
+                }
+
+                if (!pairMatch.Success) return;
+                string pair = pairMatch.Groups[1].Value;
+
+                // Handle cancellation signal
+                if (actionMatch.Success && actionMatch.Groups[1].Value == "CANCEL_ORDER")
+                {
+                    lock (_syncLock)
+                    {
+                        if (!string.IsNullOrEmpty(signalId)) _processedSignalIds.Add(signalId);
+                    }
+                    BeginInvokeOnMainThread(() => CancelSignalOrders(pair));
                     return;
                 }
 
-                if (!msg.Contains("BUY") && !msg.Contains("SELL")) return;
+                if (!dirMatch.Success || !slMatch.Success || !tp1Match.Success) return;
 
-                TradeType tradeType = msg.Contains("BUY") ? TradeType.Buy : TradeType.Sell;
-                var entryMatch = Regex.Match(msg, @"(?:Entry Price|Entry|Harga Entri|Planned Entry):\s*`?([0-9\.]+)`?", RegexOptions.IgnoreCase);
-                var slMatch = Regex.Match(msg, @"(?:Stop Loss|SL):\s*`?([0-9\.]+)`?", RegexOptions.IgnoreCase);
-                var tp1Match = Regex.Match(msg, @"(?:Take Profit 1|Take Profit|TP 1|TP):\s*`?([0-9\.]+)`?", RegexOptions.IgnoreCase);
-                var tp2Match = Regex.Match(msg, @"(?:Take Profit 2|Take Profit 2 \(Runner\)|TP 2):\s*`?([0-9\.]+)`?", RegexOptions.IgnoreCase);
+                lock (_syncLock)
+                {
+                    if (!string.IsNullOrEmpty(signalId))
+                    {
+                        _processedSignalIds.Add(signalId);
+                    }
+                }
 
-                if (!slMatch.Success || !tp1Match.Success) return;
-
+                TradeType tradeType = dirMatch.Groups[1].Value == "BUY" ? TradeType.Buy : TradeType.Sell;
                 double entryPrice = entryMatch.Success ? double.Parse(entryMatch.Groups[1].Value) : 0.0;
                 double stopLoss = double.Parse(slMatch.Groups[1].Value);
                 double takeProfit1 = double.Parse(tp1Match.Groups[1].Value);
                 double? takeProfit2 = tp2Match.Success ? (double?)double.Parse(tp2Match.Groups[1].Value) : null;
 
-                ExecuteSignalTrade(pair, tradeType, entryPrice, stopLoss, takeProfit1, takeProfit2);
+                BeginInvokeOnMainThread(() => ExecuteSignalTrade(pair, tradeType, entryPrice, stopLoss, takeProfit1, takeProfit2));
             }
             catch (Exception ex)
             {
-                Print($"❌ Error parsing Telegram signal: {ex.Message}");
+                Print($"⚠️ [PollServerBridge Error]: {ex.Message}");
             }
         }
 
@@ -499,28 +455,37 @@ namespace cAlgo.Robots
             var pos = args.Position;
             if (pos == null || string.IsNullOrEmpty(pos.Label) || !pos.Label.StartsWith("QAI_")) return;
 
+            // Extract all cTrader properties on main thread before queuing background worker
+            string label = pos.Label;
+            string symName = pos.SymbolName;
+            string tradeTypeStr = pos.TradeType.ToString();
+            double entryPrice = pos.EntryPrice;
+            double netProfit = pos.NetProfit;
+            double pips = pos.Pips;
+            var sym = Symbols.GetSymbol(pos.SymbolName);
+            double pipSize = sym != null ? sym.PipSize : 0.0001;
+            double closePrice = pos.TradeType == TradeType.Buy 
+                ? entryPrice + (pips * pipSize) 
+                : entryPrice - (pips * pipSize);
+            string accountNum = _accountNumber;
+            string srvUrl = ServerUrl;
+
             ThreadPool.QueueUserWorkItem(_ =>
             {
                 try
                 {
-                    var sym = Symbols.GetSymbol(pos.SymbolName);
-                    double pipSize = sym != null ? sym.PipSize : 0.0001;
-                    double closePrice = pos.TradeType == TradeType.Buy 
-                        ? pos.EntryPrice + (pos.Pips * pipSize) 
-                        : pos.EntryPrice - (pos.Pips * pipSize);
-
-                    string reportUrl = $"{ServerUrl.TrimEnd('/')}/api/copier/report-closed";
+                    string reportUrl = $"{srvUrl.TrimEnd('/')}/api/copier/report-closed";
                     string json = string.Format(
                         System.Globalization.CultureInfo.InvariantCulture,
                         "{{\"label\":\"{0}\",\"symbol\":\"{1}\",\"tradeType\":\"{2}\",\"entryPrice\":{3},\"closePrice\":{4},\"netProfit\":{5},\"pips\":{6},\"account\":{7}}}",
-                        pos.Label,
-                        pos.SymbolName,
-                        pos.TradeType.ToString(),
-                        pos.EntryPrice,
+                        label,
+                        symName,
+                        tradeTypeStr,
+                        entryPrice,
                         closePrice,
-                        pos.NetProfit,
-                        pos.Pips,
-                        Account.Number
+                        netProfit,
+                        pips,
+                        accountNum
                     );
 
                     using (var wc = new WebClient())
@@ -530,7 +495,7 @@ namespace cAlgo.Robots
                         wc.UploadString(reportUrl, "POST", json);
                     }
 
-                    Print($"📢 [TRADE CLOSED BROADCASTED]: {pos.Label} {pos.SymbolName} Net: €{pos.NetProfit:F2} ({pos.Pips:F1} pips) dikongsi ke Telegram.");
+                    Print($"📢 [TRADE CLOSED BROADCASTED]: {label} {symName} Net: €{netProfit:F2} ({pips:F1} pips) dikongsi ke Telegram.");
                 }
                 catch (Exception ex)
                 {

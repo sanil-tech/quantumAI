@@ -1,4 +1,13 @@
 import "dotenv/config";
+
+// Global process error resilience guards to prevent server crash/restart loops
+process.on('uncaughtException', (err: any) => {
+  console.error('[SERVER RESILIENCE] Uncaught Exception caught safely:', err?.message || err);
+});
+process.on('unhandledRejection', (reason: any) => {
+  console.error('[SERVER RESILIENCE] Unhandled Promise Rejection caught safely:', reason?.message || reason);
+});
+
 import { demoAutonomousTradingService } from "./src/server/services/demoAutonomousTradingService";
 import { SignalIntelligenceService } from "./apps/decision-agent/src/services/signalIntelligenceService";
 import { StrategyEngineService, StrategyDefinition, TechnicalFeatures, MarketCandle } from "./src/server/services/strategyEngineService";
@@ -29,7 +38,9 @@ import { adminRouter } from "./src/server/routes/admin";
 import { billingRouter } from "./src/server/routes/billing";
 import shadowTestRouter from "./src/server/routes/shadowTest";
 import { copierRouter } from "./src/server/routes/copier";
+import { subscriberRouter } from "./src/server/routes/subscriber";
 import { telegramRouter } from "./src/server/routes/telegram";
+import { authRouter } from "./src/server/routes/auth";
 import { backtestEngine } from "./apps/decision-agent/src/services/backtestEngine";
 import { aiDecisionEngine } from "./apps/decision-agent/src/services/aiDecisionEngine";
 import { learningService } from "./src/server/services/learningService";
@@ -52,7 +63,7 @@ const aiExecutor = new AutonomousTradeExecutor({
   enabled: true,
   pair: 'BTC/USD' as CurrencyPair,
   timeframe: 'M15' as any,
-  maxOpenTrades: 3,
+  maxOpenTrades: 5,
   riskPercent: 1.0,
   minConfidence: 70,
   accountId: 'DEFAULT'
@@ -82,13 +93,19 @@ async function startServer() {
   // Risk Governance, Broker Integration, Execution, Observability, Admin, and Billing Routers
   app.use("/api", riskRouter);
   app.use("/api", brokerRouter);
+  app.use("/auth", brokerRouter);
+  app.use("/oauth", brokerRouter);
   app.use("/api", executionApiRouter);
   app.use("/api", observabilityRouter);
   app.use("/api/admin", adminRouter);
   app.use("/api/billing", billingRouter);
   app.use("/api/shadow", shadowTestRouter);
   app.use("/api", copierRouter);
+  app.use("/api/subscriber", subscriberRouter);
+  app.use("/api", subscriberRouter);
   app.use("/api", telegramRouter);
+  // cTrader OAuth 2.0 Authentication Routes
+  app.use("/api", authRouter);
 
   // Direct top-level scanner status & trigger routes
   app.get("/api/autotrader/scanner/status", async (req, res) => {
@@ -149,6 +166,13 @@ async function startServer() {
     automatedTechnicalAuditService.startBackgroundAudit();
   }).catch(err => {
     console.warn("Could not start AutomatedTechnicalAuditService:", err.message);
+  });
+
+  // Start background automated customer trial/expiry reminder daemon (runs every 1 hour)
+  import("./src/server/services/vipSubscriptionService").then(({ vipSubscriptionService }) => {
+    vipSubscriptionService.startAutomatedReminderDaemon(3600000);
+  }).catch(err => {
+    console.warn("Could not start VipSubscriptionService reminder daemon:", err.message);
   });
 
   // Load persistent adaptive learning lessons from PostgreSQL database

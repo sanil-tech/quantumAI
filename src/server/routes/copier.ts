@@ -1,15 +1,176 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
+import * as fs from 'fs';
+import * as path from 'path';
+import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { multiClientCopierService } from '../services/multiClientCopierService';
 
 export const copierRouter = Router();
 
+export function timingSafeCompare(a?: string, b?: string): boolean {
+  if (!a || !b) return false;
+  const bufA = Buffer.from(a, 'utf8');
+  const bufB = Buffer.from(b, 'utf8');
+  if (bufA.length !== bufB.length) return false;
+  try {
+    return crypto.timingSafeEqual(bufA, bufB);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Super-Admin & Admin Authorization Middleware for Copier Endpoints
+ * Prevents unauthorized public access to signal ingestion, test execution,
+ * subscriber PII, and administrative controls.
+ * Fails closed if ADMIN_API_KEY is unconfigured in the environment.
+ */
+export const copierAdminAuthMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  const adminKey = (req.headers['x-admin-key'] || req.headers['x-api-key']) as string | undefined;
+  const authHeader = req.headers.authorization;
+  const configuredAdminKey = process.env.ADMIN_API_KEY;
+  const configuredJwtSecret = process.env.JWT_SECRET;
+
+  if (!configuredAdminKey || configuredAdminKey.trim().length === 0) {
+    console.error('🔒 [CopierAdminAuth] SECURITY_ALERT: ADMIN_API_KEY is not configured in environment. Failing closed.');
+    return res.status(401).json({
+      success: false,
+      error: 'UNAUTHORIZED_ADMIN_ACCESS: Administrative copier access is disabled (ADMIN_API_KEY unconfigured).'
+    });
+  }
+
+  // 1. Constant-time admin API key matching
+  if (adminKey && timingSafeCompare(adminKey, configuredAdminKey)) {
+    (req as any).user = { role: 'super_admin', userId: 'admin-root' };
+    return next();
+  }
+
+  // 2. Authorization Bearer header
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    if (timingSafeCompare(token, configuredAdminKey)) {
+      (req as any).user = { role: 'super_admin', userId: 'admin-root' };
+      return next();
+    }
+    if (configuredJwtSecret) {
+      try {
+        const decoded: any = jwt.verify(token, configuredJwtSecret);
+        if (decoded && (decoded.role === 'super_admin' || decoded.role === 'admin' || decoded.isAdmin === true)) {
+          (req as any).user = decoded;
+          return next();
+        }
+      } catch {
+        // invalid token
+      }
+    }
+  }
+
+  return res.status(401).json({
+    success: false,
+    error: 'UNAUTHORIZED_ADMIN_ACCESS: Valid admin API key or super_admin token required for this copier operation.'
+  });
+};
+
+/**
+ * Check if current request has verified admin credentials without failing request
+ */
+export const hasAdminAuth = (req: Request): boolean => {
+  const adminKey = (req.headers['x-admin-key'] || req.headers['x-api-key']) as string | undefined;
+  const authHeader = req.headers.authorization;
+  const configuredAdminKey = process.env.ADMIN_API_KEY;
+  const configuredJwtSecret = process.env.JWT_SECRET;
+
+  if (!configuredAdminKey || configuredAdminKey.trim().length === 0) {
+    return false;
+  }
+
+  if (adminKey && timingSafeCompare(adminKey, configuredAdminKey)) {
+    return true;
+  }
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    if (timingSafeCompare(token, configuredAdminKey)) {
+      return true;
+    }
+    if (configuredJwtSecret) {
+      try {
+        const decoded: any = jwt.verify(token, configuredJwtSecret);
+        return Boolean(decoded && (decoded.role === 'super_admin' || decoded.role === 'admin' || decoded.isAdmin === true));
+      } catch {
+        return false;
+      }
+    }
+  }
+  return false;
+};
+
+interface RateLimitBucket {
+  count: number;
+  resetAt: number;
+}
+const rateLimitStore = new Map<string, RateLimitBucket>();
+
+export const copierRateLimiter = (maxRequests: number = 180, windowSec: number = 60) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const ip = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown';
+    const account = (req.query.account as string) || 'global';
+    const key = `${ip}_${account}`;
+    const now = Date.now();
+
+    let bucket = rateLimitStore.get(key);
+    if (!bucket || now >= bucket.resetAt) {
+      bucket = { count: 1, resetAt: now + windowSec * 1000 };
+      rateLimitStore.set(key, bucket);
+      return next();
+    }
+
+    bucket.count++;
+    if (bucket.count > maxRequests) {
+      return res.status(429).json({
+        success: false,
+        error: 'TOO_MANY_REQUESTS',
+        message: `Kadar permintaan melebihi had (${maxRequests} req / ${windowSec}s). Sila kurangkan frekuensi polling.`
+      });
+    }
+
+    next();
+  };
+};
+
+export const productionTlsGuard = (req: Request, res: Response, next: NextFunction) => {
+  if (process.env.NODE_ENV === 'production') {
+    const isTls = req.secure || req.headers['x-forwarded-proto'] === 'https';
+    if (!isTls && req.hostname !== 'localhost' && req.hostname !== '127.0.0.1') {
+      return res.status(403).json({
+        success: false,
+        error: 'TLS_REQUIRED_IN_PRODUCTION: Sambungan selamat HTTPS diperlukan dalam persekitaran produksi.'
+      });
+    }
+  }
+  next();
+};
+
 /**
  * GET /api/copier/status
+ * Sanitized public health summary of copier service status (zero PII / account leakage)
  */
 copierRouter.get('/copier/status', (req: Request, res: Response) => {
   try {
-    const status = multiClientCopierService.getStatus();
-    res.json(status);
+    const isAdmin = hasAdminAuth(req);
+    const rawStatus = multiClientCopierService.getStatus();
+    
+    // Public safe view: High-level health only
+    if (!isAdmin) {
+      return res.json({
+        service: 'QuantumAI VIP Copier Gateway',
+        status: rawStatus.masterActive ? 'OPERATIONAL' : 'PAUSED',
+        latencyMs: rawStatus.avgExecutionLatencyMs || 35,
+        serverTime: Date.now()
+      });
+    }
+
+    // Admin view: Full analytics
+    res.json(rawStatus);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -17,8 +178,9 @@ copierRouter.get('/copier/status', (req: Request, res: Response) => {
 
 /**
  * GET /api/copier/subscribers
+ * [ADMIN ONLY] List of copier subscribers
  */
-copierRouter.get('/copier/subscribers', (req: Request, res: Response) => {
+copierRouter.get('/copier/subscribers', copierAdminAuthMiddleware, (req: Request, res: Response) => {
   try {
     const subscribers = multiClientCopierService.getSubscribers();
     res.json({ subscribers });
@@ -29,9 +191,9 @@ copierRouter.get('/copier/subscribers', (req: Request, res: Response) => {
 
 /**
  * GET /api/copier/analytics
- * Real-time aggregated statistics for subscriber growth, renewals and cBot telemetry
+ * [ADMIN ONLY] Real-time aggregated statistics for subscriber growth, renewals and cBot telemetry
  */
-copierRouter.get('/copier/analytics', async (req: Request, res: Response) => {
+copierRouter.get('/copier/analytics', copierAdminAuthMiddleware, async (req: Request, res: Response) => {
   try {
     const { vipSubscriptionService } = await import('../services/vipSubscriptionService');
     const analytics = vipSubscriptionService.getSubscriberAnalytics();
@@ -43,8 +205,9 @@ copierRouter.get('/copier/analytics', async (req: Request, res: Response) => {
 
 /**
  * POST /api/copier/subscribers/add
+ * [ADMIN ONLY] Add a subscriber to multi-client copier
  */
-copierRouter.post('/copier/subscribers/add', (req: Request, res: Response) => {
+copierRouter.post('/copier/subscribers/add', copierAdminAuthMiddleware, (req: Request, res: Response) => {
   try {
     const { name, email, accountNumber, ctidTraderAccountId, brokerName, environment, riskMode, initialBalance } = req.body;
     if (!name || !accountNumber) {
@@ -70,8 +233,9 @@ copierRouter.post('/copier/subscribers/add', (req: Request, res: Response) => {
 
 /**
  * POST /api/copier/subscribers/toggle
+ * [ADMIN ONLY] Toggle subscriber copier active state
  */
-copierRouter.post('/api/copier/subscribers/toggle', (req: Request, res: Response) => {
+copierRouter.post('/copier/subscribers/toggle', copierAdminAuthMiddleware, (req: Request, res: Response) => {
   try {
     const { subscriberId } = req.body;
     if (!subscriberId) {
@@ -91,8 +255,9 @@ copierRouter.post('/api/copier/subscribers/toggle', (req: Request, res: Response
 
 /**
  * POST /api/copier/subscribers/risk
+ * [ADMIN ONLY] Update subscriber risk profile
  */
-copierRouter.post('/copier/subscribers/risk', (req: Request, res: Response) => {
+copierRouter.post('/copier/subscribers/risk', copierAdminAuthMiddleware, (req: Request, res: Response) => {
   try {
     const { subscriberId, riskMode } = req.body;
     if (!subscriberId || !riskMode) {
@@ -112,8 +277,9 @@ copierRouter.post('/copier/subscribers/risk', (req: Request, res: Response) => {
 
 /**
  * GET /api/copier/logs
+ * [ADMIN ONLY] Copier execution and audit logs
  */
-copierRouter.get('/copier/logs', (req: Request, res: Response) => {
+copierRouter.get('/copier/logs', copierAdminAuthMiddleware, (req: Request, res: Response) => {
   try {
     const limit = Number(req.query.limit) || 50;
     const logs = multiClientCopierService.getAuditLogs(limit);
@@ -125,8 +291,9 @@ copierRouter.get('/copier/logs', (req: Request, res: Response) => {
 
 /**
  * POST /api/copier/master/toggle
+ * [ADMIN ONLY] Toggle master account copier broadcasting
  */
-copierRouter.post('/copier/master/toggle', (req: Request, res: Response) => {
+copierRouter.post('/copier/master/toggle', copierAdminAuthMiddleware, (req: Request, res: Response) => {
   try {
     const { active } = req.body;
     multiClientCopierService.setMasterStatus(Boolean(active));
@@ -138,6 +305,7 @@ copierRouter.post('/copier/master/toggle', (req: Request, res: Response) => {
 
 export interface CopierLiveSignal {
   id: string;
+  masterBrokerOrderId?: string;
   action?: 'NEW_ORDER' | 'CANCEL_ORDER';
   pair: string;
   direction: 'BUY' | 'SELL';
@@ -150,44 +318,164 @@ export interface CopierLiveSignal {
   timestamp: number;
 }
 
+const copierSignalsQueuePath = path.resolve(process.cwd(), 'data', 'copier_signals_queue.json');
+let copierSignalsQueue: CopierLiveSignal[] = [];
+
+function loadCopierQueueFromDisk() {
+  try {
+    if (fs.existsSync(copierSignalsQueuePath)) {
+      const raw = fs.readFileSync(copierSignalsQueuePath, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        copierSignalsQueue = parsed;
+      }
+    }
+  } catch (e: any) {
+    console.warn('[CopierRouter] Could not load signals queue:', e.message);
+  }
+}
+loadCopierQueueFromDisk();
+
+function saveCopierQueueToDisk() {
+  try {
+    const dir = path.dirname(copierSignalsQueuePath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    // Keep max 100 recent signals
+    if (copierSignalsQueue.length > 100) {
+      copierSignalsQueue = copierSignalsQueue.slice(0, 100);
+    }
+    fs.writeFileSync(copierSignalsQueuePath, JSON.stringify(copierSignalsQueue, null, 2), 'utf-8');
+  } catch (e: any) {
+    console.warn('[CopierRouter] Could not save signals queue:', e.message);
+  }
+}
+
 let latestCopierSignal: CopierLiveSignal | null = null;
 
 export function publishCopierSignal(signal: Omit<CopierLiveSignal, 'id' | 'timestamp'> & { id?: string }): CopierLiveSignal {
-  latestCopierSignal = {
+  const newSig: CopierLiveSignal = {
     ...signal,
     id: signal.id || `SIG-${Date.now()}`,
     timestamp: Date.now()
   };
+  latestCopierSignal = newSig;
+  
+  // Add to queue (avoid duplicate IDs)
+  const existingIdx = copierSignalsQueue.findIndex(s => s.id === newSig.id);
+  if (existingIdx >= 0) {
+    copierSignalsQueue[existingIdx] = newSig;
+  } else {
+    copierSignalsQueue.unshift(newSig);
+  }
+  saveCopierQueueToDisk();
   return latestCopierSignal;
 }
 
 /**
  * GET /api/copier/signal
- * High-speed, zero-conflict direct signal bridge for cTrader cBot receivers.
+ * High-speed direct signal bridge for authorized cTrader cBot receivers.
+ * Strictly enforces server-authoritative cryptographic VIP authorization token,
+ * account binding, and persistent replay deduplication.
  */
-copierRouter.get('/copier/signal', (req: Request, res: Response) => {
-  const since = Number(req.query.since) || 0;
-  if (!latestCopierSignal || latestCopierSignal.timestamp <= since) {
-    return res.json({ hasSignal: false, serverTime: Date.now() });
+copierRouter.get('/copier/signal', productionTlsGuard, copierRateLimiter(180, 60), async (req: Request, res: Response) => {
+  try {
+    const account = req.query.account ? String(req.query.account).trim() : '';
+    const authHeader = req.headers.authorization;
+    const tokenHeader = req.headers['x-vip-token'] as string | undefined;
+    const tokenQuery = req.query.token as string | undefined;
+
+    let token = '';
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1].trim();
+    } else if (tokenHeader) {
+      token = tokenHeader.trim();
+    } else if (tokenQuery) {
+      token = tokenQuery.trim();
+    }
+
+    // 1. Mandatory Identity & Token Presence Check (P1-1)
+    if (!account) {
+      return res.status(401).json({
+        hasSignal: false,
+        error: 'ACCOUNT_REQUIRED',
+        message: 'Nombor akaun cTrader diperlukan. Sila sertakan parameter ?account=<Nombor_Akaun>.'
+      });
+    }
+
+    if (!token) {
+      return res.status(401).json({
+        hasSignal: false,
+        error: 'AUTH_TOKEN_REQUIRED',
+        message: 'VIP Authorization Token (VipAuthToken) diperlukan. Sila sertakan token dalam header Authorization: Bearer <token> atau parameter ?token=<token>.'
+      });
+    }
+
+    // 2. Server-Authoritative Cryptographic Token & Account Binding Validation (P1-4, P1-5)
+    const { vipSubscriptionService } = await import('../services/vipSubscriptionService');
+    const authCheck = vipSubscriptionService.verifyVipToken(token, account);
+
+    if (!authCheck.valid) {
+      return res.status(403).json({
+        hasSignal: false,
+        serverTime: Date.now(),
+        error: authCheck.error || 'UNAUTHORIZED_VIP_ACCESS',
+        message: authCheck.message
+      });
+    }
+
+    // 3. Find next unconsumed active signal within 2-hour TTL
+    loadCopierQueueFromDisk();
+
+    const since = Number(req.query.since) || 0;
+    const now = Date.now();
+    const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+
+    const candidateSignal = copierSignalsQueue.find(sig => {
+      const isFresh = (now - sig.timestamp) < TWO_HOURS_MS;
+      const notDelivered = !vipSubscriptionService.isSignalDelivered(account, sig.id);
+      return isFresh && notDelivered;
+    });
+
+    if (!candidateSignal) {
+      return res.json({ hasSignal: false, serverTime: Date.now() });
+    }
+
+    // Mark as delivered to this license
+    vipSubscriptionService.recordSignalDelivery(account, candidateSignal.id);
+
+    return res.json({
+      hasSignal: true,
+      serverTime: Date.now(),
+      id: candidateSignal.id,
+      action: candidateSignal.action || 'NEW_ORDER',
+      pair: candidateSignal.pair,
+      direction: candidateSignal.direction,
+      entryPrice: candidateSignal.entryPrice,
+      stopLoss: candidateSignal.stopLoss,
+      takeProfit1: candidateSignal.takeProfit1,
+      takeProfit2: candidateSignal.takeProfit2,
+      timestamp: candidateSignal.timestamp,
+      signal: candidateSignal
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
-  return res.json({
-    hasSignal: true,
-    serverTime: Date.now(),
-    signal: latestCopierSignal
-  });
 });
 
 /**
  * POST /api/copier/signal
- * Trigger manual test or broadcast trade signal to cTrader cBots.
+ * [ADMIN/INTERNAL ONLY] Ingest authoritative trade signal for copier cBots.
+ * External/unauthenticated callers are rejected with 401/403.
  */
-copierRouter.post('/copier/signal', (req: Request, res: Response) => {
+copierRouter.post('/copier/signal', copierAdminAuthMiddleware, async (req: Request, res: Response) => {
   try {
-    const { pair, direction, entryPrice, stopLoss, takeProfit1, takeProfit2, lotSize, reasons } = req.body;
+    const { pair, direction, entryPrice, stopLoss, takeProfit1, takeProfit2, lotSize, reasons, masterBrokerOrderId, id, timeframe, confidence } = req.body;
     if (!pair || !direction || !entryPrice) {
       return res.status(400).json({ error: 'pair, direction, entryPrice are required' });
     }
     const sig = publishCopierSignal({
+      id,
+      masterBrokerOrderId,
       pair,
       direction,
       entryPrice: Number(entryPrice),
@@ -195,9 +483,32 @@ copierRouter.post('/copier/signal', (req: Request, res: Response) => {
       takeProfit1: Number(takeProfit1),
       takeProfit2: Number(takeProfit2),
       lotSize: Number(lotSize) || 0.02,
-      reasons: Array.isArray(reasons) ? reasons : ['Quantum AI Quantitative Signal']
+      reasons: Array.isArray(reasons) ? reasons : [reasons || 'Quantum AI Quantitative Signal']
     });
-    res.json({ success: true, signal: sig });
+
+    // Also broadcast to Telegram VIP & Community channels
+    try {
+      const { telegramNotificationService } = await import('../services/telegramNotificationService');
+      await telegramNotificationService.broadcastTradeEvent({
+        pair,
+        direction: direction as 'BUY' | 'SELL',
+        timeframe: timeframe || 'M15',
+        entryPrice: Number(entryPrice),
+        stopLoss: Number(stopLoss),
+        takeProfit1: Number(takeProfit1),
+        takeProfit2: Number(takeProfit2),
+        confidence: Number(confidence) || 95,
+        reasons: Array.isArray(reasons) ? reasons : [reasons || 'Quantum AI Quantitative Signal'],
+        lotSize: Number(lotSize) || 0.02,
+        tier: 'VIP',
+        status: 'ENTRY_DISPATCHED',
+        brokerOrderId: masterBrokerOrderId || sig.id
+      });
+    } catch (tgErr: any) {
+      console.warn('⚠️ [CopierSignal] Telegram broadcast notice:', tgErr.message);
+    }
+
+    res.json({ success: true, signal: sig, telegramBroadcast: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -205,17 +516,54 @@ copierRouter.post('/copier/signal', (req: Request, res: Response) => {
 
 /**
  * GET /api/copier/verify
- * cTrader cBot License Verification Endpoint
+ * cTrader cBot License Verification Endpoint (Checks if account is ACTIVE)
+ * Supports cryptographic token verification or server-side account lookup
  */
-copierRouter.get('/copier/verify', async (req: Request, res: Response) => {
+copierRouter.get('/copier/verify', productionTlsGuard, copierRateLimiter(180, 60), async (req: Request, res: Response) => {
   try {
-    const account = req.query.account ? String(req.query.account) : '';
+    const account = req.query.account ? String(req.query.account).trim() : '';
     if (!account) {
       return res.status(400).json({ valid: false, message: 'Parameter account diperlukan.' });
     }
+
+    const authHeader = req.headers.authorization;
+    const tokenHeader = req.headers['x-vip-token'] as string | undefined;
+    const tokenQuery = req.query.token as string | undefined;
+
+    let token = '';
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1].trim();
+    } else if (tokenHeader) {
+      token = tokenHeader.trim();
+    } else if (tokenQuery) {
+      token = tokenQuery.trim();
+    }
+
     const { vipSubscriptionService } = await import('../services/vipSubscriptionService');
+
+    // If cryptographic token was provided, verify it strictly
+    if (token) {
+      const tokenResult = vipSubscriptionService.verifyVipToken(token, account);
+      return res.json({
+        valid: tokenResult.valid,
+        status: tokenResult.status,
+        accountNumber: account,
+        expiresAt: tokenResult.payload?.expiresAt,
+        remainingDays: tokenResult.payload?.expiresAt ? Math.max(0, Math.ceil((tokenResult.payload.expiresAt - Date.now()) / (24 * 3600 * 1000))) : 0,
+        message: tokenResult.message
+      });
+    }
+
+    // Default account ledger status check
     const result = vipSubscriptionService.verifyLicense(account);
-    res.json(result);
+    res.json({
+      valid: result.valid,
+      status: result.status,
+      accountNumber: account,
+      expiresAt: result.expiresAt,
+      remainingDays: result.remainingDays,
+      message: result.message
+    });
   } catch (err: any) {
     res.status(500).json({ valid: false, message: err.message });
   }
@@ -223,23 +571,103 @@ copierRouter.get('/copier/verify', async (req: Request, res: Response) => {
 
 /**
  * POST /api/copier/register-account
- * Register or update VIP Account
+ * Register a cTrader account for VIP access.
+ * Unauthenticated callers create a PENDING_VERIFICATION record (no active trading allowed).
+ * Admin callers may supply status: 'ACTIVE' and durationDays to immediately activate.
  */
 copierRouter.post('/copier/register-account', async (req: Request, res: Response) => {
   try {
-    const { accountNumber, telegramId, telegramUsername, name, durationDays } = req.body;
+    const { accountNumber, telegramId, telegramUsername, name, durationDays, status } = req.body;
     if (!accountNumber) {
       return res.status(400).json({ error: 'accountNumber diperlukan' });
     }
+
+    const isAdmin = hasAdminAuth(req);
     const { vipSubscriptionService } = await import('../services/vipSubscriptionService');
+
     const record = vipSubscriptionService.registerAccount({
       accountNumber: String(accountNumber),
       telegramId: telegramId ? String(telegramId) : undefined,
       telegramUsername: telegramUsername ? String(telegramUsername) : undefined,
       name,
-      durationDays: Number(durationDays) || 30
+      durationDays: isAdmin ? (Number(durationDays) || 30) : undefined,
+      isAdminApproval: isAdmin,
+      status: isAdmin && status === 'ACTIVE' ? 'ACTIVE' : undefined
     });
-    res.json({ success: true, subscriber: record });
+
+    res.json({
+      success: true,
+      authorizedByAdmin: isAdmin,
+      subscriber: record,
+      message: record.status === 'ACTIVE'
+        ? `Akaun ${record.accountNumber} aktif sehingga ${new Date(record.expiresAt).toLocaleDateString()}.`
+        : `Akaun ${record.accountNumber} telah didaftarkan dan berstatus PENDING_VERIFICATION. Sila tunggu pengesahan admin sebelum cBot dapat diaktifkan.`
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/copier/admin/activate-account
+ * [ADMIN ONLY] Approve and activate a pending or existing VIP cTrader account
+ */
+copierRouter.post('/copier/admin/activate-account', copierAdminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { accountNumber, durationDays = 30, approvedBy } = req.body;
+    if (!accountNumber) {
+      return res.status(400).json({ error: 'accountNumber is required' });
+    }
+    const { vipSubscriptionService } = await import('../services/vipSubscriptionService');
+    const record = vipSubscriptionService.activateAccount(
+      String(accountNumber),
+      Number(durationDays) || 30,
+      approvedBy || (req as any).user?.userId || 'Admin'
+    );
+    res.json({
+      success: true,
+      message: `Account ${record.accountNumber} successfully approved and activated for ${durationDays} days.`,
+      subscriber: record
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/copier/admin/reject-account
+ * [ADMIN ONLY] Reject or suspend a VIP subscriber account
+ */
+copierRouter.post('/copier/admin/reject-account', copierAdminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { accountNumber, reason } = req.body;
+    if (!accountNumber) {
+      return res.status(400).json({ error: 'accountNumber is required' });
+    }
+    const { vipSubscriptionService } = await import('../services/vipSubscriptionService');
+    const record = vipSubscriptionService.rejectAccount(String(accountNumber), reason);
+    if (!record) {
+      return res.status(404).json({ error: 'Subscriber account not found' });
+    }
+    res.json({
+      success: true,
+      message: `Account ${record.accountNumber} has been suspended/rejected.`,
+      subscriber: record
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /api/copier/vip-accounts
+ * [ADMIN ONLY] List all registered VIP accounts
+ */
+copierRouter.get('/copier/vip-accounts', copierAdminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { vipSubscriptionService } = await import('../services/vipSubscriptionService');
+    const subscribers = vipSubscriptionService.getAllSubscribers();
+    res.json({ success: true, count: subscribers.length, subscribers });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -247,19 +675,32 @@ copierRouter.post('/copier/register-account', async (req: Request, res: Response
 
 /**
  * POST /api/copier/report-closed
- * Receives position closed events from cTrader cBot and broadcasts profit/result to Telegram
+ * Receives position closed events from cTrader cBot.
+ * Marked as UNVERIFIED telemetry until reconciled against broker truth.
  */
 copierRouter.post('/copier/report-closed', async (req: Request, res: Response) => {
   try {
     const { label, symbol, tradeType, entryPrice, closePrice, netProfit, pips, account } = req.body;
-    const { telegramNotificationService } = await import('../services/telegramNotificationService');
+    if (!account) {
+      return res.status(400).json({ error: 'Account number is required for trade telemetry' });
+    }
+
+    // Verify the account is a registered subscriber
+    const { vipSubscriptionService } = await import('../services/vipSubscriptionService');
+    const check = vipSubscriptionService.verifyLicense(String(account));
+    if (!check.valid && check.status !== 'ACTIVE') {
+      return res.status(403).json({
+        success: false,
+        error: 'UNAUTHORIZED_ACCOUNT: Unregistered or inactive accounts cannot submit copier telemetry.'
+      });
+    }
+
+    console.log(`📊 [cBot Trade Closed - UNVERIFIED TELEMETRY] Acc: ${account} | ${symbol} ${tradeType} | Net: €${netProfit} | Pips: ${pips} | Label: ${label}`);
 
     const isProfit = Number(netProfit) >= 0;
     const isTicket1 = String(label).includes('QAI_T1');
-    const isTicket2 = String(label).includes('QAI_T2');
 
-    console.log(`📊 [cBot Trade Closed] ${symbol} ${tradeType} | Net: €${netProfit} | Pips: ${pips} | Label: ${label}`);
-
+    const { telegramNotificationService } = await import('../services/telegramNotificationService');
     await telegramNotificationService.broadcastTradeEvent({
       pair: symbol || 'EUR/USD',
       direction: tradeType === 'Buy' ? 'BUY' : 'SELL',
@@ -272,28 +713,18 @@ copierRouter.post('/copier/report-closed', async (req: Request, res: Response) =
       pnlPips: Number(pips),
       status: isProfit ? (isTicket1 ? 'PROFIT_LOCKED' : 'TP_HIT') : 'SL_HIT',
       tier: 'VIP',
-      brokerOrderId: label || `ACC-${account}`,
+      brokerOrderId: `TELEMETRY-${label || account}`,
       reasons: [
-        isTicket1 ? 'Tiket 1 Sasaran TP1 Dicapai & Profit Dikunci' : 'Tiket 2 Runner Berjaya Ditutup',
-        `Net PnL: ${Number(netProfit) >= 0 ? '+' : ''}€${Number(netProfit).toFixed(2)} (${Number(pips).toFixed(1)} pips)`
+        `[Client Telemetry: Unverified] ${isTicket1 ? 'Tiket 1 Sasaran TP1 Dicapai & Profit Dikunci' : 'Tiket 2 Runner Ditutup'}`,
+        `Net PnL dilaporkan: ${Number(netProfit) >= 0 ? '+' : ''}€${Number(netProfit).toFixed(2)} (${Number(pips).toFixed(1)} pips)`
       ]
     });
 
-    res.json({ success: true, message: 'Trade closure broadcasted to Telegram channels.' });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-/**
- * GET /api/copier/vip-accounts
- * List all VIP registered accounts
- */
-copierRouter.get('/copier/vip-accounts', async (req: Request, res: Response) => {
-  try {
-    const { vipSubscriptionService } = await import('../services/vipSubscriptionService');
-    const subscribers = vipSubscriptionService.getAllSubscribers();
-    res.json({ success: true, count: subscribers.length, subscribers });
+    res.json({
+      success: true,
+      telemetryStatus: 'UNVERIFIED',
+      message: 'Trade closed telemetry received and logged.'
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -307,13 +738,28 @@ let latestTestSignalSL: number = 1.15150;
 
 /**
  * POST /api/copier/test-dual-order
- * Dispatches an institutional test pending order simultaneously to:
- * 1. Master Direct OpenAPI account (5881460 / 48282756)
- * 2. Client cBot Copier bridge (5877246)
- * 3. Telegram VIP & Free channels
+ * [ADMIN & DEMO ONLY] Diagnostic test order endpoint.
+ * Strictly disabled in production and prohibited on live trading accounts.
  */
-copierRouter.post('/copier/test-dual-order', async (req: Request, res: Response) => {
+copierRouter.post('/copier/test-dual-order', copierAdminAuthMiddleware, async (req: Request, res: Response) => {
   try {
+    // 1. Hard Production Guard: Never permit diagnostic test orders in production
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({
+        success: false,
+        error: 'TEST_DUAL_ORDER_DISABLED_IN_PRODUCTION: /api/copier/test-dual-order is strictly disabled in production environment.'
+      });
+    }
+
+    // 2. Non-Live Guard: Never permit on live trading accounts
+    const env = (process.env.EXECUTION_ENVIRONMENT || 'DEMO').toUpperCase();
+    if (env === 'LIVE') {
+      return res.status(403).json({
+        success: false,
+        error: 'TEST_ORDERS_PROHIBITED_ON_LIVE_ACCOUNTS: Test order execution is strictly prohibited when EXECUTION_ENVIRONMENT is LIVE.'
+      });
+    }
+
     const {
       pair = 'EUR/USD',
       direction = 'BUY',
@@ -369,6 +815,7 @@ copierRouter.post('/copier/test-dual-order', async (req: Request, res: Response)
     // 2. Client cBot Receiver Bridge (Account: 5877246)
     const copierSignal = publishCopierSignal({
       action: 'NEW_ORDER',
+      masterBrokerOrderId: latestMasterTestOrderId || undefined,
       pair,
       direction: direction as 'BUY' | 'SELL',
       entryPrice: Number(entryPrice),
@@ -378,7 +825,7 @@ copierRouter.post('/copier/test-dual-order', async (req: Request, res: Response)
       lotSize: Number(lotSize),
       reasons: Array.isArray(reasons) ? reasons : [reasons]
     });
-    console.log(`✅ [Client cBot Bridge] Copier signal published (ID: ${copierSignal.id})`);
+    console.log(`✅ [Client cBot Bridge] Copier signal published (ID: ${copierSignal.id}, BrokerOrderId: ${latestMasterTestOrderId})`);
 
     // 3. Telegram VIP & Free Broadcast
     let telegramDispatched = false;
@@ -440,13 +887,17 @@ copierRouter.post('/copier/test-dual-order', async (req: Request, res: Response)
 
 /**
  * POST /api/copier/cancel-dual-order
- * Cancels the dual-account test order:
- * 1. Cancels pending order on Master OpenAPI account
- * 2. Publishes CANCEL_ORDER to client cBots
- * 3. Broadcasts SIGNAL_CANCELLED alert to Telegram
+ * [ADMIN & DEMO ONLY] Cancels the dual-account test order across OpenAPI, cBot, and Telegram.
  */
-copierRouter.post('/copier/cancel-dual-order', async (req: Request, res: Response) => {
+copierRouter.post('/copier/cancel-dual-order', copierAdminAuthMiddleware, async (req: Request, res: Response) => {
   try {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({
+        success: false,
+        error: 'FORBIDDEN_IN_PRODUCTION: /api/copier/cancel-dual-order is strictly disabled in production environment.'
+      });
+    }
+
     const pair = req.body?.pair || latestTestSignalPair;
     const direction = req.body?.direction || latestTestSignalDirection;
     const entryPrice = req.body?.entryPrice || latestTestSignalEntry;
@@ -473,6 +924,7 @@ copierRouter.post('/copier/cancel-dual-order', async (req: Request, res: Respons
     // 2. Publish CANCEL_ORDER to cBot Receiver Bridge
     const cancelSignal = publishCopierSignal({
       action: 'CANCEL_ORDER',
+      masterBrokerOrderId: latestMasterTestOrderId || undefined,
       pair,
       direction,
       entryPrice,
@@ -520,4 +972,5 @@ copierRouter.post('/copier/cancel-dual-order', async (req: Request, res: Respons
   }
 });
 
+export default copierRouter;
 

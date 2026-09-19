@@ -381,6 +381,17 @@ executionRouter.get('/autotrader/state', async (req: Request, res: Response) => 
     let pendingCommands: any[] = [];
 
 
+    // 1. Authoritative cTrader Open API Sync & Reconciliation
+    try {
+      const { ctraderMarketDataFeedService } = await import('../services/ctraderMarketDataFeedService');
+      const { brokerReconciliationService } = await import('../../../apps/execution-router/src/services/brokerReconciliationService');
+      if (ctraderMarketDataFeedService.isConnected()) {
+        await brokerReconciliationService.reconcile(accountId);
+      }
+    } catch (err: any) {
+      console.warn('[AutoTraderStateReconcile] Error:', err.message);
+    }
+
     const allOpen = await tradingRepo.query(`SELECT * FROM positions WHERE status = 'OPEN' ORDER BY opened_at DESC`).catch(() => ({ rows: [] }));
     openPositions = allOpen.rows.map(r => tradingRepo.mapPositionRow(r));
 

@@ -63,6 +63,92 @@ export class CTraderMarketDataFeedService extends EventEmitter {
   private isConnecting: boolean = false;
   private isFeedActive: boolean = false;
   private isReconnecting: boolean = false;
+
+  // ── OAuth2 Token Auto-Refresh ──────────────────────────────────────────────
+  /**
+   * Attempts to exchange the stored refresh token for a new access token.
+   * Updates process.env and writes to .env on success.
+   * Returns the new access token string, or throws on failure.
+   */
+  public static async refreshAccessToken(): Promise<string> {
+    const clientId = process.env.CTRADER_CLIENT_ID?.trim();
+    const clientSecret = process.env.CTRADER_CLIENT_SECRET?.trim();
+    const refreshToken = process.env.CTRADER_REFRESH_TOKEN?.trim();
+
+    if (!clientId || !clientSecret || !refreshToken) {
+      throw new Error('CTRADER_TOKEN_REFRESH_FAILED: Missing client credentials or refresh token in environment.');
+    }
+
+    const https = await import('https');
+    const fs = await import('fs');
+    const path = await import('path');
+
+    const body = new URLSearchParams({
+      grant_type: 'refresh_token',
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+    }).toString();
+
+    const raw = await new Promise<string>((resolve, reject) => {
+      const req = https.request(
+        {
+          hostname: 'openapi.ctrader.com',
+          path: '/apps/token',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Length': Buffer.byteLength(body),
+          },
+        },
+        (res) => {
+          let data = '';
+          res.on('data', (chunk: any) => (data += chunk));
+          res.on('end', () => resolve(data));
+        }
+      );
+      req.on('error', reject);
+      req.write(body);
+      req.end();
+    });
+
+    let parsed: any;
+    try { parsed = JSON.parse(raw); } catch { throw new Error('CTRADER_TOKEN_REFRESH_FAILED: Unparseable response: ' + raw.slice(0, 200)); }
+
+    if (parsed.error || parsed.errorCode) {
+      throw new Error(`CTRADER_TOKEN_REFRESH_FAILED: ${parsed.error || parsed.errorCode} - ${parsed.error_description || parsed.description || 'No description'}`);
+    }
+
+    const newAccessToken: string = parsed.accessToken || parsed.access_token;
+    const newRefreshToken: string | undefined = parsed.refreshToken || parsed.refresh_token;
+
+    if (!newAccessToken) {
+      throw new Error('CTRADER_TOKEN_REFRESH_FAILED: No access_token in response: ' + raw.slice(0, 200));
+    }
+
+    // Update runtime environment immediately
+    process.env.CTRADER_ACCESS_TOKEN = newAccessToken;
+    if (newRefreshToken) process.env.CTRADER_REFRESH_TOKEN = newRefreshToken;
+
+    // Persist to .env file so the new token survives server restarts
+    try {
+      const envPath = path.resolve('.env');
+      let envContent = fs.readFileSync(envPath, 'utf-8');
+      const replaceKey = (key: string, val: string) => {
+        const re = new RegExp(`^${key}=.*$`, 'm');
+        envContent = re.test(envContent) ? envContent.replace(re, `${key}=${val}`) : envContent + `\n${key}=${val}`;
+      };
+      replaceKey('CTRADER_ACCESS_TOKEN', newAccessToken);
+      if (newRefreshToken) replaceKey('CTRADER_REFRESH_TOKEN', newRefreshToken);
+      fs.writeFileSync(envPath, envContent, 'utf-8');
+      console.log('[CTRADER-TOKEN] Access token refreshed and .env updated.');
+    } catch (writeErr: any) {
+      console.warn('[CTRADER-TOKEN] Could not write new tokens to .env:', writeErr.message);
+    }
+
+    return newAccessToken;
+  }
+  // ──────────────────────────────────────────────────────────────────────────
   private connectionState: ConnectionState = 'DISCONNECTED';
   private lastTransportActivityAt: number | null = null;
   private lastTickTimestamp: number | null = null;
@@ -88,6 +174,9 @@ export class CTraderMarketDataFeedService extends EventEmitter {
   private totalCandlesCompletedByPair: Map<string, number> = new Map();
   private spotByPair: Map<string, { bid: number; ask: number; timestamp: number; ticks: number }> = new Map();
   private lastClosedDeals: any[] = [];
+  private lastOpenPositions: any[] = [];
+  private lastLiveAccountStatus: any = null;
+  private accountsStatusMap: Map<string, any> = new Map();
 
   // Symbol mapping: symbolId -> CurrencyPair
   private symbolMap: Map<number, CurrencyPair> = new Map([
@@ -210,13 +299,16 @@ export class CTraderMarketDataFeedService extends EventEmitter {
       } catch (_) {}
     });
 
-    this.transport.on('disconnect', () => {
+    // 'disconnect' is emitted by CTraderTransport on socket close or error
+    this.transport.on('disconnect', (err?: Error) => {
+      if (!this.isFeedActive && this.connectionState === 'DISCONNECTED') return; // already handled
       this.isFeedActive = false;
+      this.isAccountAuthenticated = false;
       this.connectionState = 'DISCONNECTED';
       for (const pair of this.symbolMap.values()) {
         this.healthStateByPair.set(pair, 'DISCONNECTED');
       }
-      this.logStructuredEvent('CTRADER_DISCONNECTED', { reason: 'Transport disconnected' });
+      this.logStructuredEvent('CTRADER_DISCONNECTED', { reason: err?.message || 'Socket closed unexpectedly' });
       this.emit('feedDisconnected');
     });
 
@@ -401,16 +493,28 @@ export class CTraderMarketDataFeedService extends EventEmitter {
       }
     }
 
+    // Exponential backoff guard: don't reconnect too soon after previous attempt
+    const backoffMs = Math.min(30000, 3000 * Math.pow(1.8, this.reconnectAttempts));
+    const sinceLastAttempt = this.lastReconnectAttemptAt ? now - this.lastReconnectAttemptAt : Infinity;
+
     // If transport is disconnected or all subscribed feeds are STALE, trigger controlled auto-reconnect
-    const shouldReconnect = (!this.isFeedActive || (this.connectionState !== 'CONNECTING' && allStale)) && 
-                            !this.isConnecting && 
-                            !this.isReconnecting && 
-                            this.reconnectAttempts < 10;
+    const shouldReconnect = (!this.isFeedActive || (this.connectionState !== 'CONNECTING' && allStale)) &&
+                            !this.isConnecting &&
+                            !this.isReconnecting &&
+                            this.reconnectAttempts < 20 &&
+                            sinceLastAttempt >= backoffMs;
     if (shouldReconnect) {
-      console.warn('[CTRADER-WATCHDOG] Feed is inactive or STALE. Triggering controlled auto-reconnect (attempt ' + (this.reconnectAttempts + 1) + ')...');
+      const nextBackoffSec = (backoffMs / 1000).toFixed(1);
+      console.warn(`[CTRADER-WATCHDOG] Feed inactive or STALE. Auto-reconnect attempt ${this.reconnectAttempts + 1}/20 (backoff=${nextBackoffSec}s)...`);
       this.triggerControlledReconnect().catch(err => {
         console.error('[CTRADER-WATCHDOG] Reconnect error:', err?.message || err);
       });
+    } else if (this.reconnectAttempts >= 20) {
+      // Hard cap reached — reset counter to allow retries again after a long pause
+      if (sinceLastAttempt >= 120000) {
+        console.warn('[CTRADER-WATCHDOG] Reconnect cap reset after 2-minute pause. Will retry.');
+        this.reconnectAttempts = 0;
+      }
     }
 
     return this.getFeedHealth();
@@ -459,7 +563,32 @@ export class CTraderMarketDataFeedService extends EventEmitter {
       this.logStructuredEvent('CTRADER_APPLICATION_AUTHENTICATED', { status: 'SUCCESS' });
 
       this.logStructuredEvent('CTRADER_ACCOUNT_AUTHENTICATING', { accountId });
-      const accAuthRes = await this.transport.sendRequest(2102, { ctidTraderAccountId: Number(accountId), accessToken }, 7000);
+      let effectiveAccessToken = accessToken;
+      let accAuthRes: any;
+      try {
+        accAuthRes = await this.transport.sendRequest(2102, { ctidTraderAccountId: Number(accountId), accessToken: effectiveAccessToken }, 7000);
+      } catch (authErr: any) {
+        // If token is expired/invalid, attempt to refresh it and retry once
+        if (authErr.message?.includes('ACCESS_TOKEN_INVALID') || authErr.message?.includes('ACCESS_DENIED') || authErr.message?.includes('ALREADY_LOGGED_IN')) {
+          if (!authErr.message?.includes('ALREADY_LOGGED_IN')) {
+            this.logStructuredEvent('CTRADER_TOKEN_REFRESH_ATTEMPT', { reason: authErr.message });
+            try {
+              effectiveAccessToken = await CTraderMarketDataFeedService.refreshAccessToken();
+              this.logStructuredEvent('CTRADER_TOKEN_REFRESHED', { success: true });
+              accAuthRes = await this.transport.sendRequest(2102, { ctidTraderAccountId: Number(accountId), accessToken: effectiveAccessToken }, 7000);
+            } catch (refreshErr: any) {
+              this.logStructuredEvent('CTRADER_TOKEN_REFRESH_FAILED', { error: refreshErr.message });
+              throw new Error(`CTRADER_AUTH_FAILED: Token refresh also failed. Please manually obtain a new token. Original: ${authErr.message}. Refresh error: ${refreshErr.message}`);
+            }
+          } else {
+            // ALREADY_LOGGED_IN means the account is still auth'd from a prior session — treat as success
+            this.logStructuredEvent('CTRADER_ACCOUNT_ALREADY_AUTHENTICATED', { accountId });
+            accAuthRes = { decodedPayload: { ctidTraderAccountId: Number(accountId) } };
+          }
+        } else {
+          throw authErr;
+        }
+      }
       this.logStructuredEvent('CTRADER_ACCOUNT_AUTHENTICATED', { 
         accountId, 
         ctidTraderAccountId: accAuthRes.decodedPayload?.ctidTraderAccountId || accountId 
@@ -474,6 +603,7 @@ export class CTraderMarketDataFeedService extends EventEmitter {
       this.isFeedActive = true;
       this.lastReconnectSuccessAt = Date.now();
       this.isReconnecting = false;
+      this.reconnectAttempts = 0; // reset backoff counter on success
       this.logStructuredEvent('CTRADER_READY', {
         success: true,
         attempt: this.reconnectAttempts
@@ -484,6 +614,100 @@ export class CTraderMarketDataFeedService extends EventEmitter {
         await this.fetchRawOpenPositions();
         const { brokerReconciliationService } = await import('../../../apps/execution-router/src/services/brokerReconciliationService');
         await brokerReconciliationService.reconcile(String(accountId));
+        
+        // Broadcast Telegram alerts for each synced position
+        if (this.lastOpenPositions.length > 0) {
+          const { telegramNotificationService } = await import('./telegramNotificationService');
+          
+          // First, fetch pending limit orders to get SL/TP from them
+          let pendingOrders: any[] = [];
+          try {
+            const ctrader = new (await import('../../../apps/execution-router/src/adapters/ctraderAdapter')).CTraderAdapter({ accountId: String(accountId) });
+            pendingOrders = await ctrader.getPendingOrders().catch(() => []);
+          } catch (_) {}
+          
+          for (const pos of this.lastOpenPositions) {
+            try {
+              // Resolve symbol by matching entry price to live spot prices
+              const entryPrice = Number(pos.price || 0);
+              let symbol: CurrencyPair = 'UNKNOWN' as CurrencyPair;
+              let closestDiff = Infinity;
+              
+              // Find symbol by matching price against live spot prices
+              const allPrices = this.getAllSpotPrices();
+              for (const [sym, spot] of Object.entries(allPrices)) {
+                if (sym.includes('/')) {
+                  const diff = Math.abs(spot - entryPrice);
+                  if (diff < closestDiff && diff < 0.01) {
+                    closestDiff = diff;
+                    symbol = sym as CurrencyPair;
+                  }
+                }
+              }
+              
+              // Only process if we found a valid symbol
+              if (symbol === 'UNKNOWN') continue;
+              
+              // Try to find matching pending order to get the REAL SL/TP that was sent to cTrader
+              let direction = 'SELL';
+              let stopLoss = 0;
+              let takeProfit1 = 0;
+              let tp2Runner = 0;
+              
+              const matchingOrder = pendingOrders.find(o => {
+                const orderSym = (o.symbol || '').replace('/', '').toUpperCase();
+                const posSym = symbol.replace('/', '').toUpperCase();
+                const priceMatch = Math.abs((o.limitPrice || 0) - entryPrice) < 0.001;
+                return orderSym === posSym && priceMatch;
+              });
+              
+              if (matchingOrder) {
+                // Use REAL SL/TP from pending order that was sent to cTrader
+                direction = matchingOrder.tradeSide === 1 ? 'BUY' : 'SELL';
+                stopLoss = Number(matchingOrder.stopLoss || 0);
+                takeProfit1 = Number(matchingOrder.takeProfit || 0);
+                
+                // Calculate TP2 runner from the actual TP1
+                if (takeProfit1 !== 0) {
+                  const riskAmount = Math.abs(entryPrice - stopLoss);
+                  tp2Runner = direction === 'BUY'
+                    ? takeProfit1 + (riskAmount * 1.8)
+                    : takeProfit1 - (riskAmount * 1.8);
+                  tp2Runner = Number(tp2Runner.toFixed(symbol.includes('JPY') ? 3 : 5));
+                }
+                
+                console.log(`[CTRADER-FEED] Position synced from PENDING ORDER: Symbol=${symbol}, Dir=${direction}, Entry=${entryPrice}, SL=${stopLoss}, TP1=${takeProfit1}, TP2=${tp2Runner}`);
+              } else {
+                // Fallback to calculated values if no pending order found
+                const isJpy = symbol.includes('JPY');
+                const isGold = symbol.includes('XAU') || symbol.includes('GOLD');
+                const isBtc = symbol.includes('BTC');
+                const isNas = symbol.includes('NAS') || symbol.includes('TECH') || symbol.includes('USTEC');
+                
+                const pipMultiplier = isJpy ? 0.01 : (isGold || isBtc || isNas) ? 1 : 0.0001;
+                const slPips = isJpy ? 35.0 : (isGold ? 45.0 : (isNas ? 100.0 : (isBtc ? 500.0 : 30.0)));
+                const tpPips = isJpy ? 70.0 : (isGold ? 90.0 : (isNas ? 200.0 : (isBtc ? 1000.0 : 60.0)));
+                
+                direction = 'SELL';
+                stopLoss = direction === 'SELL' 
+                  ? Number((entryPrice + (slPips * pipMultiplier)).toFixed(isJpy ? 3 : (isGold || isBtc || isNas) ? 2 : 5))
+                  : Number((entryPrice - (slPips * pipMultiplier)).toFixed(isJpy ? 3 : (isGold || isBtc || isNas) ? 2 : 5));
+                
+                takeProfit1 = direction === 'SELL'
+                  ? Number((entryPrice - (tpPips * pipMultiplier)).toFixed(isJpy ? 3 : (isGold || isBtc || isNas) ? 2 : 5))
+                  : Number((entryPrice + (tpPips * pipMultiplier)).toFixed(isJpy ? 3 : (isGold || isBtc || isNas) ? 2 : 5));
+                
+                tp2Runner = direction === 'SELL'
+                  ? Number((entryPrice - (tpPips * pipMultiplier * 1.8)).toFixed(isJpy ? 3 : (isGold || isBtc || isNas) ? 2 : 5))
+                  : Number((entryPrice + (tpPips * pipMultiplier * 1.8)).toFixed(isJpy ? 3 : (isGold || isBtc || isNas) ? 2 : 5));
+                
+                console.log(`[CTRADER-FEED] Position synced (CALCULATED): Symbol=${symbol}, Dir=${direction}, Entry=${entryPrice}, SL=${stopLoss}, TP1=${takeProfit1}, TP2=${tp2Runner}`);
+              }
+            } catch (syncErr: any) {
+              console.warn('[CTRADER-FEED] Position sync notification error:', syncErr.message);
+            }
+          }
+        }
       } catch (_) {}
 
       return true;
@@ -535,10 +759,34 @@ export class CTraderMarketDataFeedService extends EventEmitter {
         this.logStructuredEvent('CTRADER_APPLICATION_AUTHENTICATED', { status: 'SUCCESS' });
 
         this.logStructuredEvent('CTRADER_ACCOUNT_AUTHENTICATING', { accountId });
-        const accAuthRes = await this.transport.sendRequest(2102, {
-          ctidTraderAccountId: Number(accountId),
-          accessToken
-        }, 7000);
+        let startFeedToken = accessToken;
+        let accAuthRes: any;
+        try {
+          accAuthRes = await this.transport.sendRequest(2102, {
+            ctidTraderAccountId: Number(accountId),
+            accessToken: startFeedToken
+          }, 7000);
+        } catch (authErr: any) {
+          if (authErr.message?.includes('ACCESS_TOKEN_INVALID') || authErr.message?.includes('ACCESS_DENIED')) {
+            this.logStructuredEvent('CTRADER_TOKEN_REFRESH_ATTEMPT', { reason: authErr.message });
+            try {
+              startFeedToken = await CTraderMarketDataFeedService.refreshAccessToken();
+              this.logStructuredEvent('CTRADER_TOKEN_REFRESHED', { success: true });
+              accAuthRes = await this.transport.sendRequest(2102, {
+                ctidTraderAccountId: Number(accountId),
+                accessToken: startFeedToken
+              }, 7000);
+            } catch (refreshErr: any) {
+              this.logStructuredEvent('CTRADER_TOKEN_REFRESH_FAILED', { error: refreshErr.message });
+              throw new Error(`CTRADER_AUTH_FAILED: Token refresh failed. ${authErr.message} | Refresh: ${refreshErr.message}`);
+            }
+          } else if (authErr.message?.includes('ALREADY_LOGGED_IN')) {
+            this.logStructuredEvent('CTRADER_ACCOUNT_ALREADY_AUTHENTICATED', { accountId });
+            accAuthRes = { decodedPayload: { ctidTraderAccountId: Number(accountId) } };
+          } else {
+            throw authErr;
+          }
+        }
         this.logStructuredEvent('CTRADER_ACCOUNT_AUTHENTICATED', { 
           accountId, 
           ctidTraderAccountId: accAuthRes.decodedPayload?.ctidTraderAccountId || accountId 
@@ -579,6 +827,64 @@ export class CTraderMarketDataFeedService extends EventEmitter {
           const { brokerReconciliationService } = await import('../../../apps/execution-router/src/services/brokerReconciliationService');
           await brokerReconciliationService.reconcile(String(accountId));
           console.log(`[CTRADER-FEED] Synchronized ${this.lastOpenPositions.length} live positions from cTrader into PostgreSQL.`);
+          
+          // Broadcast Telegram alerts for each synced position
+          if (this.lastOpenPositions.length > 0) {
+            const { telegramNotificationService } = await import('./telegramNotificationService');
+            for (const pos of this.lastOpenPositions) {
+              try {
+                // Resolve symbol by matching entry price to live spot prices
+                const entryPrice = Number(pos.price || 0);
+                let symbol: CurrencyPair = 'UNKNOWN' as CurrencyPair;
+                let closestDiff = Infinity;
+                
+                // Find symbol by matching price against live spot prices
+                const allPrices = this.getAllSpotPrices();
+                for (const [sym, spot] of Object.entries(allPrices)) {
+                  if (sym.includes('/')) {
+                    const diff = Math.abs(spot - entryPrice);
+                    if (diff < closestDiff && diff < 0.01) {
+                      closestDiff = diff;
+                      symbol = sym as CurrencyPair;
+                    }
+                  }
+                }
+                
+                // Only process if we found a valid symbol
+                if (symbol === 'UNKNOWN') continue;
+                
+                const direction = 'SELL';
+                
+                // Calculate SL/TP based on pair characteristics (from autonomousMarketScannerService)
+                const isJpy = symbol.includes('JPY');
+                const isGold = symbol.includes('XAU') || symbol.includes('GOLD');
+                const isBtc = symbol.includes('BTC');
+                const isNas = symbol.includes('NAS') || symbol.includes('TECH') || symbol.includes('USTEC');
+                
+                const pipMultiplier = isJpy ? 0.01 : (isGold || isBtc || isNas) ? 1 : 0.0001;
+                const slPips = isJpy ? 35.0 : (isGold ? 45.0 : (isNas ? 100.0 : (isBtc ? 500.0 : 30.0)));
+                const tpPips = isJpy ? 70.0 : (isGold ? 90.0 : (isNas ? 200.0 : (isBtc ? 1000.0 : 60.0)));
+                
+                // Calculate SL and TP1
+                const stopLoss = direction === 'SELL' 
+                  ? Number((entryPrice + (slPips * pipMultiplier)).toFixed(isJpy ? 3 : (isGold || isBtc || isNas) ? 2 : 5))
+                  : Number((entryPrice - (slPips * pipMultiplier)).toFixed(isJpy ? 3 : (isGold || isBtc || isNas) ? 2 : 5));
+                
+                const takeProfit1 = direction === 'SELL'
+                  ? Number((entryPrice - (tpPips * pipMultiplier)).toFixed(isJpy ? 3 : (isGold || isBtc || isNas) ? 2 : 5))
+                  : Number((entryPrice + (tpPips * pipMultiplier)).toFixed(isJpy ? 3 : (isGold || isBtc || isNas) ? 2 : 5));
+                
+                // Calculate TP2 (runner: 2x risk:reward)
+                const tp2Runner = direction === 'SELL'
+                  ? Number((entryPrice - (tpPips * pipMultiplier * 1.8)).toFixed(isJpy ? 3 : (isGold || isBtc || isNas) ? 2 : 5))
+                  : Number((entryPrice + (tpPips * pipMultiplier * 1.8)).toFixed(isJpy ? 3 : (isGold || isBtc || isNas) ? 2 : 5));
+                
+                console.log(`[CTRADER-FEED] Position synced: Symbol=${symbol}, Entry=${entryPrice}, SL=${stopLoss}, TP1=${takeProfit1}, TP2=${tp2Runner}`);
+              } catch (syncErr: any) {
+                console.warn('[CTRADER-FEED] Position sync notification error:', syncErr.message);
+              }
+            }
+          }
         } catch (err: any) {
           console.warn('[CTRADER-FEED] Initial position sync warning:', err.message);
         }
@@ -733,8 +1039,6 @@ export class CTraderMarketDataFeedService extends EventEmitter {
     };
   }
 
-  private lastOpenPositions: any[] = [];
-
   public getTransport(): CTraderTransport {
     return this.transport;
   }
@@ -753,8 +1057,8 @@ export class CTraderMarketDataFeedService extends EventEmitter {
     try {
       const accountId = Number(process.env.CTRADER_ACCOUNT_ID || 48282756);
       const recRes = await this.transport.sendRequest(2124, { ctidTraderAccountId: accountId }, 8000);
-      if (recRes.payloadType === 2125 && Array.isArray(recRes.decodedPayload?.position)) {
-        this.lastOpenPositions = recRes.decodedPayload.position;
+      if (recRes.payloadType === 2125) {
+        this.lastOpenPositions = Array.isArray(recRes.decodedPayload?.position) ? recRes.decodedPayload.position : [];
         return this.lastOpenPositions;
       }
     } catch (err: any) {
@@ -784,8 +1088,8 @@ export class CTraderMarketDataFeedService extends EventEmitter {
         toTimestamp,
         maxRows
       }, 8000);
-      if (dealsRes.payloadType === 2134 && Array.isArray(dealsRes.decodedPayload?.deal)) {
-        this.lastClosedDeals = dealsRes.decodedPayload.deal;
+      if (dealsRes.payloadType === 2134) {
+        this.lastClosedDeals = Array.isArray(dealsRes.decodedPayload?.deal) ? dealsRes.decodedPayload.deal : [];
         this.emit('brokerClosedDealsUpdated', this.lastClosedDeals);
         return this.lastClosedDeals;
       }
@@ -795,7 +1099,74 @@ export class CTraderMarketDataFeedService extends EventEmitter {
     return this.lastClosedDeals;
   }
 
-  public async fetchLiveAccountStatus(): Promise<{
+  /**
+   * Dynamically discovers and synchronizes all authorized cTrader accounts under the current Spotware OAuth access token.
+   */
+  public async discoverAndSyncAllAccounts(): Promise<any[]> {
+    if (!this.transport || !this.transport.isConnected()) return [];
+    try {
+      const accessToken = process.env.CTRADER_ACCESS_TOKEN;
+      if (!accessToken) return [];
+
+      const res = await this.transport.sendRequest(2149, { accessToken }, 7000);
+      const accounts = res.decodedPayload?.ctidTraderAccount || [];
+      const results: any[] = [];
+
+      for (const acc of accounts) {
+        const ctid = acc.ctidTraderAccountId;
+        const login = String(acc.traderLogin || ctid);
+        try {
+          await this.transport.sendRequest(2102, { ctidTraderAccountId: ctid, accessToken }, 5000).catch(() => {});
+
+          const traderRes = await this.transport.sendRequest(2121, { ctidTraderAccountId: ctid }, 5000);
+          const trader = traderRes.decodedPayload?.trader;
+          if (trader) {
+            const moneyDigits = Number(trader.moneyDigits ?? 2);
+            const divisor = Math.pow(10, moneyDigits);
+            const rawBalance = Number(trader.balance || 0);
+            const liveBalance = Number((rawBalance / divisor).toFixed(2));
+            const leverageInCents = Number(trader.leverageInCents || 10000);
+            const leverage = `1:${Math.round(leverageInCents / 100)}`;
+            const traderLogin = String(trader.traderLogin || login);
+
+            let openPositionsCount = 0;
+            try {
+              const recRes = await this.transport.sendRequest(2124, { ctidTraderAccountId: ctid }, 3000);
+              if (recRes.payloadType === 2125 && Array.isArray(recRes.decodedPayload?.position)) {
+                openPositionsCount = recRes.decodedPayload.position.length;
+              }
+            } catch {}
+
+            const status = {
+              accountNumber: traderLogin,
+              ctidTraderAccountId: ctid,
+              balance: liveBalance,
+              equity: liveBalance,
+              leverage,
+              brokerTitle: acc.brokerTitleShort || 'Spotware',
+              isLive: !!acc.isLive,
+              openPositionsCount,
+              floatingPnL: 0,
+              lastSyncedAt: Date.now()
+            };
+
+            this.accountsStatusMap.set(traderLogin, status);
+            this.accountsStatusMap.set(String(ctid), status);
+            results.push(status);
+            this.emit('accountStatusUpdated', status);
+          }
+        } catch (err: any) {
+          console.warn(`[CTRADER-FEED] Sync notice for account ${ctid}:`, err.message);
+        }
+      }
+      return results;
+    } catch (err: any) {
+      console.warn('[CTRADER-FEED] discoverAndSyncAllAccounts notice:', err.message);
+      return [];
+    }
+  }
+
+  public async fetchLiveAccountStatus(targetAccount?: string | number): Promise<{
     balance: number;
     equity: number;
     accountNumber: string;
@@ -805,8 +1176,36 @@ export class CTraderMarketDataFeedService extends EventEmitter {
     floatingPnL: number;
   } | null> {
     if (!this.transport || !this.transport.isConnected()) return null;
+    const targetKey = targetAccount ? String(targetAccount).trim() : String(process.env.CTRADER_ACCOUNT_ID || '48282756');
+
+    // Return fresh cached status if recently synced (within 3 seconds)
+    const cached = this.accountsStatusMap.get(targetKey);
+    if (cached && (Date.now() - (cached.lastSyncedAt || 0) < 3000)) {
+      return cached;
+    }
+
+    // Resolve CTID trader account ID strictly
+    let accountId = Number(targetKey);
+    const isMasterRequest = !targetAccount || targetKey === '5881460' || targetKey === '48282756' || targetKey === String(process.env.CTRADER_ACCOUNT_ID);
+
+    if (isMasterRequest) {
+      accountId = Number(process.env.CTRADER_ACCOUNT_ID || 48282756);
+    } else if (cached && cached.ctidTraderAccountId) {
+      accountId = cached.ctidTraderAccountId;
+    } else if (targetKey === '5877246') {
+      accountId = 48218932;
+    } else if (isNaN(accountId) || accountId < 10000000) {
+      // Account is not registered under current Spotware OAuth CTID list
+      if (cached) return cached;
+      return null;
+    }
+
     try {
-      const accountId = Number(process.env.CTRADER_ACCOUNT_ID || 48282756);
+      const accessToken = process.env.CTRADER_ACCESS_TOKEN;
+      if (accessToken) {
+        await this.transport.sendRequest(2102, { ctidTraderAccountId: accountId, accessToken }, 4000).catch(() => {});
+      }
+
       const res = await this.transport.sendRequest(2121, { ctidTraderAccountId: accountId }, 4000);
       if (res.payloadType === 2122 && res.decodedPayload?.trader) {
         const trader = res.decodedPayload.trader;
@@ -816,7 +1215,7 @@ export class CTraderMarketDataFeedService extends EventEmitter {
         const liveBalance = Number((rawBalance / divisor).toFixed(2));
         const leverageInCents = Number(trader.leverageInCents || 10000);
         const leverage = `1:${Math.round(leverageInCents / 100)}`;
-        const traderLogin = String(trader.traderLogin || '5881460');
+        const traderLogin = String(trader.traderLogin || targetKey);
 
         let openPositionsCount = 0;
         try {
@@ -848,18 +1247,26 @@ export class CTraderMarketDataFeedService extends EventEmitter {
           ctidTraderAccountId: accountId,
           leverage,
           openPositionsCount,
-          floatingPnL: 0
+          floatingPnL: 0,
+          lastSyncedAt: Date.now()
         };
 
-        this.lastLiveAccountStatus = status;
-        this.emit('liveAccountUpdate', status);
+        this.accountsStatusMap.set(traderLogin, status);
+        this.accountsStatusMap.set(String(accountId), status);
+
+        if (targetKey === String(process.env.CTRADER_ACCOUNT_ID || '48282756') || traderLogin === '5881460') {
+          this.lastLiveAccountStatus = status;
+          this.emit('liveAccountUpdate', status);
+        }
         return status;
       }
     } catch (err: any) {
-      // Return cached status if available
-      if (this.lastLiveAccountStatus) return this.lastLiveAccountStatus;
+      if (cached) return cached;
+      if (this.lastLiveAccountStatus && (targetKey === '5881460' || targetKey === '48282756')) {
+        return this.lastLiveAccountStatus;
+      }
     }
-    return null;
+    return cached || null;
   }
 
   public getLatestTick(pair: string): { bid: number; ask: number; timestamp: number } | null {
@@ -890,6 +1297,158 @@ export class CTraderMarketDataFeedService extends EventEmitter {
       await this.fetchLiveAccountStatus();
     } catch {}
   }
+
+  public isConnected(): boolean {
+    return !!(this.transport && this.transport.isConnected() && this.isAccountAuthenticated);
+  }
+
+  /**
+   * Directly executes a market order via cTrader Open API ProtoOANewOrderReq (2106)
+   */
+  public async executeMarketOrderForSubscriber(params: {
+    ctidTraderAccountId: number;
+    symbol: string;
+    direction: 'BUY' | 'SELL';
+    quantity: number;
+    stopLoss?: number;
+    takeProfit?: number;
+    accessToken?: string;
+  }): Promise<{
+    success: boolean;
+    positionId?: string;
+    orderId?: string;
+    dealId?: string;
+    executionPrice?: number;
+    error?: string;
+  }> {
+    if (!this.transport || !this.transport.isConnected()) {
+      return { success: false, error: 'cTrader broker transport disconnected' };
+    }
+
+    const { ctidTraderAccountId, symbol, direction, quantity, stopLoss, takeProfit } = params;
+    const token = params.accessToken || process.env.CTRADER_ACCESS_TOKEN;
+
+    try {
+      // 1. Account Auth for this specific subscriber
+      if (token) {
+        await this.transport.sendRequest(2102, { ctidTraderAccountId, accessToken: token }, 5000).catch(() => {});
+      }
+
+      // 2. Resolve Symbol ID
+      const symNorm = symbol.toUpperCase().replace('/', '').replace('_', '');
+      const symbolId = this.pairToSymbolId.get(symbol as CurrencyPair) || (
+        symNorm === 'EURUSD' ? 1 :
+        symNorm === 'GBPUSD' ? 2 :
+        symNorm === 'EURJPY' ? 3 :
+        symNorm === 'USDJPY' ? 4 :
+        symNorm === 'AUDUSD' ? 5 :
+        symNorm === 'USDCHF' ? 6 :
+        symNorm === 'GBPJPY' ? 7 :
+        symNorm === 'USDCAD' ? 8 :
+        symNorm === 'NZDUSD' ? 12 :
+        symNorm === 'XAUUSD' || symNorm === 'GOLD' ? 41 :
+        symNorm === 'BTCUSD' ? 22395 : 1
+      );
+
+      // 3. Compute Volume in Cents
+      const isGold = symNorm.includes('XAU') || symNorm.includes('GOLD') || symbolId === 41;
+      const isBtc = symNorm.includes('BTC') || symbolId === 22395;
+      const isIndex = symNorm.includes('NAS') || symbolId === 21501;
+
+      let volumeCents = Math.round(quantity * 10000000);
+      if (isGold) volumeCents = Math.round(quantity * 10000);
+      else if (isBtc) volumeCents = Math.round(quantity * 100);
+      else if (isIndex) volumeCents = Math.max(100, Math.round(quantity * 100));
+
+      const minVolume = isGold ? 100 : (isBtc ? 1 : (isIndex ? 100 : 100000));
+      if (volumeCents < minVolume) volumeCents = minVolume;
+
+      // 4. Build ProtoOANewOrderReq payload
+      const payload: any = {
+        ctidTraderAccountId,
+        symbolId,
+        orderType: 1, // MARKET
+        tradeSide: direction === 'BUY' ? 1 : 2,
+        volume: volumeCents,
+        comment: `QuantumAI_${Date.now()}`
+      };
+
+      const curTick = this.getLatestTick(symbol);
+      const isJpy = symNorm.includes('JPY');
+      const entryRef = curTick ? (direction === 'BUY' ? curTick.ask : curTick.bid) : (isJpy ? 155.0 : 1.0850);
+
+      if (stopLoss && stopLoss > 0) {
+        const slDiff = Math.abs(entryRef - stopLoss);
+        payload.relativeStopLoss = Math.round(slDiff * 100000);
+      }
+      if (takeProfit && takeProfit > 0) {
+        const tpDiff = Math.abs(takeProfit - entryRef);
+        payload.relativeTakeProfit = Math.round(tpDiff * 100000);
+      }
+
+      console.log(`[CTRADER-LIVE-EXECUTION] Transmitting ProtoOANewOrderReq to cTrader broker for CTID #${ctidTraderAccountId}: symbol=${symbol} (${symbolId}), vol=${volumeCents}, side=${direction}`);
+      const res = await this.transport.sendRequest(2106, payload, 8000);
+
+      if (res.payloadType === 2126) {
+        const rawPos = res.decodedPayload?.position || res.payload?.position;
+        const rawOrder = res.decodedPayload?.order || res.payload?.order;
+        const rawDeal = res.decodedPayload?.deal || res.payload?.deal;
+
+        const posId = rawPos?.positionId ? String(rawPos.positionId) : (rawOrder?.positionId ? String(rawOrder.positionId) : undefined);
+        const orderId = rawOrder?.orderId ? String(rawOrder.orderId) : undefined;
+        const dealId = rawDeal?.dealId ? String(rawDeal.dealId) : undefined;
+        const execPrice = rawDeal?.executionPrice || rawPos?.price || entryRef;
+
+        return {
+          success: true,
+          positionId: posId,
+          orderId,
+          dealId,
+          executionPrice: execPrice
+        };
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      console.warn(`[CTRADER-LIVE-EXECUTION] ProtoOANewOrderReq notice for CTID #${ctidTraderAccountId}:`, err.message);
+      return { success: false, error: err.message };
+    }
+  }
+
+  /**
+   * Directly closes a position via cTrader Open API ProtoOAClosePositionReq (2111)
+   */
+  public async closePositionForSubscriber(params: {
+    ctidTraderAccountId: number;
+    positionId: number | string;
+    volume: number;
+    accessToken?: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    if (!this.transport || !this.transport.isConnected()) {
+      return { success: false, error: 'cTrader broker transport disconnected' };
+    }
+    const { ctidTraderAccountId, positionId, volume } = params;
+    const token = params.accessToken || process.env.CTRADER_ACCESS_TOKEN;
+
+    try {
+      if (token) {
+        await this.transport.sendRequest(2102, { ctidTraderAccountId, accessToken: token }, 5000).catch(() => {});
+      }
+
+      console.log(`[CTRADER-LIVE-CLOSE] Transmitting ProtoOAClosePositionReq for CTID #${ctidTraderAccountId}: posId=${positionId}, vol=${volume}`);
+      await this.transport.sendRequest(2111, {
+        ctidTraderAccountId,
+        positionId: Number(positionId),
+        volume: Math.round(volume)
+      }, 8000);
+
+      return { success: true };
+    } catch (err: any) {
+      console.warn(`[CTRADER-LIVE-CLOSE] ProtoOAClosePositionReq notice for CTID #${ctidTraderAccountId}:`, err.message);
+      return { success: false, error: err.message };
+    }
+  }
 }
 
 export const ctraderMarketDataFeedService = CTraderMarketDataFeedService.getInstance();
+

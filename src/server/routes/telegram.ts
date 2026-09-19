@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { telegramNotificationService } from '../services/telegramNotificationService';
+import { adminAuthMiddleware } from './admin';
 
 export const telegramRouter = Router();
 
@@ -18,7 +19,7 @@ telegramRouter.get('/telegram/status', (req: Request, res: Response) => {
 /**
  * POST /api/telegram/configure
  */
-telegramRouter.post('/telegram/configure', (req: Request, res: Response) => {
+telegramRouter.post('/telegram/configure', adminAuthMiddleware, (req: Request, res: Response) => {
   try {
     const { botToken, channelId, freeChannelId, defaultLanguage, isEnabled } = req.body;
     telegramNotificationService.configure({
@@ -43,7 +44,7 @@ telegramRouter.post('/telegram/configure', (req: Request, res: Response) => {
 /**
  * POST /api/telegram/test
  */
-telegramRouter.post('/telegram/test', async (req: Request, res: Response) => {
+telegramRouter.post('/telegram/test', adminAuthMiddleware, async (req: Request, res: Response) => {
   try {
     const { chatId } = req.body || {};
     const result = await telegramNotificationService.sendTestMessage(chatId);
@@ -67,3 +68,69 @@ telegramRouter.get('/telegram/history', (req: Request, res: Response) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
+/**
+ * GET /api/telegram/daily-report
+ * Returns calculated daily performance summary
+ */
+telegramRouter.get('/telegram/daily-report', async (req: Request, res: Response) => {
+  try {
+    const targetDate = req.query.date as string | undefined;
+    const { fetchDailyPerformance } = await import('../../../scripts/daily-performance-report');
+    const summary = await fetchDailyPerformance(targetDate);
+    res.json({ success: true, summary });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/telegram/daily-report/broadcast
+ * Broadcasts daily profit/loss transparent report to Telegram VIP & Free channels
+ */
+const handleDailyBroadcast = async (req: Request, res: Response) => {
+  try {
+    const { targetDate } = req.body || {};
+    const { sendDailyTelegramReport } = await import('../../../scripts/daily-performance-report');
+    await sendDailyTelegramReport(targetDate);
+    res.json({ success: true, message: 'Daily performance report broadcasted to Telegram channels.' });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+telegramRouter.post('/telegram/daily-report/broadcast', adminAuthMiddleware, handleDailyBroadcast);
+telegramRouter.post('/api/telegram/daily-report/broadcast', adminAuthMiddleware, handleDailyBroadcast);
+
+/**
+ * GET /api/telegram/weekly-report
+ * Returns authoritative weekly performance summary from Master Account Open API (SSOT)
+ */
+telegramRouter.get('/telegram/weekly-report', async (req: Request, res: Response) => {
+  try {
+    const daysBack = req.query.days ? parseInt(req.query.days as string, 10) : 7;
+    const { fetchBrokerWeeklyPerformance } = await import('../../../scripts/weekly-performance-report');
+    const summary = await fetchBrokerWeeklyPerformance(isNaN(daysBack) ? 7 : daysBack);
+    res.json({ success: true, summary });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/telegram/weekly-report/broadcast
+ * Broadcasts weekly profit/loss ledger directly from Master Account Open API to Telegram channels
+ */
+const handleWeeklyBroadcast = async (req: Request, res: Response) => {
+  try {
+    const daysBack = req.body?.days ? parseInt(req.body.days, 10) : 7;
+    const { broadcastWeeklyPerformanceReport } = await import('../../../scripts/weekly-performance-report');
+    const result = await broadcastWeeklyPerformanceReport(isNaN(daysBack) ? 7 : daysBack);
+    res.json({ success: true, message: 'Weekly performance report broadcasted to Telegram channels.', data: result.data });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+telegramRouter.post('/telegram/weekly-report/broadcast', adminAuthMiddleware, handleWeeklyBroadcast);
+telegramRouter.post('/api/telegram/weekly-report/broadcast', adminAuthMiddleware, handleWeeklyBroadcast);
+
+
