@@ -877,4 +877,70 @@ describe('Phase 1 & Phase 1.1 — OpenAI Second Opinion Observation & Outcome Co
       executionEligibilityGate.assertExecutionInvariant(canonicalSignal, 'WAITING_FOR_ENTRY', 'MARKET');
     }).toThrow(/EXECUTION_INVARIANT_VIOLATION/);
   });
+
+  // =========================================================================
+  // TEST 25: Data Quality Flags: Correctly computes provenance flags
+  // =========================================================================
+  it('25. Data Quality Flags: Correctly tags observations with deterministic quality flags', () => {
+    const flags = secondOpinionObservationService.evaluateDataQualityFlags({
+      signalId: '',
+      dataMode: 'BACKTEST',
+      openAiReview: 'UNAVAILABLE',
+      economicRisk: 'UNKNOWN',
+      outcomeStatus: 'UNMATCHED'
+    });
+
+    expect(flags).toContain('MISSING_SIGNAL_ID');
+    expect(flags).toContain('NON_LIVE_LINEAGE');
+    expect(flags).toContain('OPENAI_UNAVAILABLE');
+    expect(flags).toContain('MISSING_ECONOMIC_CONTEXT');
+    expect(flags).toContain('UNMATCHED_OUTCOME');
+  });
+
+  // =========================================================================
+  // TEST 26: Health Diagnostic Runtime Metadata
+  // =========================================================================
+  it('26. Health Diagnostic Runtime: Exposes non-secret runtime status with executionAuthority=false', () => {
+    const health = secondOpinionObservationService.getHealthDiagnostic();
+
+    expect(health.runtime).toBeDefined();
+    expect(health.runtime.enabled).toBe(true);
+    expect(health.runtime.mode).toBe('OBSERVATION');
+    expect(health.runtime.modelConfigured).toBe(true);
+    expect(health.runtime.apiKeyPresent).toBe(true);
+    expect(health.runtime.executionAuthority).toBe(false);
+
+    // Verify secret is not in runtime object
+    expect(JSON.stringify(health.runtime)).not.toContain('test-mock-openai-key-never-exposed');
+  });
+
+  // =========================================================================
+  // TEST 27: Disabled Configuration Safety
+  // =========================================================================
+  it('27. Disabled Configuration: Returns UNAVAILABLE safely when OPENAI_SECOND_OPINION_ENABLED=false', async () => {
+    process.env.OPENAI_SECOND_OPINION_ENABLED = 'false';
+
+    const result = await secondOpinionService.reviewSignal({
+      ...sampleInput,
+      signalId: 'sig_disabled_cfg_01'
+    });
+
+    expect(result.review).toBe('UNAVAILABLE');
+    expect(result.riskFlags).toContain('OPENAI_SERVICE_UNAVAILABLE');
+  });
+
+  // =========================================================================
+  // TEST 28: Missing API Key Safety
+  // =========================================================================
+  it('28. Missing API Key: Returns UNAVAILABLE safely when OPENAI_API_KEY is unset', async () => {
+    delete process.env.OPENAI_API_KEY;
+
+    const result = await secondOpinionService.reviewSignal({
+      ...sampleInput,
+      signalId: 'sig_no_key_02'
+    });
+
+    expect(result.review).toBe('UNAVAILABLE');
+    expect(result.riskFlags).toContain('OPENAI_SERVICE_UNAVAILABLE');
+  });
 });

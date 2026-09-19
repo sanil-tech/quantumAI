@@ -77,6 +77,7 @@ export interface SecondOpinionObservation {
   brokerOrderId?: string;
   brokerPositionId?: string;
   correlationMethod?: string;
+  dataQualityFlags?: string[];
 
   createdAt: string;
   updatedAt: string;
@@ -140,6 +141,13 @@ export interface PipelineHealthDiagnostic {
   openObservationCount: number;
   lastCorrelationAt: string | null;
   openAiUnavailableCount: number;
+  runtime: {
+    enabled: boolean;
+    mode: string;
+    modelConfigured: boolean;
+    apiKeyPresent: boolean;
+    executionAuthority: false;
+  };
 }
 
 export interface ObservationDashboardCard {
@@ -280,6 +288,44 @@ export class SecondOpinionObservationService {
   }
 
   /**
+   * Deterministic data-quality evaluation
+   */
+  public evaluateDataQualityFlags(obs: Partial<SecondOpinionObservation>): string[] {
+    const flags: string[] = [];
+    if (!obs.signalId || obs.signalId.trim() === '') {
+      flags.push('MISSING_SIGNAL_ID');
+    }
+    if (obs.dataMode !== 'LIVE') {
+      flags.push('NON_LIVE_LINEAGE');
+    }
+    if (obs.openAiReview === 'UNAVAILABLE') {
+      flags.push('OPENAI_UNAVAILABLE');
+    }
+    if (!obs.economicRisk || obs.economicRisk === 'UNKNOWN') {
+      flags.push('MISSING_ECONOMIC_CONTEXT');
+    }
+    if (obs.outcomeStatus === 'UNMATCHED') {
+      flags.push('UNMATCHED_OUTCOME');
+    }
+    if (
+      obs.outcomeStatus &&
+      obs.outcomeStatus !== 'OPEN' &&
+      obs.outcomeStatus !== 'UNMATCHED' &&
+      !obs.brokerOrderId &&
+      !obs.brokerPositionId
+    ) {
+      flags.push('MISSING_BROKER_LINK');
+    }
+    if (obs.secondOpinionAt) {
+      const ageMs = Date.now() - new Date(obs.secondOpinionAt).getTime();
+      if (ageMs > 24 * 60 * 60 * 1000) {
+        flags.push('STALE_REVIEW');
+      }
+    }
+    return flags;
+  }
+
+  /**
    * Record a new observation or update an existing one for a signalId
    */
   public recordObservation(
@@ -317,6 +363,8 @@ export class SecondOpinionObservationService {
         brokerPositionId: options?.brokerPositionId || existing.brokerPositionId,
         updatedAt: nowIso
       };
+
+      updated.dataQualityFlags = this.evaluateDataQualityFlags(updated);
 
       this.observations.set(existingId, updated);
       if (updated.brokerOrderId) this.brokerOrderToObsMap.set(updated.brokerOrderId, existingId);
@@ -358,6 +406,8 @@ export class SecondOpinionObservationService {
       createdAt: nowIso,
       updatedAt: nowIso
     };
+
+    newObs.dataQualityFlags = this.evaluateDataQualityFlags(newObs);
 
     this.observations.set(obsId, newObs);
     this.signalToObsMap.set(input.signalId, obsId);
@@ -639,6 +689,9 @@ export class SecondOpinionObservationService {
     const dir = path.dirname(this.cacheFilePath);
     const persistenceHealthy = fs.existsSync(dir) || fs.existsSync(this.cacheFilePath);
 
+    const apiKey = process.env.OPENAI_API_KEY;
+    const model = process.env.OPENAI_SECOND_OPINION_MODEL?.trim();
+
     return {
       secondOpinionEnabled: isEnabled,
       secondOpinionMode: mode,
@@ -649,7 +702,14 @@ export class SecondOpinionObservationService {
       unmatchedOutcomeCount: this.unmatchedCorrelationsCount,
       openObservationCount: openCount,
       lastCorrelationAt: lastCorrAt,
-      openAiUnavailableCount: unavailCount
+      openAiUnavailableCount: unavailCount,
+      runtime: {
+        enabled: isEnabled,
+        mode,
+        modelConfigured: Boolean(model && model.length > 0),
+        apiKeyPresent: Boolean(apiKey && apiKey.trim().length > 0),
+        executionAuthority: false
+      }
     };
   }
 
