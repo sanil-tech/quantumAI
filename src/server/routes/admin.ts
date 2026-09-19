@@ -975,6 +975,21 @@ adminRouter.post('/second-opinion/correlate', adminAuthMiddleware, async (req: R
   }
 });
 
+// Admin: Diagnostic Health Check for Second-Opinion Observation Pipeline
+adminRouter.get('/second-opinion/health', adminAuthMiddleware, async (_req: Request, res: Response) => {
+  try {
+    const { secondOpinionObservationService } = await import('../../../apps/decision-agent/src/services/secondOpinionObservationService');
+    const health = secondOpinionObservationService.getHealthDiagnostic();
+    res.json({
+      success: true,
+      health
+    });
+  } catch (err: any) {
+    logger.error(`Admin second-opinion health check failed: ${err.message}`);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 export default adminRouter;
 
 

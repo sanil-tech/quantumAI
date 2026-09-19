@@ -129,6 +129,19 @@ export interface ClosedTradeCorrelationInput {
   dataMode?: ObservationDataMode;
 }
 
+export interface PipelineHealthDiagnostic {
+  secondOpinionEnabled: boolean;
+  secondOpinionMode: string;
+  observationPersistenceHealthy: boolean;
+  observationCount: number;
+  latestObservationAt: string | null;
+  latestObservationSignalId: string | null;
+  unmatchedOutcomeCount: number;
+  openObservationCount: number;
+  lastCorrelationAt: string | null;
+  openAiUnavailableCount: number;
+}
+
 export interface ObservationDashboardCard {
   signal: {
     id: string;
@@ -177,10 +190,12 @@ export class SecondOpinionObservationService {
   private brokerPosToObsMap: Map<string, string> = new Map(); // brokerPositionId -> obsId
   private cacheFilePath: string;
   private lastSavedJson: string = '';
+  private unmatchedCorrelationsCount: number = 0;
 
   public constructor() {
     this.cacheFilePath = path.resolve(process.cwd(), 'data', 'second_opinion_observations.json');
     this.loadFromDisk();
+    this.subscribeToEventBus();
   }
 
   public static getInstance(): SecondOpinionObservationService {
@@ -188,6 +203,30 @@ export class SecondOpinionObservationService {
       SecondOpinionObservationService.instance = new SecondOpinionObservationService();
     }
     return SecondOpinionObservationService.instance;
+  }
+
+  private subscribeToEventBus(): void {
+    try {
+      import('@iati/event-bus').then(({ globalEventBus, EventTypes }) => {
+        globalEventBus.subscribe(EventTypes.TradeClosed, async (event: any) => {
+          try {
+            const payload = event?.payload;
+            if (!payload || !payload.symbol || payload.pnlDollars === undefined) return;
+            this.correlateClosedPosition({
+              brokerPositionId: payload.positionId,
+              brokerOrderId: payload.tradeId,
+              signalId: payload.proposalId,
+              symbol: payload.symbol,
+              realizedProfit: Number(payload.pnlDollars),
+              pnlPips: payload.pnlPips !== undefined ? Number(payload.pnlPips) : undefined,
+              direction: payload.direction as any,
+              closedAt: payload.closedAt,
+              dataMode: payload.isOfflineMock || payload.environment === 'SYNTHETIC' ? 'SYNTHETIC' : 'LIVE'
+            });
+          } catch (_) {}
+        });
+      }).catch(() => {});
+    } catch (_) {}
   }
 
   private loadFromDisk(): void {
@@ -374,6 +413,7 @@ export class SecondOpinionObservationService {
     }
 
     if (!obsId || !this.observations.has(obsId)) {
+      this.unmatchedCorrelationsCount++;
       return {
         matched: false,
         reason: 'UNMATCHED: No canonical second-opinion observation matches the broker trade identifier.'
@@ -557,6 +597,59 @@ export class SecondOpinionObservationService {
       outcomeUnmatchedCount,
       liveOutcomeCount,
       shadowOutcomeCount
+    };
+  }
+
+  /**
+   * Diagnostic pipeline health indicator
+   * Exposes runtime metrics and operational health without leaking credentials.
+   */
+  public getHealthDiagnostic(): PipelineHealthDiagnostic {
+    const list = Array.from(this.observations.values());
+    const isEnabled = process.env.OPENAI_SECOND_OPINION_ENABLED === 'true';
+    const mode = process.env.OPENAI_SECOND_OPINION_MODE || 'OBSERVATION';
+
+    let latestObsAt: string | null = null;
+    let latestObsSignalId: string | null = null;
+    let openCount = 0;
+    let lastCorrAt: string | null = null;
+    let unavailCount = 0;
+
+    for (const obs of list) {
+      const obsTime = obs.secondOpinionAt || obs.createdAt;
+      if (obsTime) {
+        if (!latestObsAt || new Date(obsTime).getTime() > new Date(latestObsAt).getTime()) {
+          latestObsAt = obsTime;
+          latestObsSignalId = obs.signalId;
+        }
+      }
+      if (obs.outcomeStatus === 'OPEN') {
+        openCount++;
+      }
+      if (obs.outcomeRecordedAt) {
+        if (!lastCorrAt || new Date(obs.outcomeRecordedAt).getTime() > new Date(lastCorrAt).getTime()) {
+          lastCorrAt = obs.outcomeRecordedAt;
+        }
+      }
+      if (obs.openAiReview === 'UNAVAILABLE') {
+        unavailCount++;
+      }
+    }
+
+    const dir = path.dirname(this.cacheFilePath);
+    const persistenceHealthy = fs.existsSync(dir) || fs.existsSync(this.cacheFilePath);
+
+    return {
+      secondOpinionEnabled: isEnabled,
+      secondOpinionMode: mode,
+      observationPersistenceHealthy: persistenceHealthy,
+      observationCount: list.length,
+      latestObservationAt: latestObsAt,
+      latestObservationSignalId: latestObsSignalId,
+      unmatchedOutcomeCount: this.unmatchedCorrelationsCount,
+      openObservationCount: openCount,
+      lastCorrelationAt: lastCorrAt,
+      openAiUnavailableCount: unavailCount
     };
   }
 

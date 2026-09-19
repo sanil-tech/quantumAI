@@ -872,6 +872,12 @@ export class AutonomousMarketScannerService extends EventEmitter {
         // Idempotency: Record successful execution in ledger
         executionEligibilityGate.recordExecution(setupId, String(rawBrokerOrderId));
 
+        // Link canonical signal to broker order for Second Opinion outcome correlation
+        const canonicalSigId = best.canonicalSignal?.signalId || setupId;
+        import('../../../apps/decision-agent/src/services/secondOpinionObservationService').then(({ secondOpinionObservationService }) => {
+          secondOpinionObservationService.linkBrokerOrder(canonicalSigId, String(rawBrokerOrderId));
+        }).catch(() => {});
+
         console.log(`🚀 [AutonomousMarketScanner] Master pending limit order CONFIRMED by cTrader broker! Broker Order ID: #${rawBrokerOrderId}`);
 
         discovered.status = 'EXECUTED';

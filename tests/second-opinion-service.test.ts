@@ -1,4 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import fs from 'fs';
+import path from 'path';
+import { globalEventBus, EventTypes } from '@iati/event-bus';
 import {
   secondOpinionService,
   evaluateSecondOpinionPolicy,
@@ -8,7 +11,8 @@ import {
 } from '../apps/decision-agent/src/services/secondOpinionService';
 import {
   secondOpinionObservationService,
-  SecondOpinionObservation
+  SecondOpinionObservation,
+  SecondOpinionObservationService
 } from '../apps/decision-agent/src/services/secondOpinionObservationService';
 import { executionEligibilityGate } from '../src/server/services/validation/executionEligibilityGate';
 import { signalValidationGate } from '../src/server/services/validation/signalValidationGate';
@@ -617,5 +621,260 @@ describe('Phase 1 & Phase 1.1 — OpenAI Second Opinion Observation & Outcome Co
     expect(summary.passCount).toBe(2);
     expect(summary.agreementCount).toBe(2);
     expect(summary.openAiAvailable).toBe(2);
+  });
+
+  // =========================================================================
+  // TEST 19: Restart Persistence: In-memory reload preserves records and indexes
+  // =========================================================================
+  it('19. Restart Persistence: Survives simulated process restart with index restoration', async () => {
+    mockOpenAiResponse({
+      review: 'PASS',
+      candidateDirectionSupported: true,
+      independentBias: 'BULLISH',
+      confidence: 88,
+      agreement: 'AGREE',
+      contradictionLevel: 'LOW',
+      riskFlags: [],
+      keyConcerns: [],
+      invalidationConcerns: [],
+      economicRisk: 'LOW',
+      summary: 'Restart test signal.'
+    });
+
+    await secondOpinionService.reviewSignal({
+      ...sampleInput,
+      signalId: 'sig_restart_persist_01',
+      dataMode: 'LIVE'
+    });
+
+    secondOpinionObservationService.linkBrokerOrder('sig_restart_persist_01', 'ORD-RESTART-88', 'POS-RESTART-99');
+
+    // Simulate process restart: instantiate new instance or reload from disk
+    const reloadedService = new SecondOpinionObservationService();
+    const loadedObs = reloadedService.getObservationBySignalId('sig_restart_persist_01');
+
+    expect(loadedObs).toBeDefined();
+    expect(loadedObs?.signalId).toBe('sig_restart_persist_01');
+    expect(loadedObs?.quantumAiDirection).toBe('BUY');
+    expect(loadedObs?.openAiReview).toBe('PASS');
+    expect(loadedObs?.brokerOrderId).toBe('ORD-RESTART-88');
+    expect(loadedObs?.brokerPositionId).toBe('POS-RESTART-99');
+
+    // Verify correlation works using reloaded instance indexes
+    const corr = reloadedService.correlateClosedPosition({
+      brokerOrderId: 'ORD-RESTART-88',
+      symbol: 'EUR/USD',
+      realizedProfit: 75.50,
+      pnlPips: 15.1
+    });
+
+    expect(corr.matched).toBe(true);
+    expect(corr.observation?.outcomeStatus).toBe('CLOSED_WIN');
+    expect(corr.observation?.outcomePnl).toBe(75.50);
+  });
+
+  // =========================================================================
+  // TEST 20: Malformed JSON Resiliency: Corrupted cache file handled gracefully
+  // =========================================================================
+  it('20. Malformed JSON Resiliency: Corrupt file does not crash service initialization', () => {
+    const dataDir = path.resolve(process.cwd(), 'data');
+    const corruptPath = path.resolve(dataDir, 'second_opinion_observations.json');
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    fs.writeFileSync(corruptPath, '{ INVALID_CORRUPT_JSON_DATA %%%', 'utf-8');
+
+    expect(() => {
+      new SecondOpinionObservationService();
+    }).not.toThrow();
+  });
+
+  // =========================================================================
+  // TEST 21: EventBus Auto-Correlation: TradeClosed event automatically correlates
+  // =========================================================================
+  it('21. EventBus Auto-Correlation: TradeClosed event on globalEventBus updates observation', async () => {
+    mockOpenAiResponse({
+      review: 'PASS',
+      candidateDirectionSupported: true,
+      independentBias: 'BULLISH',
+      confidence: 90,
+      agreement: 'AGREE',
+      contradictionLevel: 'LOW',
+      riskFlags: [],
+      keyConcerns: [],
+      invalidationConcerns: [],
+      economicRisk: 'LOW',
+      summary: 'Event bus test.'
+    });
+
+    await secondOpinionService.reviewSignal({
+      ...sampleInput,
+      signalId: 'sig_eb_live_55',
+      dataMode: 'LIVE'
+    });
+
+    secondOpinionObservationService.linkBrokerOrder('sig_eb_live_55', 'ORD-EB-55', 'POS-EB-55');
+
+    // Publish TradeClosed on globalEventBus
+    await globalEventBus.publish({
+      id: 'evt_eb_live_55',
+      type: EventTypes.TradeClosed,
+      timestamp: new Date(),
+      payload: {
+        tradeId: 'ORD-EB-55',
+        positionId: 'POS-EB-55',
+        symbol: 'EUR/USD',
+        direction: 'BUY',
+        entryPrice: 1.0850,
+        exitPrice: 1.0875,
+        stopLoss: 1.0800,
+        takeProfit: 1.0900,
+        pnlDollars: 250.00,
+        pnlPips: 25.0,
+        closedAt: new Date(),
+        environment: 'LIVE'
+      }
+    });
+
+    // Wait a brief tick for setImmediate execution
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const updatedObs = secondOpinionObservationService.getObservationBySignalId('sig_eb_live_55');
+    expect(updatedObs?.outcomeStatus).toBe('CLOSED_WIN');
+    expect(updatedObs?.outcomePnl).toBe(250.00);
+    expect(updatedObs?.outcomePips).toBe(25.0);
+  });
+
+  // =========================================================================
+  // TEST 22: Idempotent Double-Calling: Duplicate close events do not double-count
+  // =========================================================================
+  it('22. Idempotent Double-Calling: Duplicate close callbacks do not duplicate records', () => {
+    const tradeInput = {
+      brokerOrderId: 'ORD-IDEM-01',
+      symbol: 'EUR/USD',
+      realizedProfit: 50.00,
+      pnlPips: 10.0
+    };
+
+    secondOpinionObservationService.recordObservation(
+      { ...sampleInput, signalId: 'sig_idem_01', dataMode: 'LIVE' },
+      {
+        signalId: 'sig_idem_01',
+        review: 'PASS',
+        candidateDirectionSupported: true,
+        independentBias: 'BULLISH',
+        confidence: 80,
+        agreement: 'AGREE',
+        contradictionLevel: 'LOW',
+        riskFlags: [],
+        keyConcerns: [],
+        invalidationConcerns: [],
+        economicRisk: 'LOW',
+        summary: 'Idempotency test.',
+        model: 'gpt-4o-mini',
+        latencyMs: 10,
+        reviewedAt: new Date().toISOString()
+      },
+      { brokerOrderId: 'ORD-IDEM-01' }
+    );
+
+    const initialTotal = secondOpinionObservationService.queryObservations().total;
+
+    // First correlation call
+    const res1 = secondOpinionObservationService.correlateClosedPosition(tradeInput);
+    expect(res1.matched).toBe(true);
+    expect(res1.observation?.outcomeStatus).toBe('CLOSED_WIN');
+
+    // Duplicate second correlation call
+    const res2 = secondOpinionObservationService.correlateClosedPosition(tradeInput);
+    expect(res2.matched).toBe(true);
+    expect(res2.observation?.outcomeStatus).toBe('CLOSED_WIN');
+
+    // Total count remains invariant
+    const finalTotal = secondOpinionObservationService.queryObservations().total;
+    expect(finalTotal).toBe(initialTotal);
+  });
+
+  // =========================================================================
+  // TEST 23: Pipeline Health Diagnostics: Returns operational health metrics
+  // =========================================================================
+  it('23. Health Diagnostics: Exposes complete pipeline health indicators without leaking secrets', () => {
+    const health = secondOpinionObservationService.getHealthDiagnostic();
+
+    expect(health).toHaveProperty('secondOpinionEnabled');
+    expect(health).toHaveProperty('secondOpinionMode');
+    expect(health).toHaveProperty('observationPersistenceHealthy');
+    expect(health).toHaveProperty('observationCount');
+    expect(health).toHaveProperty('latestObservationAt');
+    expect(health).toHaveProperty('latestObservationSignalId');
+    expect(health).toHaveProperty('unmatchedOutcomeCount');
+    expect(health).toHaveProperty('openObservationCount');
+    expect(health).toHaveProperty('lastCorrelationAt');
+    expect(health).toHaveProperty('openAiUnavailableCount');
+
+    const healthStr = JSON.stringify(health);
+    expect(healthStr).not.toContain('test-mock-openai-key-never-exposed');
+  });
+
+  // =========================================================================
+  // TEST 24: Execution Isolation: OpenAI review does not mutate ExecutionEligibilityState
+  // =========================================================================
+  it('24. Execution Isolation: Observation methods cannot execute or alter broker permissions', async () => {
+    const unexecutableSignal = {
+      signalId: 'sig_isolation_test_01',
+      pair: 'EURJPY',
+      timeframe: 'M15',
+      candidateDirection: 'BUY' as const,
+      candidateConfidence: 85,
+      entry: 180.320,
+      stopLoss: 179.950,
+      takeProfit1: 180.850,
+      dataMode: 'LIVE'
+    };
+
+    mockOpenAiResponse({
+      review: 'PASS',
+      candidateDirectionSupported: true,
+      independentBias: 'BULLISH',
+      confidence: 99,
+      agreement: 'AGREE',
+      contradictionLevel: 'LOW',
+      riskFlags: [],
+      keyConcerns: [],
+      invalidationConcerns: [],
+      economicRisk: 'LOW',
+      summary: 'Max confidence agreement.'
+    });
+
+    const result = await secondOpinionService.reviewSignal(unexecutableSignal);
+    expect(result.review).toBe('PASS');
+
+    // Verify observation is recorded but execution state remains WAITING_FOR_ENTRY
+    const obs = secondOpinionObservationService.getObservationBySignalId('sig_isolation_test_01');
+    expect(obs?.executionEligibilityAtReview).toBe('WAITING_FOR_ENTRY');
+
+    // Verify ExecutionEligibilityGate still prevents market execution
+    const { canonicalSignal } = signalValidationGate.validateSignal({
+      symbol: 'EURJPY',
+      timeframe: 'M15',
+      direction: 'BUY',
+      currentPrice: 180.480,
+      entryPrice: 180.320,
+      stopLoss: 179.950,
+      takeProfit1: 180.850,
+      indicators: {
+        ema50: 180.100,
+        ema200: 179.500,
+        rsi14: 62.0,
+        adx: 25,
+        plusDI: 28.0,
+        minusDI: 12.0,
+        superTrendDirection: 'BULLISH'
+      }
+    });
+
+    expect(() => {
+      executionEligibilityGate.assertExecutionInvariant(canonicalSignal, 'WAITING_FOR_ENTRY', 'MARKET');
+    }).toThrow(/EXECUTION_INVARIANT_VIOLATION/);
   });
 });
