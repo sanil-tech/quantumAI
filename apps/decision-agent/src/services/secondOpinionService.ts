@@ -10,6 +10,7 @@
  */
 
 import { EconomicContextService, NormalizedEconomicEvent } from '../../../../src/server/services/economicContextService';
+import { secondOpinionObservationService } from './secondOpinionObservationService';
 
 export type SecondOpinionReview =
   | "PASS"
@@ -577,6 +578,7 @@ export class SecondOpinionService {
     };
 
     this.auditLedger.set(input.signalId, auditRecord);
+    secondOpinionObservationService.recordObservation(input, result);
   }
 
   /**

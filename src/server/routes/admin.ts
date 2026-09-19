@@ -867,6 +867,114 @@ adminRouter.get('/second-opinion/audits', adminAuthMiddleware, async (_req: Requ
   }
 });
 
+// Admin: Query Persistent Second-Opinion Observations with Filters
+adminRouter.get('/second-opinion/observations', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { secondOpinionObservationService } = await import('../../../apps/decision-agent/src/services/secondOpinionObservationService');
+    const filters = {
+      symbol: req.query.symbol as string | undefined,
+      timeframe: req.query.timeframe as string | undefined,
+      agreement: req.query.agreement as any,
+      review: req.query.review as any,
+      economicRisk: req.query.economicRisk as any,
+      dataMode: req.query.dataMode as any,
+      outcomeStatus: req.query.outcomeStatus as any,
+      startDate: req.query.startDate as string | undefined,
+      endDate: req.query.endDate as string | undefined,
+      limit: req.query.limit ? Number(req.query.limit) : 50,
+      offset: req.query.offset ? Number(req.query.offset) : 0
+    };
+
+    const result = secondOpinionObservationService.queryObservations(filters);
+    res.json({
+      success: true,
+      total: result.total,
+      limit: filters.limit,
+      offset: filters.offset,
+      observations: result.observations
+    });
+  } catch (err: any) {
+    logger.error(`Admin second-opinion observations query failed: ${err.message}`);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Admin: Get Second-Opinion Observation Summary Metrics (Counts Only)
+adminRouter.get('/second-opinion/observations/summary', adminAuthMiddleware, async (_req: Request, res: Response) => {
+  try {
+    const { secondOpinionObservationService } = await import('../../../apps/decision-agent/src/services/secondOpinionObservationService');
+    const summary = secondOpinionObservationService.getSummaryMetrics();
+    res.json({
+      success: true,
+      summary
+    });
+  } catch (err: any) {
+    logger.error(`Admin second-opinion observations summary failed: ${err.message}`);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Admin: Retrieve Single Observation by signalId with Dashboard Payload
+adminRouter.get('/second-opinion/observations/:signalId', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { secondOpinionObservationService } = await import('../../../apps/decision-agent/src/services/secondOpinionObservationService');
+    const signalId = req.params.signalId;
+    const observation = secondOpinionObservationService.getObservationBySignalId(signalId);
+
+    if (!observation) {
+      return res.status(404).json({
+        success: false,
+        error: `Observation not found for signalId: ${signalId}`
+      });
+    }
+
+    const dashboardCard = secondOpinionObservationService.formatDashboardCard(observation);
+    res.json({
+      success: true,
+      observation,
+      dashboardCard
+    });
+  } catch (err: any) {
+    logger.error(`Admin second-opinion single observation fetch failed: ${err.message}`);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Admin: Correlate Closed Broker Trade to Originating Signal Observation
+adminRouter.post('/second-opinion/correlate', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { secondOpinionObservationService } = await import('../../../apps/decision-agent/src/services/secondOpinionObservationService');
+    const tradeInput = req.body;
+
+    if (!tradeInput || !tradeInput.symbol || tradeInput.realizedProfit === undefined) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required trade correlation fields (symbol, realizedProfit).'
+      });
+    }
+
+    const correlation = secondOpinionObservationService.correlateClosedPosition({
+      brokerOrderId: tradeInput.brokerOrderId,
+      brokerPositionId: tradeInput.brokerPositionId,
+      signalId: tradeInput.signalId,
+      symbol: tradeInput.symbol,
+      realizedProfit: Number(tradeInput.realizedProfit),
+      pnlPips: tradeInput.pnlPips ? Number(tradeInput.pnlPips) : undefined,
+      direction: tradeInput.direction,
+      closedAt: tradeInput.closedAt,
+      dataMode: tradeInput.dataMode
+    });
+
+    res.json({
+      success: true,
+      correlation
+    });
+  } catch (err: any) {
+    logger.error(`Admin second-opinion correlation failed: ${err.message}`);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 export default adminRouter;
 
 

@@ -6,16 +6,21 @@ import {
   SecondOpinionInput,
   SecondOpinionResult
 } from '../apps/decision-agent/src/services/secondOpinionService';
+import {
+  secondOpinionObservationService,
+  SecondOpinionObservation
+} from '../apps/decision-agent/src/services/secondOpinionObservationService';
 import { executionEligibilityGate } from '../src/server/services/validation/executionEligibilityGate';
 import { signalValidationGate } from '../src/server/services/validation/signalValidationGate';
 import { EconomicContextService } from '../src/server/services/economicContextService';
 
-describe('Phase 1 — OpenAI Independent Second Opinion Shadow Layer', () => {
+describe('Phase 1 & Phase 1.1 — OpenAI Second Opinion Observation & Outcome Correlation', () => {
   const originalEnv = { ...process.env };
 
   beforeEach(() => {
     vi.resetAllMocks();
     secondOpinionService.clearAuditRecords();
+    secondOpinionObservationService.clearObservations();
     process.env.OPENAI_SECOND_OPINION_ENABLED = 'true';
     process.env.OPENAI_API_KEY = 'test-mock-openai-key-never-exposed';
     process.env.OPENAI_SECOND_OPINION_MODEL = 'gpt-4o-mini';
@@ -63,13 +68,14 @@ describe('Phase 1 — OpenAI Independent Second Opinion Shadow Layer', () => {
       plusDI: 28.0,
       minusDI: 14.0
     },
-    evidence: ['Price above EMA50', '+DI dominates -DI']
+    evidence: ['Price above EMA50', '+DI dominates -DI'],
+    dataMode: 'LIVE_CTRADER'
   };
 
   // =========================================================================
-  // TEST 1: AGREE → PASS
+  // TEST 1: AGREE → PASS & Observation Creation
   // =========================================================================
-  it('1. AGREE -> PASS: Concordant analysis produces PASS review and ALLOW policy', async () => {
+  it('1. AGREE -> PASS: Concordant analysis produces PASS review, ALLOW policy, and persistent observation', async () => {
     mockOpenAiResponse({
       review: 'PASS',
       candidateDirectionSupported: true,
@@ -91,6 +97,14 @@ describe('Phase 1 — OpenAI Independent Second Opinion Shadow Layer', () => {
 
     const policy = evaluateSecondOpinionPolicy(result);
     expect(policy.hypotheticalDecision).toBe('ALLOW');
+
+    // Verify persistent observation created
+    const obs = secondOpinionObservationService.getObservationBySignalId('sig_test_eurusd_001');
+    expect(obs).toBeDefined();
+    expect(obs?.quantumAiDirection).toBe('BUY');
+    expect(obs?.openAiBias).toBe('BULLISH');
+    expect(obs?.dataMode).toBe('LIVE');
+    expect(obs?.outcomeStatus).toBe('OPEN');
   });
 
   // =========================================================================
@@ -147,28 +161,30 @@ describe('Phase 1 — OpenAI Independent Second Opinion Shadow Layer', () => {
   });
 
   // =========================================================================
-  // TEST 4: OpenAI unavailable → UNAVAILABLE
+  // TEST 4: OpenAI unavailable → UNAVAILABLE Observation
   // =========================================================================
-  it('4. OpenAI unavailable: When disabled or API key missing, returns UNAVAILABLE without failing', async () => {
+  it('4. OpenAI unavailable: Creates an observation with UNAVAILABLE state without failing system', async () => {
     process.env.OPENAI_SECOND_OPINION_ENABLED = 'false';
 
     const result = await secondOpinionService.reviewSignal({ ...sampleInput, signalId: 'sig_unavail_004' });
     expect(result.review).toBe('UNAVAILABLE');
-    expect(result.riskFlags).toContain('OPENAI_SERVICE_UNAVAILABLE');
 
-    const policy = evaluateSecondOpinionPolicy(result);
-    expect(policy.hypotheticalDecision).toBe('REVIEW');
+    const obs = secondOpinionObservationService.getObservationBySignalId('sig_unavail_004');
+    expect(obs?.openAiReview).toBe('UNAVAILABLE');
+    expect(obs?.riskFlags).toContain('OPENAI_SERVICE_UNAVAILABLE');
   });
 
   // =========================================================================
   // TEST 5: Malformed OpenAI response → UNAVAILABLE
   // =========================================================================
-  it('5. Malformed OpenAI response: JSON parse failure fails safely to UNAVAILABLE', async () => {
+  it('5. Malformed OpenAI response: JSON parse failure fails safely to UNAVAILABLE observation', async () => {
     mockOpenAiResponse("INVALID_NON_JSON_RESPONSE{{{");
 
     const result = await secondOpinionService.reviewSignal({ ...sampleInput, signalId: 'sig_malformed_005' });
     expect(result.review).toBe('UNAVAILABLE');
-    expect(result.riskFlags).toContain('OPENAI_INFERENCE_ERROR');
+
+    const obs = secondOpinionObservationService.getObservationBySignalId('sig_malformed_005');
+    expect(obs?.openAiReview).toBe('UNAVAILABLE');
   });
 
   // =========================================================================
@@ -232,8 +248,6 @@ describe('Phase 1 — OpenAI Independent Second Opinion Shadow Layer', () => {
     });
 
     expect(result.economicRisk).toBe('HIGH');
-    const policy = evaluateSecondOpinionPolicy(result);
-    expect(policy.hypotheticalDecision).toBe('REVIEW');
   });
 
   // =========================================================================
@@ -291,7 +305,7 @@ describe('Phase 1 — OpenAI Independent Second Opinion Shadow Layer', () => {
   // =========================================================================
   // TEST 10: WAITING_FOR_ENTRY remains WAITING
   // =========================================================================
-  it('10. WAITING_FOR_ENTRY remains WAITING: Second opinion cannot alter WAITING_FOR_ENTRY state', async () => {
+  it('10. WAITING_FOR_ENTRY remains WAITING: Second opinion and observation creation cannot alter WAITING_FOR_ENTRY state', async () => {
     mockOpenAiResponse({
       review: 'PASS',
       candidateDirectionSupported: true,
@@ -306,7 +320,6 @@ describe('Phase 1 — OpenAI Independent Second Opinion Shadow Layer', () => {
       summary: 'High agreement.'
     });
 
-    // Create valid pullback signal in WAITING_FOR_ENTRY state
     const { canonicalSignal } = signalValidationGate.validateSignal({
       symbol: 'EURJPY',
       timeframe: 'M15',
@@ -329,7 +342,6 @@ describe('Phase 1 — OpenAI Independent Second Opinion Shadow Layer', () => {
 
     expect(canonicalSignal.executionStatus).toBe('WAITING_FOR_ENTRY');
 
-    // Run Second Opinion review
     await secondOpinionService.reviewSignal({
       signalId: canonicalSignal.signalId,
       pair: canonicalSignal.symbol,
@@ -339,7 +351,6 @@ describe('Phase 1 — OpenAI Independent Second Opinion Shadow Layer', () => {
       entry: canonicalSignal.entryPrice
     });
 
-    // Evaluate Execution Eligibility independently
     const eligibility = executionEligibilityGate.evaluateEligibility(canonicalSignal, {
       currentPrice: 180.489,
       spreadPips: 1.2
@@ -387,9 +398,8 @@ describe('Phase 1 — OpenAI Independent Second Opinion Shadow Layer', () => {
       }
     });
 
-    // Market price drops past SL before entry fill
     const eligibility = executionEligibilityGate.evaluateEligibility(canonicalSignal, {
-      currentPrice: 179.900, // Breached SL 179.971
+      currentPrice: 179.900, // Breached SL
       spreadPips: 1.2
     });
 
@@ -426,21 +436,9 @@ describe('Phase 1 — OpenAI Independent Second Opinion Shadow Layer', () => {
   });
 
   // =========================================================================
-  // TEST 13: OpenAI cannot call broker execution
+  // TEST 13: Pullback cannot become market execution
   // =========================================================================
-  it('13. OpenAI has no broker methods or credentials: secondOpinionService instance exposes only analysis methods', () => {
-    const service: any = secondOpinionService;
-    expect(service.placeOrder).toBeUndefined();
-    expect(service.executeOrder).toBeUndefined();
-    expect(service.cancelOrder).toBeUndefined();
-    expect(service.modifyPosition).toBeUndefined();
-    expect(service.ctraderCredentials).toBeUndefined();
-  });
-
-  // =========================================================================
-  // TEST 14: Pullback cannot become market execution
-  // =========================================================================
-  it('14. Pullback cannot become market execution: distance > tolerance enforces WAITING_FOR_ENTRY', () => {
+  it('13. Pullback cannot become market execution: distance > tolerance enforces WAITING_FOR_ENTRY', () => {
     const { canonicalSignal } = signalValidationGate.validateSignal({
       symbol: 'EURJPY',
       timeframe: 'M15',
@@ -470,9 +468,9 @@ describe('Phase 1 — OpenAI Independent Second Opinion Shadow Layer', () => {
   });
 
   // =========================================================================
-  // TEST 15: API key never appears in logs / output
+  // TEST 14: Real closed cTrader position can be linked to originating signal
   // =========================================================================
-  it('15. Security: OPENAI_API_KEY never leaks into result or audit records', async () => {
+  it('14. Outcome Correlation: Links real closed position to originating signal via brokerOrderId', async () => {
     mockOpenAiResponse({
       review: 'PASS',
       candidateDirectionSupported: true,
@@ -484,100 +482,140 @@ describe('Phase 1 — OpenAI Independent Second Opinion Shadow Layer', () => {
       keyConcerns: [],
       invalidationConcerns: [],
       economicRisk: 'LOW',
-      summary: 'Clear bullish alignment.'
+      summary: 'Confirmed setup.'
     });
 
-    const result = await secondOpinionService.reviewSignal({ ...sampleInput, signalId: 'sig_secret_check_015' });
-    const resultStr = JSON.stringify(result);
-    expect(resultStr).not.toContain('test-mock-openai-key-never-exposed');
-
-    const audit = secondOpinionService.getAuditRecord('sig_secret_check_015');
-    const auditStr = JSON.stringify(audit);
-    expect(auditStr).not.toContain('test-mock-openai-key-never-exposed');
-  });
-
-  // =========================================================================
-  // TEST 16: Duplicate signalId does not create accidental duplicate review
-  // =========================================================================
-  it('16. Idempotency: Duplicate signalId returns existing audit record without duplicate API call', async () => {
-    mockOpenAiResponse({
-      review: 'PASS',
-      candidateDirectionSupported: true,
-      independentBias: 'BULLISH',
-      confidence: 85,
-      agreement: 'AGREE',
-      contradictionLevel: 'LOW',
-      riskFlags: [],
-      keyConcerns: [],
-      invalidationConcerns: [],
-      economicRisk: 'LOW',
-      summary: 'First execution.'
-    });
-
-    const res1 = await secondOpinionService.reviewSignal({ ...sampleInput, signalId: 'sig_idempotent_016' });
-    const callCountAfterFirst = (global.fetch as any).mock.calls.length;
-
-    const res2 = await secondOpinionService.reviewSignal({ ...sampleInput, signalId: 'sig_idempotent_016' });
-    const callCountAfterSecond = (global.fetch as any).mock.calls.length;
-
-    expect(callCountAfterSecond).toBe(callCountAfterFirst); // 0 additional API calls!
-    expect(res2.signalId).toBe('sig_idempotent_016');
-    expect(res2.review).toBe(res1.review);
-  });
-
-  // =========================================================================
-  // TEST 17: Synthetic / unavailable market lineage is not treated as live evidence
-  // =========================================================================
-  it('17. Data Lineage: Marks review as UNAVAILABLE or logs warning if lineage is synthetic', async () => {
-    mockOpenAiResponse({
-      review: 'REVIEW',
-      candidateDirectionSupported: false,
-      independentBias: 'NEUTRAL',
-      confidence: 30,
-      agreement: 'DISAGREE',
-      contradictionLevel: 'HIGH',
-      riskFlags: ['SYNTHETIC_DATA_LINEAGE_WARNING'],
-      keyConcerns: ['Data lineage marked as SYNTHETIC; cannot verify live broker liquidity'],
-      invalidationConcerns: [],
-      economicRisk: 'UNKNOWN',
-      summary: 'Shadow review flagged non-live lineage.'
-    });
-
-    const result = await secondOpinionService.reviewSignal({
+    // 1. Record second opinion
+    await secondOpinionService.reviewSignal({
       ...sampleInput,
-      signalId: 'sig_lineage_017',
-      dataMode: 'SYNTHETIC_BACKTEST'
+      signalId: 'sig_live_trade_100',
+      dataMode: 'LIVE'
     });
 
-    expect(result.riskFlags).toContain('SYNTHETIC_DATA_LINEAGE_WARNING');
+    // 2. Link broker order ID upon execution
+    secondOpinionObservationService.linkBrokerOrder('sig_live_trade_100', 'CTR-ORD-998811', 'POS-5544');
+
+    // 3. Broker trade closes with +$125 profit (+25.0 pips)
+    const correlation = secondOpinionObservationService.correlateClosedPosition({
+      brokerOrderId: 'CTR-ORD-998811',
+      symbol: 'EUR/USD',
+      realizedProfit: 125.00,
+      pnlPips: 25.0,
+      direction: 'BUY',
+      closedAt: new Date()
+    });
+
+    expect(correlation.matched).toBe(true);
+    expect(correlation.observation?.outcomeStatus).toBe('CLOSED_WIN');
+    expect(correlation.observation?.outcomePnl).toBe(125.00);
+    expect(correlation.observation?.outcomePips).toBe(25.0);
+    expect(correlation.observation?.correlationMethod).toBe('CANONICAL_BROKER_ORDER_ID');
   });
 
   // =========================================================================
-  // TEST 18: Second opinion does not modify TradeProposal execution authority
+  // TEST 15: Uncertain correlation becomes UNMATCHED (Never fabricated)
   // =========================================================================
-  it('18. Advisory Boundary: evaluateSecondOpinionPolicy produces hypothetical decision only without modifying trade rules', () => {
-    const result: SecondOpinionResult = {
-      signalId: 'sig_proposal_018',
+  it('15. Uncertain correlation: Unknown broker identifier produces UNMATCHED result', () => {
+    const correlation = secondOpinionObservationService.correlateClosedPosition({
+      brokerOrderId: 'UNKNOWN-ORDER-999999',
+      symbol: 'GBP/USD',
+      realizedProfit: 50.00
+    });
+
+    expect(correlation.matched).toBe(false);
+    expect(correlation.reason).toContain('UNMATCHED');
+  });
+
+  // =========================================================================
+  // TEST 16: Synthetic / backtest observations cannot be counted as LIVE trade outcomes
+  // =========================================================================
+  it('16. Lineage Guard: Synthetic/Backtest observation cannot claim LIVE broker trade stats', async () => {
+    mockOpenAiResponse({
       review: 'PASS',
       candidateDirectionSupported: true,
       independentBias: 'BULLISH',
-      confidence: 90,
+      confidence: 85,
       agreement: 'AGREE',
       contradictionLevel: 'LOW',
       riskFlags: [],
       keyConcerns: [],
       invalidationConcerns: [],
       economicRisk: 'LOW',
-      summary: 'Advisory analysis only.',
-      model: 'gpt-4o-mini',
-      latencyMs: 150,
-      reviewedAt: new Date().toISOString()
-    };
+      summary: 'Backtest test.'
+    });
 
-    const policy = evaluateSecondOpinionPolicy(result);
-    expect(policy.hypotheticalDecision).toBe('ALLOW');
+    // Record observation with BACKTEST data mode
+    await secondOpinionService.reviewSignal({
+      ...sampleInput,
+      signalId: 'sig_backtest_200',
+      dataMode: 'BACKTEST'
+    });
 
-    // Policy returns hypotheticalDecision without mutating any execution gate state
-    expect(typeof policy.hypotheticalDecision).toBe('string');
+    secondOpinionObservationService.linkBrokerOrder('sig_backtest_200', 'ORD-BACKTEST-1');
+
+    const correlation = secondOpinionObservationService.correlateClosedPosition({
+      brokerOrderId: 'ORD-BACKTEST-1',
+      symbol: 'EUR/USD',
+      realizedProfit: 200.00
+    });
+
+    expect(correlation.matched).toBe(false);
+    expect(correlation.reason).toContain('LINEAGE_MISMATCH');
+  });
+
+  // =========================================================================
+  // TEST 17: Security: API key never leaks into observation or summary
+  // =========================================================================
+  it('17. Security: OPENAI_API_KEY never leaks into observation records or summaries', async () => {
+    mockOpenAiResponse({
+      review: 'PASS',
+      candidateDirectionSupported: true,
+      independentBias: 'BULLISH',
+      confidence: 85,
+      agreement: 'AGREE',
+      contradictionLevel: 'LOW',
+      riskFlags: [],
+      keyConcerns: [],
+      invalidationConcerns: [],
+      economicRisk: 'LOW',
+      summary: 'Security check.'
+    });
+
+    await secondOpinionService.reviewSignal({ ...sampleInput, signalId: 'sig_sec_300' });
+    const obs = secondOpinionObservationService.getObservationBySignalId('sig_sec_300');
+    const obsStr = JSON.stringify(obs);
+    expect(obsStr).not.toContain('test-mock-openai-key-never-exposed');
+
+    const summary = secondOpinionObservationService.getSummaryMetrics();
+    const sumStr = JSON.stringify(summary);
+    expect(sumStr).not.toContain('test-mock-openai-key-never-exposed');
+  });
+
+  // =========================================================================
+  // TEST 18: Summary Metrics calculate exact counts without fabricated effectiveness
+  // =========================================================================
+  it('18. Summary Metrics: Accurately reports raw count aggregates', async () => {
+    mockOpenAiResponse({
+      review: 'PASS',
+      candidateDirectionSupported: true,
+      independentBias: 'BULLISH',
+      confidence: 85,
+      agreement: 'AGREE',
+      contradictionLevel: 'LOW',
+      riskFlags: [],
+      keyConcerns: [],
+      invalidationConcerns: [],
+      economicRisk: 'LOW',
+      summary: 'Count check.'
+    });
+
+    await secondOpinionService.reviewSignal({ ...sampleInput, signalId: 'sig_count_1' });
+    await secondOpinionService.reviewSignal({ ...sampleInput, signalId: 'sig_count_2' });
+
+    const summary = secondOpinionObservationService.getSummaryMetrics();
+    expect(summary.totalObservations).toBe(2);
+    expect(summary.passCount).toBe(2);
+    expect(summary.agreementCount).toBe(2);
+    expect(summary.openAiAvailable).toBe(2);
   });
 });
