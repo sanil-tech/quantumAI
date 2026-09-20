@@ -15,7 +15,7 @@ import { SignalIntelligenceService } from '../../../apps/decision-agent/src/serv
 import { EconomicContextService } from './economicContextService';
 import { economicCalendarProvider } from './economicCalendarProvider';
 import { telegramNotificationService } from './telegramNotificationService';
-import { getMarketStatus } from '../../lib/marketHours';
+import { getMarketStatus, isCryptoPair } from '../../lib/marketHours';
 import { signalValidationGate } from './validation/signalValidationGate';
 import { executionEligibilityGate } from './validation/executionEligibilityGate';
 import { CanonicalSignal, ValidationReport } from './validation/signalValidationTypes';
@@ -192,6 +192,12 @@ export class AutonomousMarketScannerService extends EventEmitter {
 
     setup.cancellationAlertSent = true;
     setup.invalidationReason = reason;
+
+    // Suppress weekend cancellation broadcast for closed Forex / Commodities markets
+    if (!isCryptoPair(setup.pair) && getMarketStatus(setup.pair).status === 'WEEKEND_CLOSED') {
+      console.log(`⏸️ [AutonomousMarketScanner] Suppressed weekend cancellation broadcast for closed pair ${setup.pair}.`);
+      return;
+    }
 
     telegramNotificationService.broadcastTradeEvent({
       pair: setup.pair,
@@ -761,6 +767,8 @@ export class AutonomousMarketScannerService extends EventEmitter {
             takeProfit1: best.takeProfit1,
             takeProfit2: tp2Runner,
             lotSize: best.lotSize,
+            recommendedRiskPct: (best as any).recommendedRiskPct,
+            maxRiskPct: (best as any).maxRiskPct,
             reasons: best.reasons
           });
         }).catch(() => {});
@@ -787,6 +795,8 @@ export class AutonomousMarketScannerService extends EventEmitter {
           takeProfit1: best.takeProfit1,
           takeProfit2: tp2Runner,
           lotSize: best.lotSize,
+          recommendedRiskPct: (best as any).recommendedRiskPct,
+          maxRiskPct: (best as any).maxRiskPct,
           reasons: best.reasons
         });
         return;
@@ -938,6 +948,8 @@ export class AutonomousMarketScannerService extends EventEmitter {
           takeProfit1: best.takeProfit1,
           takeProfit2: tp2Runner,
           lotSize: best.lotSize,
+          recommendedRiskPct: (best as any).recommendedRiskPct,
+          maxRiskPct: (best as any).maxRiskPct,
           reasons: best.reasons
         });
         console.log(`✅ [AutonomousMarketScanner] Published confirmed Copier Signal (ID: ${publishedCopierSig.id}) bound to Master Broker Order #${rawBrokerOrderId}`);

@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { getMarketStatus, isCryptoPair } from '../../lib/marketHours';
 
 /**
  * Telegram & Webhook Live Trade Broadcast Service
@@ -33,6 +34,8 @@ export interface TradeBroadcastPayload {
   riskWarnings?: string[];
   brokerOrderId?: string;
   lotSize?: number;
+  recommendedRiskPct?: number;
+  maxRiskPct?: number;
   status: 'ENTRY_DISPATCHED' | 'ORDER_FILLED' | 'TP_HIT' | 'SL_HIT' | 'NEWS_BLACKOUT_VETO' | 'PROFIT_LOCKED' | 'SIGNAL_CANCELLED';
   tier?: 'FREE' | 'VIP' | 'ALL';
   cancellationReason?: string;
@@ -872,7 +875,11 @@ export class TelegramNotificationService {
         payload.takeProfit2 ? `🎯 *Take Profit 2 (Runner):* \`${payload.takeProfit2}\`${tp2Pips ? ` (+${tp2Pips} pips)` : ''}` : '',
         `🛑 *Stop Loss:* \`${payload.stopLoss}\`${slPips ? ` (-${slPips} pips)` : ''}`,
         rrText ? `⚖️ *Planned R:R:* \`${rrText}\`` : '',
-        payload.lotSize ? `📊 *Recommended Lot:* \`${payload.lotSize} Lots\`` : '',
+        [
+          `📊 *Recommended Risk:* \`${payload.recommendedRiskPct ?? 0.50}% of Equity\`${payload.lotSize ? ` _(Master Ref: ${payload.lotSize} Lots)_` : ''}`,
+          `🛡️ *Maximum Permitted Risk:* \`${payload.maxRiskPct ?? 2.00}%\``,
+          `💡 *Local Risk Engine:* _cBot auto-calculates lot volume based on subscriber equity, SL distance & broker specs under subscriber risk profile._`
+        ].join('\n'),
         ``,
         `🧠 *Confidence Assessment:*`,
         `  • *${modelConf}% AI Model Confidence* (Advisory)`,
@@ -1032,7 +1039,11 @@ export class TelegramNotificationService {
         payload.takeProfit2 ? `🎯 *Take Profit 2 (Runner):* \`${payload.takeProfit2}\`${tp2Pips ? ` (+${tp2Pips} pips)` : ''}` : '',
         `🛑 *Stop Loss:* \`${payload.stopLoss}\`${slPips ? ` (-${slPips} pips)` : ''}`,
         rrText ? `⚖️ *Nisbah R:R:* \`${rrText}\`` : '',
-        payload.lotSize ? `📊 *Cadangan Volum:* \`${payload.lotSize} Lots\`` : '',
+        [
+          `📊 *Cadangan Risiko:* \`${payload.recommendedRiskPct ?? 0.50}% daripada Ekuiti\`${payload.lotSize ? ` _(Rujukan Master: ${payload.lotSize} Lots)_` : ''}`,
+          `🛡️ *Had Maksimum Risiko Dibenarkan:* \`${payload.maxRiskPct ?? 2.00}%\``,
+          `💡 *Enjin Risiko Tempatan:* _cBot mengira volum lot secara automatik berpandukan ekuiti subscriber, jarak SL & spesifikasi broker tertakluk kepada profil risiko subscriber._`
+        ].join('\n'),
         ``,
         `🧠 *Penilaian Keyakinan:*`,
         `  • *${modelConfMs}% Keyakinan Model AI* (Nasihat / Advisory)`,
@@ -1273,6 +1284,116 @@ export class TelegramNotificationService {
   }
 
   /**
+   * Generates a comprehensive Institutional Market Outlook & High-Impact Calendar Forecast
+   * for the upcoming trading week (Weekend Intelligence).
+   */
+  public generateMarketOutlookReport(lang: 'en' | 'ms' = 'en'): string {
+    const isEn = lang === 'en';
+    let events: any[] = [];
+    try {
+      const { economicCalendarProvider } = require('./economicCalendarProvider');
+      events = economicCalendarProvider.getWeeklyEvents() || [];
+    } catch {
+      events = [];
+    }
+    const highImpact = events.filter((e: any) => e.impact === 'HIGH').slice(0, 6);
+
+    const now = new Date();
+    // Calculate upcoming trading week dates
+    const currentDayOfWeek = now.getUTCDay();
+    const daysUntilMonday = currentDayOfWeek === 0 ? 1 : (currentDayOfWeek === 6 ? 2 : 8 - currentDayOfWeek);
+    const nextMonday = new Date(now.getTime() + daysUntilMonday * 24 * 3600 * 1000);
+    const nextFriday = new Date(nextMonday.getTime() + 4 * 24 * 3600 * 1000);
+    const weekLabel = `${nextMonday.toLocaleDateString(isEn ? 'en-US' : 'ms-MY', { month: 'short', day: 'numeric' })} — ${nextFriday.toLocaleDateString(isEn ? 'en-US' : 'ms-MY', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+
+    const eventLines = highImpact.map((ev: any) => {
+      const timeDisplay = ev.timeStr || `${String(ev.utcHour || 0).padStart(2, '0')}:${String(ev.utcMinute || 0).padStart(2, '0')} UTC`;
+      return `  • *${ev.flag || '🌐'} ${ev.currency}* | \`${ev.title}\`\n    ⏱️ _${timeDisplay}_ | Forecast: \`${ev.forecast || 'N/A'}\` | Prev: \`${ev.previous || 'N/A'}\`\n    ⚠️ Pairs: \`${(ev.affectedPairs || []).join(', ')}\``;
+    }).join('\n\n');
+
+    return isEn
+      ? [
+          `🌐 *[QUANTUM AI — WEEKLY MARKET OUTLOOK & HIGH-IMPACT RADAR]* 🏛️`,
+          `📅 *Upcoming Trading Week:* \`${weekLabel}\``,
+          ``,
+          `🔴 *Key High-Impact Macro Economic Events:*`,
+          eventLines || `  • _No Tier-1 high impact news scheduled this week._`,
+          ``,
+          `🛡️ *Institutional AI News Defense Rule:*`,
+          `  • Automatic trading veto is enforced ±30m before and after High-Impact events to protect capital against slippage and spread widening.`,
+          ``,
+          `🧠 *Institutional SMC Asset Focus & Strategic Bias:*`,
+          `  • *EUR/USD:* Watch for Asian range liquidity sweeps into 4H Discount Order Blocks. Focus on London Killzone expansions.`,
+          `  • *GBP/USD:* High sensitivity to UK & US macro data. Look for liquidity grabs at previous week highs/lows (PWH/PWL).`,
+          `  • *USD/JPY:* Maintain tight risk around US 10-Year yield shifts and key intervention psychological levels.`,
+          `  • *XAU/USD (Gold):* Monitor institutional liquidity pools at weekly extremes. High volatility expected during US sessions.`,
+          ``,
+          `📊 *Execution Protocol & Risk Reminders:*`,
+          `  1️⃣ *Risk Cap:* Max 1.0% – 2.0% equity risk per setup.`,
+          `  2️⃣ *Method 2 Split-Ticket:* Automatic TP1 partials (+25–35 pips) + Stop Loss shifted to Break-Even (\`Auto @ Entry\`).`,
+          `  3️⃣ *Autonomous Copier Status:* Engine is armed and ready for the Sunday market open at 21:00 UTC (05:00 MYT Monday).`,
+          ``,
+          `👉 *Connect or verify your cTrader account before market open:*`,
+          `Type \`/register <Account_Number>\` or contact Admin *@sanilbans*`,
+          ``,
+          `⏰ _${new Date().toUTCString()}_ | _Quantum AI Institutional Intelligence_`
+        ].join('\n')
+      : [
+          `🌐 *[QUANTUM AI — TINJAUAN PASARAN MINGGU HADAPAN & RADAR BERITA]* 🏛️`,
+          `📅 *Minggu Dagangan:* \`${weekLabel}\``,
+          ``,
+          `🔴 *Kalendar Berita Berimpak Tinggi (Zon Merah):*`,
+          eventLines || `  • _Tiada berita berimpak tinggi Tier-1 dijadualkan minggu ini._`,
+          ``,
+          `🛡️ *Protokol Pertahanan AI Quantum:*`,
+          `  • Sistem akan mengaktifkan sekatan dagangan automatik (Trade Veto) ±30 minit sebelum & selepas berita merah untuk melindungi modal daripada spread kembang dan slippage.`,
+          ``,
+          `🧠 *Fokus SMC & Bias Pasaran Utama:*`,
+          `  • *EUR/USD:* Pantau sapuan kecairan (liquidity sweep) zon Asia ke arah Order Block Discount 4H semasa London Killzone.`,
+          `  • *GBP/USD:* Sensitif terhadap data UK & USD. Utamakan entri selepas pengesahan Break of Structure (BOS).`,
+          `  • *USD/JPY:* Kawal risiko ketat berhampiran zon intervensi dan pergerakan hasil bon AS (US Yields).`,
+          `  • *XAU/USD (Emas):* Pantau kolam kecairan pada paras tertinggi/terendah mingguan. Bersedia untuk lonjakan volatiliti sesi New York.`,
+          ``,
+          `📊 *Peringatan Disiplin & Pengurusan Risiko:*`,
+          `  1️⃣ *Had Risiko:* Maksimum 1.0% – 2.0% bagi setiap entri.`,
+          `  2️⃣ *Method 2 Split-Ticket:* Ambil untung di TP1 (+25–35 pips) & sistem alih SL ke Break-Even (\`Auto @ Entry\`) secara automatik.`,
+          `  3️⃣ *Status Copier:* Sistem bersedia sepenuhnya untuk pembukaan pasaran pada Ahad 21:00 UTC (5:00 Pagi Isnin waktu Malaysia).`,
+          ``,
+          `👉 *Pautkan akaun cTrader anda sebelum pasaran dibuka:*`,
+          `Taip \`/register <Nombor_Akaun>\` atau hubungi Admin *@sanilbans*`,
+          ``,
+          `⏰ _${new Date().toUTCString()}_ | _Quantum AI Institutional Intelligence_`
+        ].join('\n');
+  }
+
+  /**
+   * Broadcast Weekly Market Outlook to Telegram Subscribers
+   */
+  public async broadcastMarketOutlook(): Promise<boolean> {
+    if (!this.isEnabled) return false;
+    const mainLang = this.getUserLanguage(this.channelId || undefined);
+    const message = this.generateMarketOutlookReport(mainLang);
+
+    this.broadcastHistory.unshift({
+      timestamp: Date.now(),
+      message,
+      payload: { type: 'MARKET_OUTLOOK' }
+    });
+    if (this.broadcastHistory.length > 100) this.broadcastHistory.pop();
+
+    if (this.botToken && this.channelId) {
+      const res = await this.sendRawMessage(message, this.channelId);
+      if (this.freeChannelId && this.freeChannelId !== this.channelId) {
+        const freeLang = this.getUserLanguage(this.freeChannelId);
+        const freeMsg = this.generateMarketOutlookReport(freeLang);
+        await this.sendRawMessage(freeMsg, this.freeChannelId).catch(() => {});
+      }
+      return res.success;
+    }
+    return true;
+  }
+
+  /**
    * Continuous Scheduler for Contextual Session Tips
    */
   public startContextualTipsScheduler(): void {
@@ -1318,23 +1439,30 @@ export class TelegramNotificationService {
   }
 
   /**
-   * Continuous Scheduler for Weekly Performance Stats Recap
+   * Continuous Scheduler for Weekly Performance Stats Recap & Sunday Market Outlook
    */
   public startWeeklyStatsScheduler(): void {
     if (this.weeklyStatsInterval) return;
 
     let lastWeeklyBroadcastDay = -1;
+    let lastOutlookBroadcastDay = -1;
 
     this.weeklyStatsInterval = setInterval(async () => {
       try {
         const now = new Date();
-        const utcDay = now.getUTCDay(); // 6 = Saturday
+        const utcDay = now.getUTCDay(); // 0 = Sunday, 6 = Saturday
         const utcHour = now.getUTCHours();
 
-        // Broadcast Saturday morning at 01:00 UTC (09:00 MYT)
+        // 1. Broadcast Saturday morning at 01:00 UTC (09:00 MYT) - Weekly Performance Stats
         if (utcDay === 6 && utcHour === 1 && lastWeeklyBroadcastDay !== now.getDate()) {
           lastWeeklyBroadcastDay = now.getDate();
           await this.broadcastWeeklyStats().catch(() => {});
+        }
+
+        // 2. Broadcast Sunday evening at 12:00 UTC (20:00 MYT) - Market Outlook for Week Ahead
+        if (utcDay === 0 && utcHour === 12 && lastOutlookBroadcastDay !== now.getDate()) {
+          lastOutlookBroadcastDay = now.getDate();
+          await this.broadcastMarketOutlook().catch(() => {});
         }
       } catch (err: any) {
         // background weekly stats scheduler catch
@@ -1396,6 +1524,14 @@ export class TelegramNotificationService {
       return false;
     }
 
+    // Weekend closed market suppression: Suppress all Forex/Commodities/Indices trade executions,
+    // target hits, stop loss hits, and cancellation alerts during weekend closure (Fri 21:00 UTC - Sun 21:00 UTC).
+    // 24/7 Crypto assets (BTC/USD) remain fully active.
+    if (!isCryptoPair(payload.pair || '') && getMarketStatus(payload.pair || '').status === 'WEEKEND_CLOSED') {
+      console.log(`⏸️ [TelegramNotificationService] Suppressed ${payload.status} trade alert for ${payload.pair} during weekend market closure.`);
+      return false;
+    }
+
     // Anti-spam deduplication: Prevent duplicate signal broadcasts for the same pair, direction & status within 30 minutes
     const priceKey = Math.round((payload.entryPrice || 0) * 1000);
     const tradeKey = `${payload.pair || 'UNKNOWN'}_${payload.direction || 'BUY'}_${payload.status}_${priceKey}_${payload.brokerOrderId || ''}`;
@@ -1433,6 +1569,8 @@ export class TelegramNotificationService {
           takeProfit1: payload.takeProfit1,
           takeProfit2: payload.takeProfit2,
           lotSize: payload.lotSize || 0.02,
+          recommendedRiskPct: payload.recommendedRiskPct,
+          maxRiskPct: payload.maxRiskPct,
           reasons: payload.reasons || []
         });
       }).catch(() => {});
@@ -1597,6 +1735,7 @@ export class TelegramNotificationService {
             { command: 'download', description: '📥 Download QuantumAI VIP cBot (.cs)' },
             { command: 'tips', description: '💡 Instant SMC & Session Trading Tips' },
             { command: 'weekly', description: '📊 Official Weekly Performance Ledger' },
+            { command: 'outlook', description: '🌐 Weekly Market Outlook & High-Impact News' },
             { command: 'strategy', description: '🧠 Smart Money Concepts & Rules' },
             { command: 'risk', description: '🛡️ Method 2 Split-Ticket, TP1/TP2 & BE' },
             { command: 'services', description: '🚀 Free Community vs VIP Auto-Copier' },
@@ -1642,11 +1781,11 @@ export class TelegramNotificationService {
       ],
       [
         { text: isEn ? '📊 Weekly Stats' : '📊 Laporan Prestasi', callback_data: 'cmd_weekly' },
-        { text: isEn ? '🧠 Strategy & SMC' : '🧠 Strategi SMC', callback_data: 'cmd_strategy' }
+        { text: isEn ? '🌐 Market Outlook' : '🌐 Tinjauan Pasaran', callback_data: 'cmd_outlook' }
       ],
       [
-        { text: isEn ? '🛡️ Risk & Method 2' : '🛡️ Risiko & Method 2', callback_data: 'cmd_risk' },
-        { text: isEn ? '🚀 Free vs VIP Copier' : '🚀 Servis Percuma vs VIP', callback_data: 'cmd_services' }
+        { text: isEn ? '🧠 Strategy & SMC' : '🧠 Strategi SMC', callback_data: 'cmd_strategy' },
+        { text: isEn ? '🛡️ Risk & Method 2' : '🛡️ Risiko & Method 2', callback_data: 'cmd_risk' }
       ],
       [
         { text: isEn ? '📊 System Status' : '📊 Status Sistem', callback_data: 'cmd_status' },
@@ -2314,6 +2453,9 @@ export class TelegramNotificationService {
                 } else if (action === 'cmd_weekly') {
                   const weeklyMsg = this.generateWeeklyStatsReport(currentLang);
                   await this.sendRawMessage(weeklyMsg, chatId, this.getOnboardingKeyboard(currentLang));
+                } else if (action === 'cmd_outlook') {
+                  const outlookMsg = this.generateMarketOutlookReport(currentLang);
+                  await this.sendRawMessage(outlookMsg, chatId, this.getOnboardingKeyboard(currentLang));
                 } else if (action === 'cmd_strategy') {
                   await this.sendRawMessage(this.getStrategyMessage(currentLang), chatId, this.getOnboardingKeyboard(currentLang));
                 } else if (action === 'cmd_risk') {
@@ -2616,18 +2758,34 @@ export class TelegramNotificationService {
                       ).catch(() => {});
                     }
 
-                    // 4. Also broadcast token to VIP channel so user can retrieve it there
+                    // 4. Broadcast welcoming message to VIP and Free Community channels without sensitive credentials
+                    const channelsToBroadcast = new Set<string>();
                     const vipChannelId = process.env.TELEGRAM_VIP_CHAT_ID || this.channelId;
-                    if (vipChannelId) {
-                      await this.sendRawMessage(
-                        `👑 *[NEW VIP MEMBER ACTIVATED]* ✅\n\n` +
-                        `• *Account:* \`${activated.accountNumber}\`\n` +
-                        `• *Name:* ${activated.name || 'VIP Trader'}\n` +
-                        `• *Expires:* ${expDate}\n\n` +
-                        `🔑 *VipAuthToken (check your DM):*\n` +
-                        `\`${vipToken}\``,
-                        vipChannelId
-                      ).catch(() => {});
+                    const freeChannelId = process.env.TELEGRAM_FREE_CHAT_ID || this.freeChannelId;
+                    if (vipChannelId && vipChannelId !== activated.telegramId && vipChannelId !== chatId) {
+                      channelsToBroadcast.add(vipChannelId);
+                    }
+                    if (freeChannelId && freeChannelId !== activated.telegramId && freeChannelId !== chatId) {
+                      channelsToBroadcast.add(freeChannelId);
+                    }
+
+                    if (channelsToBroadcast.size > 0) {
+                      const rawAcc = activated.accountNumber;
+                      const maskedAcc = rawAcc.length > 4
+                        ? `${rawAcc.slice(0, 3)}***${rawAcc.slice(-2)}`
+                        : `***${rawAcc.slice(-2)}`;
+                      const channelWelcomeMsg =
+                        `👑 *[NEW VIP MEMBER JOINED]* 🚀\n\n` +
+                        `Welcome to Quantum AI VIP Institutional, *${activated.name || 'VIP Trader'}*!\n\n` +
+                        `• *Account:* \`${maskedAcc}\`\n` +
+                        `• *Tier:* Institutional VIP Copier\n` +
+                        `• *Access:* ${durationDays} Days Active\n` +
+                        `• *Valid Until:* \`${expDate}\`\n\n` +
+                        `🔒 *Security Notice:* Your private *VipAuthToken* and setup instructions have been delivered directly to your personal DM.`;
+
+                      for (const chId of channelsToBroadcast) {
+                        await this.sendRawMessage(channelWelcomeMsg, chId).catch(() => {});
+                      }
                     }
                   }
                 }
@@ -2795,6 +2953,9 @@ export class TelegramNotificationService {
               } else if (text === '/weekly' || text === '/performance' || text === '/prestasi' || text === '/recap' || text === '/mingguan') {
                 const weeklyMsg = this.generateWeeklyStatsReport(currentLang);
                 await this.sendRawMessage(weeklyMsg, chatId, this.getOnboardingKeyboard(currentLang));
+              } else if (text === '/outlook' || text === '/prospek' || text === '/minggudepan' || text === '/weekahead' || text === '/market') {
+                const outlookMsg = this.generateMarketOutlookReport(currentLang);
+                await this.sendRawMessage(outlookMsg, chatId, this.getOnboardingKeyboard(currentLang));
               } else if (text === '/strategy' || text === '/smc' || text === '/analisis') {
                 await this.sendRawMessage(this.getStrategyMessage(currentLang), chatId, this.getOnboardingKeyboard(currentLang));
               } else if (text === '/risk' || text === '/execution' || text === '/be' || text === '/tp') {

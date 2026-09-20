@@ -1090,6 +1090,130 @@ adminRouter.get('/second-opinion/analytics/confidence', adminAuthMiddleware, asy
   }
 });
 
+// =========================================================================
+// PHASE 2B: CURRENCY THESIS INTELLIGENCE ENDPOINTS (READ-ONLY)
+// =========================================================================
+
+// Admin: Diagnostic Health Check for Currency Thesis Intelligence
+adminRouter.get('/currency-thesis/health', adminAuthMiddleware, async (_req: Request, res: Response) => {
+  try {
+    const { currencyThesisIntelligenceService } = await import('../../../apps/decision-agent/src/services/currencyThesisIntelligenceService');
+    const health = currencyThesisIntelligenceService.getHealthDiagnostic();
+    res.json({
+      success: true,
+      health
+    });
+  } catch (err: any) {
+    logger.error(`Admin currency-thesis health check failed: ${err.message}`);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Admin: Overview Across All Supported Currencies
+adminRouter.get('/currency-thesis/overview', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { currencyThesisIntelligenceService } = await import('../../../apps/decision-agent/src/services/currencyThesisIntelligenceService');
+    const dataMode = (req.query.dataMode as any) || 'LIVE';
+    const overview = currencyThesisIntelligenceService.getAllCurrenciesOverview(dataMode);
+    res.json({
+      success: true,
+      overview
+    });
+  } catch (err: any) {
+    logger.error(`Admin currency-thesis overview failed: ${err.message}`);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Admin: Supported Pairs & Currency Mapping Matrix
+adminRouter.get('/currency-thesis/pairs', adminAuthMiddleware, async (_req: Request, res: Response) => {
+  try {
+    const { SUPPORTED_CURRENCIES, currencyThesisIntelligenceService } = await import('../../../apps/decision-agent/src/services/currencyThesisIntelligenceService');
+    const commonPairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'GBPJPY', 'EURJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD', 'AUDJPY', 'CADJPY', 'CHFJPY', 'NZDJPY', 'EURGBP', 'EURAUD', 'EURCAD', 'EURCHF', 'GBPAUD', 'GBPCAD', 'GBPCHF'];
+    const mappings = commonPairs.map(p => currencyThesisIntelligenceService.parsePair(p));
+    res.json({
+      success: true,
+      supportedCurrencies: SUPPORTED_CURRENCIES,
+      mappings
+    });
+  } catch (err: any) {
+    logger.error(`Admin currency-thesis pairs failed: ${err.message}`);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Admin: Detailed Diagnostic Dump
+adminRouter.get('/currency-thesis/diagnostic', adminAuthMiddleware, async (_req: Request, res: Response) => {
+  try {
+    const { currencyThesisIntelligenceService } = await import('../../../apps/decision-agent/src/services/currencyThesisIntelligenceService');
+    const health = currencyThesisIntelligenceService.getHealthDiagnostic();
+    const overview = currencyThesisIntelligenceService.getAllCurrenciesOverview('LIVE');
+    res.json({
+      success: true,
+      diagnostic: {
+        health,
+        overview,
+        timestamp: new Date().toISOString(),
+        mode: 'OBSERVATION',
+        executionAuthority: false
+      }
+    });
+  } catch (err: any) {
+    logger.error(`Admin currency-thesis diagnostic failed: ${err.message}`);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Admin: History of Observations for a Currency
+adminRouter.get('/currency-thesis/:currency/history', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { currencyThesisIntelligenceService, SUPPORTED_CURRENCIES, SupportedCurrency } = await import('../../../apps/decision-agent/src/services/currencyThesisIntelligenceService');
+    const currency = (req.params.currency || '').toUpperCase() as any;
+    if (!SUPPORTED_CURRENCIES.includes(currency)) {
+      return res.status(400).json({
+        success: false,
+        error: `Unsupported currency '${currency}'. Must be one of: ${SUPPORTED_CURRENCIES.join(', ')}`
+      });
+    }
+
+    const limit = req.query.limit ? Number(req.query.limit) : 100;
+    const history = currencyThesisIntelligenceService.getCurrencyHistory(currency, limit);
+    res.json({
+      success: true,
+      currency,
+      count: history.length,
+      history
+    });
+  } catch (err: any) {
+    logger.error(`Admin currency-thesis history failed: ${err.message}`);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Admin: Specific Currency Overview & Thesis Breakdown
+adminRouter.get('/currency-thesis/:currency', adminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { currencyThesisIntelligenceService, SUPPORTED_CURRENCIES } = await import('../../../apps/decision-agent/src/services/currencyThesisIntelligenceService');
+    const currency = (req.params.currency || '').toUpperCase() as any;
+    if (!SUPPORTED_CURRENCIES.includes(currency)) {
+      return res.status(400).json({
+        success: false,
+        error: `Unsupported currency '${currency}'. Must be one of: ${SUPPORTED_CURRENCIES.join(', ')}`
+      });
+    }
+
+    const dataMode = (req.query.dataMode as any) || 'LIVE';
+    const overview = currencyThesisIntelligenceService.getCurrencyOverview(currency, dataMode);
+    res.json({
+      success: true,
+      overview
+    });
+  } catch (err: any) {
+    logger.error(`Admin currency-thesis currency breakdown failed: ${err.message}`);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 export default adminRouter;
 
 

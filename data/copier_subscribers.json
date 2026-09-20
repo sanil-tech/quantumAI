@@ -196,5 +196,41 @@
     "latencyMs": 38,
     "totalCopiedTrades": 0,
     "createdAt": 1789690132982
+  },
+  {
+    "id": "sub-5918523",
+    "name": "Sanilbans",
+    "email": "5918523@ctrader.client",
+    "accountNumber": "5918523",
+    "ctidTraderAccountId": 5918523,
+    "environment": "DEMO",
+    "brokerName": "Spotware cTrader Open API",
+    "riskMode": "BALANCED",
+    "riskPercent": 1,
+    "status": "ACTIVE",
+    "balance": 1000,
+    "equity": 1000,
+    "connected": true,
+    "latencyMs": 38,
+    "totalCopiedTrades": 0,
+    "createdAt": 1789862244899
+  },
+  {
+    "id": "sub-5918521",
+    "name": "VIP Trader",
+    "email": "5918521@ctrader.client",
+    "accountNumber": "5918521",
+    "ctidTraderAccountId": 5918521,
+    "environment": "DEMO",
+    "brokerName": "Spotware cTrader Open API",
+    "riskMode": "BALANCED",
+    "riskPercent": 1,
+    "status": "ACTIVE",
+    "balance": 1000,
+    "equity": 1000,
+    "connected": true,
+    "latencyMs": 38,
+    "totalCopiedTrades": 0,
+    "createdAt": 1789862683291
   }
 ]

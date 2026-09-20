@@ -9,6 +9,7 @@ import {
 import { AdminTradingCenter } from './AdminTradingCenter';
 import { SuperAdminDashboard } from './SuperAdminDashboard';
 import { SecondOpinionObservatory } from './SecondOpinionObservatory';
+import { CurrencyThesisObservatory } from './CurrencyThesisObservatory';
 
 interface AdminDeveloperDashboardProps {
   isMalay: boolean;
@@ -19,11 +20,14 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
   isMalay,
   onOpenBrokerModal
 }) => {
-  const [adminSection, setAdminSection] = useState<'SUPER_ADMIN' | 'GOVERNANCE' | 'BRIDGE_DIAGNOSTICS' | 'SECOND_OPINION'>(() => {
+  const [adminSection, setAdminSection] = useState<'SUPER_ADMIN' | 'GOVERNANCE' | 'BRIDGE_DIAGNOSTICS' | 'SECOND_OPINION' | 'CURRENCY_THESIS'>(() => {
     if (typeof window !== 'undefined') {
       const tab = new URLSearchParams(window.location.search).get('tab');
       if (tab === 'second-opinion' || window.location.pathname === '/admin/second-opinion') {
         return 'SECOND_OPINION';
+      }
+      if (tab === 'currency-thesis' || window.location.pathname === '/admin/currency-thesis') {
+        return 'CURRENCY_THESIS';
       }
     }
     return 'SUPER_ADMIN';
@@ -239,6 +243,17 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
           <Eye className="w-4 h-4" />
           <span>Second Opinion Observatory</span>
         </button>
+        <button
+          onClick={() => setAdminSection('CURRENCY_THESIS')}
+          className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 ${
+            adminSection === 'CURRENCY_THESIS'
+              ? 'bg-indigo-600 text-white shadow-lg'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800'
+          }`}
+        >
+          <Layers className="w-4 h-4 text-indigo-400" />
+          <span>Currency Thesis Observatory</span>
+        </button>
       </div>
 
       {adminSection === 'SUPER_ADMIN' ? (
@@ -247,6 +262,8 @@ export const AdminDeveloperDashboard: React.FC<AdminDeveloperDashboardProps> = (
         <AdminTradingCenter isMalay={isMalay} />
       ) : adminSection === 'SECOND_OPINION' ? (
         <SecondOpinionObservatory isMalay={isMalay} />
+      ) : adminSection === 'CURRENCY_THESIS' ? (
+        <CurrencyThesisObservatory />
       ) : (
         <>
           {/* ========================================================================= */}

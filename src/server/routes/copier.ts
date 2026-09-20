@@ -314,6 +314,8 @@ export interface CopierLiveSignal {
   takeProfit1: number;
   takeProfit2: number;
   lotSize: number;
+  recommendedRiskPct?: number;
+  maxRiskPct?: number;
   reasons?: string[];
   timestamp: number;
 }
@@ -353,8 +355,45 @@ function saveCopierQueueToDisk() {
 let latestCopierSignal: CopierLiveSignal | null = null;
 
 export function publishCopierSignal(signal: Omit<CopierLiveSignal, 'id' | 'timestamp'> & { id?: string }): CopierLiveSignal {
+  let recommendedRiskPct: number = 0.50;
+  if (signal.recommendedRiskPct !== undefined) {
+    if (
+      typeof signal.recommendedRiskPct !== 'number' ||
+      isNaN(signal.recommendedRiskPct) ||
+      !isFinite(signal.recommendedRiskPct) ||
+      signal.recommendedRiskPct < 0.01 ||
+      signal.recommendedRiskPct > 5.0
+    ) {
+      throw new Error(`MALFORMED_RECOMMENDED_RISK: Value '${signal.recommendedRiskPct}' is invalid (must be a finite positive number between 0.01% and 5.0%)`);
+    }
+    recommendedRiskPct = Number(signal.recommendedRiskPct);
+  }
+
+  let maxRiskPct: number = 2.00;
+  if (signal.maxRiskPct !== undefined) {
+    if (
+      typeof signal.maxRiskPct !== 'number' ||
+      isNaN(signal.maxRiskPct) ||
+      !isFinite(signal.maxRiskPct) ||
+      signal.maxRiskPct < 0.01 ||
+      signal.maxRiskPct > 5.0
+    ) {
+      throw new Error(`MALFORMED_MAX_RISK: Value '${signal.maxRiskPct}' is invalid (must be a finite positive number between 0.01% and 5.0%)`);
+    }
+    maxRiskPct = Number(signal.maxRiskPct);
+  }
+
+  // Ensure recommended risk does not exceed max risk cap
+  if (signal.recommendedRiskPct !== undefined && signal.maxRiskPct !== undefined && signal.recommendedRiskPct > signal.maxRiskPct) {
+    throw new Error(`RECOMMENDED_RISK_EXCEEDS_MAX: Recommended risk (${signal.recommendedRiskPct}%) cannot exceed maximum risk (${signal.maxRiskPct}%)`);
+  } else if (recommendedRiskPct > maxRiskPct) {
+    recommendedRiskPct = maxRiskPct;
+  }
+
   const newSig: CopierLiveSignal = {
     ...signal,
+    recommendedRiskPct,
+    maxRiskPct,
     id: signal.id || `SIG-${Date.now()}`,
     timestamp: Date.now()
   };
@@ -437,11 +476,18 @@ copierRouter.get('/copier/signal', productionTlsGuard, copierRateLimiter(180, 60
     });
 
     if (!candidateSignal) {
-      return res.json({ hasSignal: false, serverTime: Date.now() });
+      return res.json({
+        hasSignal: false,
+        serverTime: Date.now(),
+        message: 'No new active signal available (all signals already consumed or no new signal published).'
+      });
     }
 
     // Mark as delivered to this license
     vipSubscriptionService.recordSignalDelivery(account, candidateSignal.id);
+
+    const recRisk = typeof candidateSignal.recommendedRiskPct === 'number' ? candidateSignal.recommendedRiskPct : 0.50;
+    const maxRisk = typeof candidateSignal.maxRiskPct === 'number' ? candidateSignal.maxRiskPct : 2.00;
 
     return res.json({
       hasSignal: true,
@@ -454,8 +500,14 @@ copierRouter.get('/copier/signal', productionTlsGuard, copierRateLimiter(180, 60
       stopLoss: candidateSignal.stopLoss,
       takeProfit1: candidateSignal.takeProfit1,
       takeProfit2: candidateSignal.takeProfit2,
+      recommendedRiskPct: recRisk,
+      maxRiskPct: maxRisk,
       timestamp: candidateSignal.timestamp,
-      signal: candidateSignal
+      signal: {
+        ...candidateSignal,
+        recommendedRiskPct: recRisk,
+        maxRiskPct: maxRisk
+      }
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -469,7 +521,7 @@ copierRouter.get('/copier/signal', productionTlsGuard, copierRateLimiter(180, 60
  */
 copierRouter.post('/copier/signal', copierAdminAuthMiddleware, async (req: Request, res: Response) => {
   try {
-    const { pair, direction, entryPrice, stopLoss, takeProfit1, takeProfit2, lotSize, reasons, masterBrokerOrderId, id, timeframe, confidence } = req.body;
+    const { pair, direction, entryPrice, stopLoss, takeProfit1, takeProfit2, lotSize, reasons, masterBrokerOrderId, id, timeframe, confidence, recommendedRiskPct, maxRiskPct } = req.body;
     if (!pair || !direction || !entryPrice) {
       return res.status(400).json({ error: 'pair, direction, entryPrice are required' });
     }
@@ -483,6 +535,8 @@ copierRouter.post('/copier/signal', copierAdminAuthMiddleware, async (req: Reque
       takeProfit1: Number(takeProfit1),
       takeProfit2: Number(takeProfit2),
       lotSize: Number(lotSize) || 0.02,
+      recommendedRiskPct: recommendedRiskPct !== undefined ? Number(recommendedRiskPct) : undefined,
+      maxRiskPct: maxRiskPct !== undefined ? Number(maxRiskPct) : undefined,
       reasons: Array.isArray(reasons) ? reasons : [reasons || 'Quantum AI Quantitative Signal']
     });
 
@@ -500,6 +554,8 @@ copierRouter.post('/copier/signal', copierAdminAuthMiddleware, async (req: Reque
         confidence: Number(confidence) || 95,
         reasons: Array.isArray(reasons) ? reasons : [reasons || 'Quantum AI Quantitative Signal'],
         lotSize: Number(lotSize) || 0.02,
+        recommendedRiskPct: sig.recommendedRiskPct,
+        maxRiskPct: sig.maxRiskPct,
         tier: 'VIP',
         status: 'ENTRY_DISPATCHED',
         brokerOrderId: masterBrokerOrderId || sig.id
@@ -510,6 +566,9 @@ copierRouter.post('/copier/signal', copierAdminAuthMiddleware, async (req: Reque
 
     res.json({ success: true, signal: sig, telegramBroadcast: true });
   } catch (err: any) {
+    if (err.message && (err.message.startsWith('MALFORMED_') || err.message.startsWith('RECOMMENDED_RISK_EXCEEDS_MAX'))) {
+      return res.status(400).json({ error: err.message });
+    }
     res.status(500).json({ error: err.message });
   }
 });
@@ -769,6 +828,8 @@ copierRouter.post('/copier/test-dual-order', copierAdminAuthMiddleware, async (r
       takeProfit2 = 1.15850,
       lotSize = 0.02,
       confidence = 94,
+      recommendedRiskPct,
+      maxRiskPct,
       reasons = [
         'M15 Bullish Order Block (OB) Retest Confirmed',
         'Asian Session Lows Liquidity Sweep',
@@ -823,6 +884,8 @@ copierRouter.post('/copier/test-dual-order', copierAdminAuthMiddleware, async (r
       takeProfit1: Number(takeProfit1),
       takeProfit2: Number(takeProfit2),
       lotSize: Number(lotSize),
+      recommendedRiskPct: recommendedRiskPct !== undefined ? Number(recommendedRiskPct) : undefined,
+      maxRiskPct: maxRiskPct !== undefined ? Number(maxRiskPct) : undefined,
       reasons: Array.isArray(reasons) ? reasons : [reasons]
     });
     console.log(`✅ [Client cBot Bridge] Copier signal published (ID: ${copierSignal.id}, BrokerOrderId: ${latestMasterTestOrderId})`);
@@ -842,6 +905,8 @@ copierRouter.post('/copier/test-dual-order', copierAdminAuthMiddleware, async (r
         confidence: Number(confidence),
         reasons: Array.isArray(reasons) ? reasons : [reasons],
         lotSize: Number(lotSize),
+        recommendedRiskPct: copierSignal.recommendedRiskPct,
+        maxRiskPct: copierSignal.maxRiskPct,
         status: 'ENTRY_DISPATCHED',
         tier: Number(confidence) >= 85 ? 'FREE' : 'VIP',
         brokerOrderId: latestMasterTestOrderId || 'CTRADER-OPENAPI-MASTER'
@@ -861,7 +926,9 @@ copierRouter.post('/copier/test-dual-order', copierAdminAuthMiddleware, async (r
         stopLoss: Number(stopLoss),
         takeProfit1: Number(takeProfit1),
         takeProfit2: Number(takeProfit2),
-        lotSize: Number(lotSize)
+        lotSize: Number(lotSize),
+        recommendedRiskPct: copierSignal.recommendedRiskPct,
+        maxRiskPct: copierSignal.maxRiskPct
       },
       masterOpenApiAccount: {
         accountId: '5881460 (CTID: 48282756)',

@@ -6,4 +6,12 @@ export * from './smc';
 export * from './marketDataValidator';
 export * from './redact';
 export * from './financialPnL';
-
+export * from './currencyExposureNormalizer';
+export * from './currencyShadowGovernance';
+export * from './tradeObservation';
+export * from './tradeOutcomeAnalytics';
+export * from './tradePatternDiscovery';
+export * from './validatedImprovementProposals';
+export * from './historicalEvidenceReconstruction';
+export * from './historicalQuantumAIAttribution';
+export * from './liveAttributionIntegrity';

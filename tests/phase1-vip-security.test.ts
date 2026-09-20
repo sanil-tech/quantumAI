@@ -251,6 +251,12 @@ describe('PHASE 1 VIP SECURITY & SIGNAL GATEWAY HARDENING', () => {
       const active = vipSubscriptionService.activateAccount('500005', 30);
       const token = active.authToken || active.token;
 
+      // Drain any pre-existing signals from other test suites
+      while (true) {
+        const drain = await request(app).get(`/api/copier/signal?account=500005&token=${token}`);
+        if (!drain.body.hasSignal) break;
+      }
+
       // Publish a new master-confirmed signal
       const signalId = `SIG_TEST_${Date.now()}_EURUSD`;
       publishCopierSignal({

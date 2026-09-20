@@ -12,9 +12,13 @@ import { brokerReconciliationService } from '../../../apps/execution-router/src/
 
 import { ctraderMarketDataFeedService } from '../services/ctraderMarketDataFeedService';
 import { CTraderSymbolRegistry } from '../../integrations/ctrader/ctraderSymbolService';
+import { defaultCurrencyShadowEventBridge } from '../services/shadow/currencyShadowEventBridge';
 
 export const brokerRouter = Router();
 const governanceEngine = new RiskGovernanceEngine();
+
+// Wire one-way observational shadow event bridge to market data feed
+defaultCurrencyShadowEventBridge.bindMarketDataFeed(ctraderMarketDataFeedService);
 
 // Shared broker connection state
 export const serverBrokerConnection = {

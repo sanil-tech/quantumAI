@@ -1,0 +1,35 @@
+[
+  {
+    "id": "obs_sig_iso_1_1789826901132",
+    "signalId": "sig_iso_1",
+    "symbol": "EUR/USD",
+    "timeframe": "M15",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 85,
+    "openAiReview": "PASS",
+    "openAiBias": "BULLISH",
+    "openAiConfidence": 80,
+    "agreement": "AGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "LOW",
+    "riskFlags": [],
+    "keyConcerns": [],
+    "invalidationConcerns": [],
+    "entry": 1.085,
+    "stopLoss": 1.08,
+    "takeProfit": 1.095,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-19T14:08:21.132Z",
+    "secondOpinionAt": "2026-09-19T14:08:21.132Z",
+    "model": "gpt-4o-mini",
+    "latencyMs": 10,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-19T14:08:21.132Z",
+    "updatedAt": "2026-09-19T14:08:21.132Z",
+    "dataQualityFlags": []
+  }
+]

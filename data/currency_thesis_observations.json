@@ -1,0 +1,889 @@
+[
+  {
+    "id": "CTO-1789813489705-eutrwu",
+    "signalId": "SIG-1789606024928",
+    "symbol": "GBP/JPY",
+    "canonicalSymbol": "GBP/JPY",
+    "baseCurrency": "GBP",
+    "quoteCurrency": "JPY",
+    "timeframe": "M15",
+    "direction": "BUY",
+    "confidence": 85,
+    "primaryCurrency": "GBP",
+    "secondaryCurrency": "JPY",
+    "baseThesisKey": "GBP_STRENGTH",
+    "quoteThesisKey": "JPY_WEAKNESS",
+    "primaryThesisKey": "JPY_WEAKNESS",
+    "entryPrice": 208.903,
+    "stopLoss": 208.553,
+    "executionEligibility": "WAITING_FOR_ENTRY",
+    "dataMode": "LIVE",
+    "observedAt": "2026-09-17T00:47:04.928Z",
+    "orderType": "LIMIT_PULLBACK",
+    "isOrderSubmitted": false,
+    "isOrderFilled": false,
+    "isPositionOpened": false,
+    "isPositionClosed": false,
+    "outcomeStatus": "EXPIRED",
+    "reasons": [
+      "Setup expired (> 2h without fill)"
+    ],
+    "secondOpinion": {
+      "exists": false,
+      "status": "UNAVAILABLE"
+    },
+    "economicContext": {
+      "economicRisk": "LOW",
+      "nearbyHighImpactEvents": []
+    },
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_BROKER_LINK",
+      "UNKNOWN_EXECUTION_SEQUENCE"
+    ]
+  },
+  {
+    "id": "CTO-1789813489711-yx8w93",
+    "signalId": "SIG-GBPJPY-1789650305250",
+    "symbol": "GBP/JPY",
+    "canonicalSymbol": "GBP/JPY",
+    "baseCurrency": "GBP",
+    "quoteCurrency": "JPY",
+    "timeframe": "M15",
+    "direction": "SELL",
+    "confidence": 85,
+    "primaryCurrency": "GBP",
+    "secondaryCurrency": "JPY",
+    "baseThesisKey": "GBP_WEAKNESS",
+    "quoteThesisKey": "JPY_STRENGTH",
+    "primaryThesisKey": "JPY_STRENGTH",
+    "entryPrice": 208.506,
+    "stopLoss": 208.856,
+    "takeProfit": 207.806,
+    "executionEligibility": "WAITING_FOR_ENTRY",
+    "dataMode": "LIVE",
+    "observedAt": "2026-09-17T13:05:05.251Z",
+    "brokerOrderId": "SIG-GBPJPY-1789650305250",
+    "orderType": "LIMIT_PULLBACK",
+    "isOrderSubmitted": false,
+    "isOrderFilled": false,
+    "isPositionOpened": false,
+    "isPositionClosed": false,
+    "outcomeStatus": "SIGNAL_ONLY",
+    "reasons": [
+      "GBP/JPY live price holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 43.0 with ADX (21.4) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.617."
+    ],
+    "secondOpinion": {
+      "exists": false,
+      "status": "UNAVAILABLE"
+    },
+    "economicContext": {
+      "economicRisk": "LOW",
+      "nearbyHighImpactEvents": []
+    },
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "UNKNOWN_EXECUTION_SEQUENCE"
+    ]
+  },
+  {
+    "id": "CTO-1789813489715-k86smy",
+    "signalId": "SIG-1789687931250",
+    "symbol": "GBP/JPY",
+    "canonicalSymbol": "GBP/JPY",
+    "baseCurrency": "GBP",
+    "quoteCurrency": "JPY",
+    "timeframe": "M15",
+    "direction": "BUY",
+    "confidence": 85,
+    "primaryCurrency": "GBP",
+    "secondaryCurrency": "JPY",
+    "baseThesisKey": "GBP_STRENGTH",
+    "quoteThesisKey": "JPY_WEAKNESS",
+    "primaryThesisKey": "JPY_WEAKNESS",
+    "entryPrice": 208.188,
+    "stopLoss": 207.838,
+    "executionEligibility": "WAITING_FOR_ENTRY",
+    "dataMode": "LIVE",
+    "observedAt": "2026-09-17T23:32:11.250Z",
+    "orderType": "LIMIT_PULLBACK",
+    "isOrderSubmitted": false,
+    "isOrderFilled": false,
+    "isPositionOpened": false,
+    "isPositionClosed": false,
+    "outcomeStatus": "EXPIRED",
+    "reasons": [
+      "Setup expired (> 2h without fill)"
+    ],
+    "secondOpinion": {
+      "exists": false,
+      "status": "UNAVAILABLE"
+    },
+    "economicContext": {
+      "economicRisk": "LOW",
+      "nearbyHighImpactEvents": []
+    },
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_BROKER_LINK",
+      "UNKNOWN_EXECUTION_SEQUENCE"
+    ]
+  },
+  {
+    "id": "CTO-1789813489718-b39n2d",
+    "signalId": "setup_EURJPY_M15_BUY_v2",
+    "symbol": "EUR/JPY",
+    "canonicalSymbol": "EUR/JPY",
+    "baseCurrency": "EUR",
+    "quoteCurrency": "JPY",
+    "timeframe": "M15",
+    "direction": "BUY",
+    "confidence": 85,
+    "primaryCurrency": "EUR",
+    "secondaryCurrency": "JPY",
+    "baseThesisKey": "EUR_STRENGTH",
+    "quoteThesisKey": "JPY_WEAKNESS",
+    "primaryThesisKey": "JPY_WEAKNESS",
+    "entryPrice": 179.081,
+    "stopLoss": 178.731,
+    "takeProfit": 179.781,
+    "executionEligibility": "WAITING_FOR_ENTRY",
+    "dataMode": "LIVE",
+    "observedAt": "2026-09-18T00:14:56.825Z",
+    "brokerOrderId": "318734474",
+    "orderType": "LIMIT_PULLBACK",
+    "isOrderSubmitted": true,
+    "isOrderFilled": false,
+    "isPositionOpened": false,
+    "isPositionClosed": false,
+    "outcomeStatus": "ORDER_SUBMITTED_NOT_FILLED",
+    "reasons": [
+      "EUR/JPY live price (179.231) is holding above 50 EMA trend filter.",
+      "RSI (14) sitting at 65.0 with ADX (20.0).",
+      "SuperTrend filter is BULLISH and ATR volatility is 0.063.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
+      "[CANDLE CONFIRMATION] Bullish Pin Bar / Hammer confirmed on closed candle."
+    ],
+    "secondOpinion": {
+      "exists": false,
+      "status": "UNAVAILABLE"
+    },
+    "economicContext": {
+      "economicRisk": "LOW",
+      "nearbyHighImpactEvents": []
+    },
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "UNKNOWN_EXECUTION_SEQUENCE"
+    ]
+  },
+  {
+    "id": "CTO-1789813489721-p0s2zf",
+    "signalId": "SIG-1789696938605",
+    "symbol": "EUR/JPY",
+    "canonicalSymbol": "EUR/JPY",
+    "baseCurrency": "EUR",
+    "quoteCurrency": "JPY",
+    "timeframe": "M15",
+    "direction": "BUY",
+    "confidence": 85,
+    "primaryCurrency": "EUR",
+    "secondaryCurrency": "JPY",
+    "baseThesisKey": "EUR_STRENGTH",
+    "quoteThesisKey": "JPY_WEAKNESS",
+    "primaryThesisKey": "JPY_WEAKNESS",
+    "entryPrice": 179.081,
+    "stopLoss": 178.731,
+    "executionEligibility": "WAITING_FOR_ENTRY",
+    "dataMode": "LIVE",
+    "observedAt": "2026-09-18T02:02:18.605Z",
+    "orderType": "LIMIT_PULLBACK",
+    "isOrderSubmitted": false,
+    "isOrderFilled": false,
+    "isPositionOpened": false,
+    "isPositionClosed": false,
+    "outcomeStatus": "EXPIRED",
+    "reasons": [
+      "Setup expired (> 2h without fill)"
+    ],
+    "secondOpinion": {
+      "exists": false,
+      "status": "UNAVAILABLE"
+    },
+    "economicContext": {
+      "economicRisk": "LOW",
+      "nearbyHighImpactEvents": []
+    },
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_BROKER_LINK",
+      "UNKNOWN_EXECUTION_SEQUENCE"
+    ]
+  },
+  {
+    "id": "CTO-1789813489724-upu92f",
+    "signalId": "setup_GBPJPY_H4_SELL",
+    "symbol": "GBP/JPY",
+    "canonicalSymbol": "GBP/JPY",
+    "baseCurrency": "GBP",
+    "quoteCurrency": "JPY",
+    "timeframe": "M15",
+    "direction": "SELL",
+    "confidence": 85,
+    "primaryCurrency": "GBP",
+    "secondaryCurrency": "JPY",
+    "baseThesisKey": "GBP_WEAKNESS",
+    "quoteThesisKey": "JPY_STRENGTH",
+    "primaryThesisKey": "JPY_STRENGTH",
+    "entryPrice": 208.801,
+    "stopLoss": 209.151,
+    "takeProfit": 208.101,
+    "executionEligibility": "WAITING_FOR_ENTRY",
+    "dataMode": "LIVE",
+    "observedAt": "2026-09-18T02:43:02.493Z",
+    "brokerOrderId": "318752673",
+    "orderType": "LIMIT_PULLBACK",
+    "isOrderSubmitted": true,
+    "isOrderFilled": false,
+    "isPositionOpened": false,
+    "isPositionClosed": false,
+    "outcomeStatus": "ORDER_SUBMITTED_NOT_FILLED",
+    "reasons": [
+      "GBP/JPY live price (208.645) is holding below 50 EMA trend filter.",
+      "RSI (14) sitting at 50.0 with ADX (30.5) confirming trending bearish.",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.568.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
+      "[CANDLE CONFIRMATION] Bearish Shooting Star confirmed on closed candle.",
+      "[ADAPTIVE LEARNING MEMORY] Applied rule from pm-trade_288663816-1.0: \"ADAPTIVE RULE: Upon approaching resistance, await CHOCH confirmation.\". SL buffer expanded. Source: REAL_TRADE.",
+      "[CONFIRMATION REQUIRED] Awaiting structural retest on H4 to avoid premature entry flagged in pm-trade_288663816-1.0"
+    ],
+    "secondOpinion": {
+      "exists": false,
+      "status": "UNAVAILABLE"
+    },
+    "economicContext": {
+      "economicRisk": "LOW",
+      "nearbyHighImpactEvents": []
+    },
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "UNKNOWN_EXECUTION_SEQUENCE"
+    ]
+  },
+  {
+    "id": "CTO-1789813489728-d313ym",
+    "signalId": "SIG-1789700083666",
+    "symbol": "GBP/JPY",
+    "canonicalSymbol": "GBP/JPY",
+    "baseCurrency": "GBP",
+    "quoteCurrency": "JPY",
+    "timeframe": "M15",
+    "direction": "SELL",
+    "confidence": 85,
+    "primaryCurrency": "GBP",
+    "secondaryCurrency": "JPY",
+    "baseThesisKey": "GBP_WEAKNESS",
+    "quoteThesisKey": "JPY_STRENGTH",
+    "primaryThesisKey": "JPY_STRENGTH",
+    "entryPrice": 208.761,
+    "stopLoss": 209.111,
+    "executionEligibility": "WAITING_FOR_ENTRY",
+    "dataMode": "LIVE",
+    "observedAt": "2026-09-18T02:54:43.666Z",
+    "orderType": "LIMIT_PULLBACK",
+    "isOrderSubmitted": true,
+    "isOrderFilled": true,
+    "isPositionOpened": true,
+    "isPositionClosed": true,
+    "outcomeStatus": "CLOSED_BREAKEVEN",
+    "reasons": [
+      "Market price (209.136) breached SL (209.111) before entry fill"
+    ],
+    "secondOpinion": {
+      "exists": false,
+      "status": "UNAVAILABLE"
+    },
+    "economicContext": {
+      "economicRisk": "LOW",
+      "nearbyHighImpactEvents": []
+    },
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_BROKER_LINK",
+      "UNKNOWN_EXECUTION_SEQUENCE"
+    ]
+  },
+  {
+    "id": "CTO-1789813489731-elryx2",
+    "signalId": "SIG-1789701760183",
+    "symbol": "GBP/JPY",
+    "canonicalSymbol": "GBP/JPY",
+    "baseCurrency": "GBP",
+    "quoteCurrency": "JPY",
+    "timeframe": "M15",
+    "direction": "BUY",
+    "confidence": 85,
+    "primaryCurrency": "GBP",
+    "secondaryCurrency": "JPY",
+    "baseThesisKey": "GBP_STRENGTH",
+    "quoteThesisKey": "JPY_WEAKNESS",
+    "primaryThesisKey": "JPY_WEAKNESS",
+    "entryPrice": 209.128,
+    "stopLoss": 208.778,
+    "executionEligibility": "WAITING_FOR_ENTRY",
+    "dataMode": "LIVE",
+    "observedAt": "2026-09-18T03:22:40.183Z",
+    "orderType": "LIMIT_PULLBACK",
+    "isOrderSubmitted": false,
+    "isOrderFilled": false,
+    "isPositionOpened": false,
+    "isPositionClosed": false,
+    "outcomeStatus": "CANCELLED",
+    "reasons": [
+      "Market price (209.831) reached TP1 (209.828) before entry fill"
+    ],
+    "secondOpinion": {
+      "exists": false,
+      "status": "UNAVAILABLE"
+    },
+    "economicContext": {
+      "economicRisk": "LOW",
+      "nearbyHighImpactEvents": []
+    },
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_BROKER_LINK",
+      "UNKNOWN_EXECUTION_SEQUENCE"
+    ]
+  },
+  {
+    "id": "CTO-1789813489734-nc3oix",
+    "signalId": "SIG-1789702700508",
+    "symbol": "EUR/JPY",
+    "canonicalSymbol": "EUR/JPY",
+    "baseCurrency": "EUR",
+    "quoteCurrency": "JPY",
+    "timeframe": "M15",
+    "direction": "BUY",
+    "confidence": 85,
+    "primaryCurrency": "EUR",
+    "secondaryCurrency": "JPY",
+    "baseThesisKey": "EUR_STRENGTH",
+    "quoteThesisKey": "JPY_WEAKNESS",
+    "primaryThesisKey": "JPY_WEAKNESS",
+    "entryPrice": 179.676,
+    "stopLoss": 179.326,
+    "executionEligibility": "WAITING_FOR_ENTRY",
+    "dataMode": "LIVE",
+    "observedAt": "2026-09-18T03:38:20.508Z",
+    "orderType": "LIMIT_PULLBACK",
+    "isOrderSubmitted": false,
+    "isOrderFilled": false,
+    "isPositionOpened": false,
+    "isPositionClosed": false,
+    "outcomeStatus": "CANCELLED",
+    "reasons": [
+      "Market price (180.402) reached TP1 (180.376) before entry fill"
+    ],
+    "secondOpinion": {
+      "exists": false,
+      "status": "UNAVAILABLE"
+    },
+    "economicContext": {
+      "economicRisk": "LOW",
+      "nearbyHighImpactEvents": []
+    },
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_BROKER_LINK",
+      "UNKNOWN_EXECUTION_SEQUENCE"
+    ]
+  },
+  {
+    "id": "CTO-1789813489737-zfo8qe",
+    "signalId": "SIG-1789713864129",
+    "symbol": "GBP/JPY",
+    "canonicalSymbol": "GBP/JPY",
+    "baseCurrency": "GBP",
+    "quoteCurrency": "JPY",
+    "timeframe": "M15",
+    "direction": "BUY",
+    "confidence": 85,
+    "primaryCurrency": "GBP",
+    "secondaryCurrency": "JPY",
+    "baseThesisKey": "GBP_STRENGTH",
+    "quoteThesisKey": "JPY_WEAKNESS",
+    "primaryThesisKey": "JPY_WEAKNESS",
+    "entryPrice": 209.878,
+    "stopLoss": 209.528,
+    "executionEligibility": "WAITING_FOR_ENTRY",
+    "dataMode": "LIVE",
+    "observedAt": "2026-09-18T06:44:24.129Z",
+    "orderType": "LIMIT_PULLBACK",
+    "isOrderSubmitted": false,
+    "isOrderFilled": false,
+    "isPositionOpened": false,
+    "isPositionClosed": false,
+    "outcomeStatus": "EXPIRED",
+    "reasons": [
+      "Setup expired (> 2h without fill)"
+    ],
+    "secondOpinion": {
+      "exists": false,
+      "status": "UNAVAILABLE"
+    },
+    "economicContext": {
+      "economicRisk": "LOW",
+      "nearbyHighImpactEvents": []
+    },
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_BROKER_LINK",
+      "UNKNOWN_EXECUTION_SEQUENCE"
+    ]
+  },
+  {
+    "id": "CTO-1789813489741-sois6l",
+    "signalId": "SIG-1789713864132",
+    "symbol": "EUR/JPY",
+    "canonicalSymbol": "EUR/JPY",
+    "baseCurrency": "EUR",
+    "quoteCurrency": "JPY",
+    "timeframe": "M15",
+    "direction": "BUY",
+    "confidence": 85,
+    "primaryCurrency": "EUR",
+    "secondaryCurrency": "JPY",
+    "baseThesisKey": "EUR_STRENGTH",
+    "quoteThesisKey": "JPY_WEAKNESS",
+    "primaryThesisKey": "JPY_WEAKNESS",
+    "entryPrice": 180.321,
+    "stopLoss": 179.971,
+    "executionEligibility": "WAITING_FOR_ENTRY",
+    "dataMode": "LIVE",
+    "observedAt": "2026-09-18T06:44:24.132Z",
+    "orderType": "LIMIT_PULLBACK",
+    "isOrderSubmitted": false,
+    "isOrderFilled": false,
+    "isPositionOpened": false,
+    "isPositionClosed": false,
+    "outcomeStatus": "EXPIRED",
+    "reasons": [
+      "Setup expired (> 2h without fill)"
+    ],
+    "secondOpinion": {
+      "exists": false,
+      "status": "UNAVAILABLE"
+    },
+    "economicContext": {
+      "economicRisk": "LOW",
+      "nearbyHighImpactEvents": []
+    },
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_BROKER_LINK",
+      "UNKNOWN_EXECUTION_SEQUENCE"
+    ]
+  },
+  {
+    "id": "CTO-1789813489743-g1ei22",
+    "signalId": "SIG-1789717445322",
+    "symbol": "EUR/JPY",
+    "canonicalSymbol": "EUR/JPY",
+    "baseCurrency": "EUR",
+    "quoteCurrency": "JPY",
+    "timeframe": "M15",
+    "direction": "BUY",
+    "confidence": 85,
+    "primaryCurrency": "EUR",
+    "secondaryCurrency": "JPY",
+    "baseThesisKey": "EUR_STRENGTH",
+    "quoteThesisKey": "JPY_WEAKNESS",
+    "primaryThesisKey": "JPY_WEAKNESS",
+    "entryPrice": 180.19,
+    "stopLoss": 179.84,
+    "executionEligibility": "WAITING_FOR_ENTRY",
+    "dataMode": "LIVE",
+    "observedAt": "2026-09-18T07:44:05.322Z",
+    "orderType": "LIMIT_PULLBACK",
+    "isOrderSubmitted": false,
+    "isOrderFilled": false,
+    "isPositionOpened": false,
+    "isPositionClosed": false,
+    "outcomeStatus": "CANCELLED",
+    "reasons": [
+      "Market price (180.936) reached TP1 (180.89) before entry fill"
+    ],
+    "secondOpinion": {
+      "exists": false,
+      "status": "UNAVAILABLE"
+    },
+    "economicContext": {
+      "economicRisk": "LOW",
+      "nearbyHighImpactEvents": []
+    },
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_BROKER_LINK",
+      "UNKNOWN_EXECUTION_SEQUENCE"
+    ]
+  },
+  {
+    "id": "CTO-1789813489746-95evb1",
+    "signalId": "SIG-1789719426183",
+    "symbol": "GBP/JPY",
+    "canonicalSymbol": "GBP/JPY",
+    "baseCurrency": "GBP",
+    "quoteCurrency": "JPY",
+    "timeframe": "M15",
+    "direction": "BUY",
+    "confidence": 85,
+    "primaryCurrency": "GBP",
+    "secondaryCurrency": "JPY",
+    "baseThesisKey": "GBP_STRENGTH",
+    "quoteThesisKey": "JPY_WEAKNESS",
+    "primaryThesisKey": "JPY_WEAKNESS",
+    "entryPrice": 210.261,
+    "stopLoss": 209.911,
+    "executionEligibility": "WAITING_FOR_ENTRY",
+    "dataMode": "LIVE",
+    "observedAt": "2026-09-18T08:17:06.183Z",
+    "orderType": "LIMIT_PULLBACK",
+    "isOrderSubmitted": false,
+    "isOrderFilled": false,
+    "isPositionOpened": false,
+    "isPositionClosed": false,
+    "outcomeStatus": "CANCELLED",
+    "reasons": [
+      "Market price (210.963) reached TP1 (210.961) before entry fill"
+    ],
+    "secondOpinion": {
+      "exists": false,
+      "status": "UNAVAILABLE"
+    },
+    "economicContext": {
+      "economicRisk": "LOW",
+      "nearbyHighImpactEvents": []
+    },
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_BROKER_LINK",
+      "UNKNOWN_EXECUTION_SEQUENCE"
+    ]
+  },
+  {
+    "id": "CTO-1789813489750-88cqe9",
+    "signalId": "setup_EURJPY_M15_BUY",
+    "symbol": "EUR/JPY",
+    "canonicalSymbol": "EUR/JPY",
+    "baseCurrency": "EUR",
+    "quoteCurrency": "JPY",
+    "timeframe": "M15",
+    "direction": "BUY",
+    "confidence": 85,
+    "primaryCurrency": "EUR",
+    "secondaryCurrency": "JPY",
+    "baseThesisKey": "EUR_STRENGTH",
+    "quoteThesisKey": "JPY_WEAKNESS",
+    "primaryThesisKey": "JPY_WEAKNESS",
+    "entryPrice": 181.094,
+    "stopLoss": 180.744,
+    "takeProfit": 181.794,
+    "executionEligibility": "WAITING_FOR_ENTRY",
+    "dataMode": "LIVE",
+    "observedAt": "2026-09-18T08:51:28.973Z",
+    "brokerOrderId": "COPIER-setup_EU",
+    "orderType": "LIMIT_PULLBACK",
+    "isOrderSubmitted": true,
+    "isOrderFilled": false,
+    "isPositionOpened": false,
+    "isPositionClosed": false,
+    "outcomeStatus": "ORDER_SUBMITTED_NOT_FILLED",
+    "reasons": [
+      "🤖 Gemini Second Opinion: Disahkan (Keyakinan 82%) - ADJUST",
+      "Order Block retest and bullish pin bar confirm upward momentum above 50 EMA.",
+      "Adjusted take-profit targets to enforce the strict adaptive rule requiring a minimum 1:2.0 risk-to-reward ratio."
+    ],
+    "secondOpinion": {
+      "exists": false,
+      "status": "UNAVAILABLE"
+    },
+    "economicContext": {
+      "economicRisk": "LOW",
+      "nearbyHighImpactEvents": []
+    },
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "UNKNOWN_EXECUTION_SEQUENCE"
+    ]
+  },
+  {
+    "id": "CTO-1789813489752-iqsnkf",
+    "signalId": "SIG-1789736396625",
+    "symbol": "GBP/JPY",
+    "canonicalSymbol": "GBP/JPY",
+    "baseCurrency": "GBP",
+    "quoteCurrency": "JPY",
+    "timeframe": "M15",
+    "direction": "BUY",
+    "confidence": 85,
+    "primaryCurrency": "GBP",
+    "secondaryCurrency": "JPY",
+    "baseThesisKey": "GBP_STRENGTH",
+    "quoteThesisKey": "JPY_WEAKNESS",
+    "primaryThesisKey": "JPY_WEAKNESS",
+    "entryPrice": 210.875,
+    "stopLoss": 210.525,
+    "executionEligibility": "WAITING_FOR_ENTRY",
+    "dataMode": "LIVE",
+    "observedAt": "2026-09-18T12:59:56.625Z",
+    "orderType": "LIMIT_PULLBACK",
+    "isOrderSubmitted": false,
+    "isOrderFilled": false,
+    "isPositionOpened": false,
+    "isPositionClosed": false,
+    "outcomeStatus": "EXPIRED",
+    "reasons": [
+      "Setup expired (> 2h without fill)"
+    ],
+    "secondOpinion": {
+      "exists": false,
+      "status": "UNAVAILABLE"
+    },
+    "economicContext": {
+      "economicRisk": "LOW",
+      "nearbyHighImpactEvents": []
+    },
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_BROKER_LINK",
+      "UNKNOWN_EXECUTION_SEQUENCE"
+    ]
+  },
+  {
+    "id": "CTO-1789813489755-ttvilj",
+    "signalId": "setup_GBPJPY_H4_BUY",
+    "symbol": "GBP/JPY",
+    "canonicalSymbol": "GBP/JPY",
+    "baseCurrency": "GBP",
+    "quoteCurrency": "JPY",
+    "timeframe": "M15",
+    "direction": "BUY",
+    "confidence": 85,
+    "primaryCurrency": "GBP",
+    "secondaryCurrency": "JPY",
+    "baseThesisKey": "GBP_STRENGTH",
+    "quoteThesisKey": "JPY_WEAKNESS",
+    "primaryThesisKey": "JPY_WEAKNESS",
+    "entryPrice": 210.583,
+    "stopLoss": 210.233,
+    "takeProfit": 211.283,
+    "executionEligibility": "WAITING_FOR_ENTRY",
+    "dataMode": "LIVE",
+    "observedAt": "2026-09-18T14:48:05.220Z",
+    "brokerOrderId": "318896940",
+    "orderType": "LIMIT_PULLBACK",
+    "isOrderSubmitted": true,
+    "isOrderFilled": true,
+    "isPositionOpened": true,
+    "isPositionClosed": true,
+    "outcomeStatus": "CLOSED_BREAKEVEN",
+    "reasons": [
+      "GBP/JPY live price (210.733) is holding above 50 EMA trend filter.",
+      "RSI (14) sitting at 69.6 with ADX (32.7) confirming trending bullish.",
+      "SuperTrend filter is BULLISH and ATR volatility is 0.689.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
+      "[CANDLE CONFIRMATION] Bullish Pin Bar / Hammer confirmed on closed candle."
+    ],
+    "secondOpinion": {
+      "exists": false,
+      "status": "UNAVAILABLE"
+    },
+    "economicContext": {
+      "economicRisk": "LOW",
+      "nearbyHighImpactEvents": []
+    },
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "UNKNOWN_EXECUTION_SEQUENCE"
+    ]
+  },
+  {
+    "id": "CTO-1789813489759-qvknbd",
+    "signalId": "SIG-1789742994612",
+    "symbol": "EUR/JPY",
+    "canonicalSymbol": "EUR/JPY",
+    "baseCurrency": "EUR",
+    "quoteCurrency": "JPY",
+    "timeframe": "M15",
+    "direction": "BUY",
+    "confidence": 85,
+    "primaryCurrency": "EUR",
+    "secondaryCurrency": "JPY",
+    "baseThesisKey": "EUR_STRENGTH",
+    "quoteThesisKey": "JPY_WEAKNESS",
+    "primaryThesisKey": "JPY_WEAKNESS",
+    "entryPrice": 181.094,
+    "stopLoss": 180.744,
+    "executionEligibility": "WAITING_FOR_ENTRY",
+    "dataMode": "LIVE",
+    "observedAt": "2026-09-18T14:49:54.612Z",
+    "orderType": "LIMIT_PULLBACK",
+    "isOrderSubmitted": false,
+    "isOrderFilled": false,
+    "isPositionOpened": false,
+    "isPositionClosed": false,
+    "outcomeStatus": "EXPIRED",
+    "reasons": [
+      "Setup expired (> 2h without fill)"
+    ],
+    "secondOpinion": {
+      "exists": false,
+      "status": "UNAVAILABLE"
+    },
+    "economicContext": {
+      "economicRisk": "LOW",
+      "nearbyHighImpactEvents": []
+    },
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_BROKER_LINK",
+      "UNKNOWN_EXECUTION_SEQUENCE"
+    ]
+  },
+  {
+    "id": "CTO-1789813489761-jn8id2",
+    "signalId": "SIG-1789743034620",
+    "symbol": "GBP/JPY",
+    "canonicalSymbol": "GBP/JPY",
+    "baseCurrency": "GBP",
+    "quoteCurrency": "JPY",
+    "timeframe": "M15",
+    "direction": "BUY",
+    "confidence": 85,
+    "primaryCurrency": "GBP",
+    "secondaryCurrency": "JPY",
+    "baseThesisKey": "GBP_STRENGTH",
+    "quoteThesisKey": "JPY_WEAKNESS",
+    "primaryThesisKey": "JPY_WEAKNESS",
+    "entryPrice": 210.583,
+    "stopLoss": 210.233,
+    "executionEligibility": "WAITING_FOR_ENTRY",
+    "dataMode": "LIVE",
+    "observedAt": "2026-09-18T14:50:34.620Z",
+    "orderType": "LIMIT_PULLBACK",
+    "isOrderSubmitted": true,
+    "isOrderFilled": true,
+    "isPositionOpened": true,
+    "isPositionClosed": true,
+    "outcomeStatus": "CLOSED_BREAKEVEN",
+    "reasons": [
+      "Market price (210.049) breached SL (210.233) before entry fill"
+    ],
+    "secondOpinion": {
+      "exists": false,
+      "status": "UNAVAILABLE"
+    },
+    "economicContext": {
+      "economicRisk": "LOW",
+      "nearbyHighImpactEvents": []
+    },
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_BROKER_LINK",
+      "UNKNOWN_EXECUTION_SEQUENCE"
+    ]
+  },
+  {
+    "id": "CTO-1789813489766-1xwito",
+    "signalId": "setup_GBPJPY_M15_BUY",
+    "symbol": "GBP/JPY",
+    "canonicalSymbol": "GBP/JPY",
+    "baseCurrency": "GBP",
+    "quoteCurrency": "JPY",
+    "timeframe": "M15",
+    "direction": "BUY",
+    "confidence": 85,
+    "primaryCurrency": "GBP",
+    "secondaryCurrency": "JPY",
+    "baseThesisKey": "GBP_STRENGTH",
+    "quoteThesisKey": "JPY_WEAKNESS",
+    "primaryThesisKey": "JPY_WEAKNESS",
+    "entryPrice": 209.79,
+    "stopLoss": 209.44,
+    "takeProfit": 210.49,
+    "executionEligibility": "WAITING_FOR_ENTRY",
+    "dataMode": "LIVE",
+    "observedAt": "2026-09-18T20:00:59.602Z",
+    "brokerOrderId": "318952269",
+    "orderType": "LIMIT_PULLBACK",
+    "isOrderSubmitted": true,
+    "isOrderFilled": false,
+    "isPositionOpened": false,
+    "isPositionClosed": false,
+    "outcomeStatus": "ORDER_SUBMITTED_NOT_FILLED",
+    "reasons": [
+      "🤖 Gemini Second Opinion: Disahkan (Keyakinan 85%) - ADJUST",
+      "Bullish structure is supported by M15 Pin Bar confirmation, holding above 50 EMA, and FVG confluence.",
+      "Proposed Risk:Reward of 1:1.9 violates mandatory Adaptive Rule requiring a minimum 1:2.0 R:R ratio.",
+      "Adjusted Stop Loss to 209.60 and Take Profit 1 to 210.64 to establish a compliant 1:2.0 R:R profile."
+    ],
+    "secondOpinion": {
+      "exists": false,
+      "status": "UNAVAILABLE"
+    },
+    "economicContext": {
+      "economicRisk": "LOW",
+      "nearbyHighImpactEvents": []
+    },
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "UNKNOWN_EXECUTION_SEQUENCE"
+    ]
+  },
+  {
+    "id": "CTO-1789813489769-d6nweg",
+    "signalId": "SIG-1789768867463",
+    "symbol": "GBP/JPY",
+    "canonicalSymbol": "GBP/JPY",
+    "baseCurrency": "GBP",
+    "quoteCurrency": "JPY",
+    "timeframe": "M15",
+    "direction": "BUY",
+    "confidence": 85,
+    "primaryCurrency": "GBP",
+    "secondaryCurrency": "JPY",
+    "baseThesisKey": "GBP_STRENGTH",
+    "quoteThesisKey": "JPY_WEAKNESS",
+    "primaryThesisKey": "JPY_WEAKNESS",
+    "entryPrice": 209.79,
+    "stopLoss": 209.44,
+    "executionEligibility": "WAITING_FOR_ENTRY",
+    "dataMode": "LIVE",
+    "observedAt": "2026-09-18T22:01:07.463Z",
+    "orderType": "LIMIT_PULLBACK",
+    "isOrderSubmitted": false,
+    "isOrderFilled": false,
+    "isPositionOpened": false,
+    "isPositionClosed": false,
+    "outcomeStatus": "EXPIRED",
+    "reasons": [
+      "Setup expired (> 2h without fill)"
+    ],
+    "secondOpinion": {
+      "exists": false,
+      "status": "UNAVAILABLE"
+    },
+    "economicContext": {
+      "economicRisk": "LOW",
+      "nearbyHighImpactEvents": []
+    },
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_BROKER_LINK",
+      "UNKNOWN_EXECUTION_SEQUENCE"
+    ]
+  }
+]
