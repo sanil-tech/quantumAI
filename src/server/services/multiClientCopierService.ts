@@ -1,3 +1,4 @@
+import { assertCopierApproval, selectDirectCopyRecipients, type CopierApproval } from './copierSafetyPolicy';
 import EventEmitter from 'events';
 import { serverBrokerConnection } from '../routes/broker';
 import { sharedAutoTraderState, SharedAutoTrade } from '../routes/execution';
@@ -9,6 +10,7 @@ export interface SubscriberAccount {
   email: string;
   accountNumber: string;
   ctidTraderAccountId: number;
+  executionChannel?: 'OPEN_API' | 'CBOT';
   environment: 'DEMO' | 'LIVE';
   brokerName: string;
   riskMode: 'CONSERVATIVE' | 'BALANCED' | 'PRO';
@@ -52,6 +54,7 @@ class MultiClientCopierService extends EventEmitter {
   private subscribers: Map<string, SubscriberAccount> = new Map();
   private executionAuditLog: CopiedExecutionEvent[] = [];
   private isMasterActive: boolean = true;
+  private copyDispatches = new Map<string, number>();
   private filePath: string = path.resolve(process.cwd(), 'data', 'copier_subscribers.json');
 
   constructor() {
@@ -75,6 +78,8 @@ class MultiClientCopierService extends EventEmitter {
         const list: SubscriberAccount[] = JSON.parse(raw);
         if (Array.isArray(list)) {
           for (const s of list) {
+            // VIP-only registrations have no resolved Open API account identity.
+            if (!s.executionChannel) s.executionChannel = String(s.ctidTraderAccountId) === s.accountNumber ? 'CBOT' : 'OPEN_API';
             this.subscribers.set(s.id, s);
           }
         }
@@ -105,6 +110,7 @@ class MultiClientCopierService extends EventEmitter {
                   email: `${accNo}@ctrader.client`,
                   accountNumber: accNo,
                   ctidTraderAccountId: Number(accNo),
+                  executionChannel: 'CBOT',
                   environment: 'DEMO',
                   brokerName: 'Spotware cTrader Open API',
                   riskMode: 'BALANCED',
@@ -249,6 +255,7 @@ class MultiClientCopierService extends EventEmitter {
       email: data.email || (existing ? existing.email : `${accNo}@ctrader.client`),
       accountNumber: accNo,
       ctidTraderAccountId: data.ctidTraderAccountId || (existing ? existing.ctidTraderAccountId : Number(accNo)),
+      executionChannel: existing?.executionChannel || (data.ctidTraderAccountId && String(data.ctidTraderAccountId) !== accNo ? 'OPEN_API' : 'CBOT'),
       environment: data.environment || (existing ? existing.environment : 'DEMO'),
       brokerName: data.brokerName || (existing ? existing.brokerName : 'Spotware cTrader Open API'),
       riskMode,
@@ -323,13 +330,37 @@ class MultiClientCopierService extends EventEmitter {
     isMultiTarget?: boolean;
     confidence?: number;
     strategyId?: string;
-  }): Promise<{ dispatchedCount: number; results: CopiedExecutionEvent[] }> {
+  }, approval?: CopierApproval): Promise<{ dispatchedCount: number; results: CopiedExecutionEvent[] }> {
+    assertCopierApproval(tradeProposal, approval);
     if (!this.isMasterActive) {
       return { dispatchedCount: 0, results: [] };
     }
 
-    const subscribers = Array.from(this.subscribers.values());
+    for (const [key, expiry] of this.copyDispatches) if (expiry <= Date.now()) this.copyDispatches.delete(key);
+    const subscribers = selectDirectCopyRecipients(Array.from(this.subscribers.values()));
     const results: CopiedExecutionEvent[] = [];
+
+    // Broadcast to direct cBot VIP Copier Bridge queue for desktop cBot receivers
+    try {
+      const { publishCopierSignal } = await import('../routes/copier');
+      publishCopierSignal({
+        id: `sig_${tradeProposal.pair.replace(/[^A-Za-z0-9]/g, '')}_${Date.now()}`,
+        masterBrokerOrderId: `MASTER-${Date.now()}`,
+        action: 'NEW_ORDER',
+        pair: tradeProposal.pair,
+        direction: tradeProposal.direction,
+        entryPrice: tradeProposal.entryPrice,
+        stopLoss: tradeProposal.stopLoss,
+        takeProfit1: tradeProposal.takeProfit1,
+        takeProfit2: tradeProposal.takeProfit2 || 0,
+        lotSize: 0.02,
+        recommendedRiskPct: 0.50,
+        maxRiskPct: 2.00,
+        reasons: [`Master Trade Dispatched: ${tradeProposal.pair} ${tradeProposal.direction} (Confidence: ${tradeProposal.confidence || 85}%)`]
+      }, approval);
+    } catch (copierBridgeErr: any) {
+      console.warn('[MultiClientCopierService] Copier bridge broadcast notice:', copierBridgeErr.message);
+    }
 
     const isJpy = tradeProposal.pair.includes('JPY');
     const isGold = tradeProposal.pair.includes('XAU');
@@ -340,8 +371,14 @@ class MultiClientCopierService extends EventEmitter {
     const slDistance = Math.abs(tradeProposal.entryPrice - tradeProposal.stopLoss) || (30 * pipMultiplier);
     const slPips = slDistance / pipMultiplier;
 
+    // Waiting limit setups must not become market copies.
+    if (approval.eligibility !== 'ELIGIBLE_FOR_EXECUTION') return {dispatchedCount:0,results:[]};
+
     // Parallel Async Dispatch
     const copyPromises = subscribers.map(async (sub) => {
+      const dispatchKey = approval.signalId + ':' + sub.ctidTraderAccountId;
+      if (this.copyDispatches.has(dispatchKey)) return;
+      this.copyDispatches.set(dispatchKey, approval.expiresAt);
       const startTime = Date.now();
 
       // Check if subscriber is eligible to receive trade
@@ -393,8 +430,7 @@ class MultiClientCopierService extends EventEmitter {
 
       try {
         // Execute copy trade into broker ledger
-        sub.totalCopiedTrades += 1;
-        sub.lastCopiedAt = Date.now();
+        // Count only confirmed broker fills.
 
         // Execute live copy trade through cTrader broker Open API ProtoOANewOrderReq (2106)
         let brokerTicket = `cT-${Math.floor(10000000 + Math.random() * 90000000)}`;
@@ -427,23 +463,17 @@ class MultiClientCopierService extends EventEmitter {
             accessToken: subscriberAccessToken
           });
 
-          if (brokerRes && brokerRes.positionId) {
+          if (brokerRes?.success && brokerRes.positionId) {
             brokerTicket = brokerRes.positionId;
             executionMode = 'LIVE_CONFIRMED';
             if (brokerRes.executionPrice && brokerRes.executionPrice > 0) {
               actualEntryPrice = brokerRes.executionPrice;
             }
             console.log(`[MultiClientCopierService] ✅ LIVE order confirmed for #${sub.accountNumber}: positionId=${brokerTicket} price=${actualEntryPrice}`);
-          } else if (brokerRes && !brokerRes.error) {
-            executionMode = 'LIVE_SENT';
-            console.log(`[MultiClientCopierService] 📡 Order sent to cTrader for #${sub.accountNumber} (no positionId returned yet)`);
-          } else {
-            console.warn(`[MultiClientCopierService] ⚠️ Broker returned error for #${sub.accountNumber}: ${brokerRes?.error || 'unknown'} — using SIMULATED ticket`);
-          }
-        } catch (brokerExecErr: any) {
-          console.warn(`[MultiClientCopierService] Direct broker transmission note for #${sub.accountNumber}:`, brokerExecErr.message);
-        }
-
+          } else { throw new Error(brokerRes?.error || 'BROKER_CONFIRMATION_REQUIRED'); }
+        } catch (err: any) { throw new Error(err.message || 'BROKER_EXECUTION_FAILED'); }
+        sub.totalCopiedTrades += 1;
+        sub.lastCopiedAt = Date.now();
         console.log(`[MultiClientCopierService] Execution mode for #${sub.accountNumber}: ${executionMode} | Ticket: ${brokerTicket}`);
 
         const successEvent: CopiedExecutionEvent = {

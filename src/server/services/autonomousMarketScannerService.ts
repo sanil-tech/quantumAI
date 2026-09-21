@@ -1,3 +1,4 @@
+import { approveCopierSignal, MIN_AUTOMATED_SIGNAL_CONFIDENCE } from './copierSafetyPolicy';
 import { EventEmitter } from 'events';
 import fs from 'fs';
 import path from 'path';
@@ -510,17 +511,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
       );
 
       // 3. Scan all timeframes for this pair and collect candidate setups
-      const candidateSetups: Array<{
-        timeframe: Timeframe;
-        direction: 'BUY' | 'SELL';
-        confidence: number;
-        entryPrice: number;
-        stopLoss: number;
-        takeProfit1: number;
-        reasons: string[];
-        pattern?: DetectedChartPattern;
-        lotSize: number;
-      }> = [];
+      const candidateSetups: NonNullable<Awaited<ReturnType<AutonomousMarketScannerService['analyzePairTimeframe']>>>[] = [];
 
       for (const tf of this.timeframes) {
         const res = await this.analyzePairTimeframe(pair, tf);
@@ -537,7 +528,13 @@ export class AutonomousMarketScannerService extends EventEmitter {
       candidateSetups.sort((a, b) => b.confidence - a.confidence);
       const best = candidateSetups[0];
 
-      const setupId = `setup_${pairKey}_${best.timeframe}_${best.direction}`;
+      if (!best.canonicalSignal) return;
+      const eligibility = executionEligibilityGate.evaluateEligibility(best.canonicalSignal, {currentPrice:best.canonicalSignal.currentPrice,spreadPips:1.2});
+      let approval;
+      try { approval = approveCopierSignal(best.canonicalSignal, eligibility.executionEligibility); }
+      catch (err: any) { console.warn('[Scanner Grade A Gate]', err.message); return; }
+      // Opportunity-specific identity prevents permanent cBot deduplication by pair/timeframe.
+      const setupId = best.canonicalSignal.signalId;
       const existingIdx = this.discoveredSetups.findIndex(s => s.pair === pair);
       const existingSetup = existingIdx >= 0 ? this.discoveredSetups[existingIdx] : null;
 
@@ -682,10 +679,8 @@ export class AutonomousMarketScannerService extends EventEmitter {
 
       console.log(`🎯 [AutonomousMarketScanner] Discovered Best A-Grade setup on ${pair} ${best.timeframe} (${best.direction} Limit @ ${best.entryPrice}, SL: ${best.stopLoss}, TP: ${best.takeProfit1}, Conf: ${best.confidence}%, Lot: ${best.lotSize}).`);
 
-      // Calculate runner TP2 (2x risk:reward)
-      const tp2Runner = best.direction === 'BUY'
-        ? +(best.entryPrice + (best.takeProfit1 - best.entryPrice) * 1.8).toFixed(pair.includes('JPY') ? 3 : 5)
-        : +(best.entryPrice - (best.entryPrice - best.takeProfit1) * 1.8).toFixed(pair.includes('JPY') ? 3 : 5);
+      // Keep the exact TP2 approved by the canonical validation gate.
+      const tp2Runner = best.takeProfit2 || 0;
 
       const discovered: DiscoveredSetup = {
         id: setupId,
@@ -713,9 +708,9 @@ export class AutonomousMarketScannerService extends EventEmitter {
       else this.recordDiscoveredSetup(discovered);
       this.emit('tradeExecuted', discovered);
 
-      // Guard: Never dispatch to cTrader if status is INVALID, not valid, or confidence < 70
-      if (discovered.status === 'INVALID' || discovered.isValid === false || best.confidence < 70) {
-        console.warn(`🛑 [AutonomousMarketScanner] Pending order to cTrader BLOCKED: Signal is INVALID or confidence < 70% (${best.confidence}%).`);
+      // Guard: Never dispatch to cTrader if status is INVALID, not valid, or confidence < MIN_AUTOMATED_SIGNAL_CONFIDENCE
+      if (discovered.status === 'INVALID' || discovered.isValid === false || best.confidence < MIN_AUTOMATED_SIGNAL_CONFIDENCE) {
+        console.warn(`🛑 [AutonomousMarketScanner] Pending order to cTrader BLOCKED: Signal is INVALID or confidence < 75% (${best.confidence}%).`);
         return;
       }
 
@@ -724,11 +719,11 @@ export class AutonomousMarketScannerService extends EventEmitter {
       const PUSH_DEBOUNCE_MS = 15 * 60 * 1000; // 15 mins debounce per pair
       const canPushTelegram = !lastPushed || (Date.now() - lastPushed > PUSH_DEBOUNCE_MS);
 
-      if (canPushTelegram && best.confidence >= 70 && discovered.isValid) {
+      if (canPushTelegram && best.confidence >= MIN_AUTOMATED_SIGNAL_CONFIDENCE && discovered.isValid) {
         discovered.telegramBroadcastSent = true;
         this.pushedSignalLedger.set(pairKey, Date.now());
         telegramNotificationService.broadcastTradeEvent({
-          pair: best.pair || pair,
+          pair: pair,
           direction: best.direction,
           timeframe: best.timeframe,
           entryPrice: best.entryPrice,
@@ -760,7 +755,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
             id: setupId,
             masterBrokerOrderId: `SIG-${setupId.slice(0, 8)}`,
             action: 'NEW_ORDER',
-            pair: best.pair || pair,
+            pair: pair,
             direction: best.direction,
             entryPrice: best.entryPrice,
             stopLoss: best.stopLoss,
@@ -770,7 +765,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
             recommendedRiskPct: (best as any).recommendedRiskPct,
             maxRiskPct: (best as any).maxRiskPct,
             reasons: best.reasons
-          });
+          }, approval);
         }).catch(() => {});
 
         this.saveToDisk();
@@ -788,7 +783,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
           id: setupId,
           masterBrokerOrderId: `COPIER-${setupId.slice(0, 8)}`,
           action: 'NEW_ORDER',
-          pair: best.pair || pair,
+          pair: pair,
           direction: best.direction,
           entryPrice: best.entryPrice,
           stopLoss: best.stopLoss,
@@ -798,7 +793,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
           recommendedRiskPct: (best as any).recommendedRiskPct,
           maxRiskPct: (best as any).maxRiskPct,
           reasons: best.reasons
-        });
+        }, approval);
         return;
       }
 
@@ -901,7 +896,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
           discovered.telegramBroadcastSent = true;
           this.pushedSignalLedger.set(pairKey, Date.now());
           telegramNotificationService.broadcastTradeEvent({
-            pair: best.pair || pair,
+            pair: pair,
             direction: best.direction,
             timeframe: best.timeframe,
             entryPrice: best.entryPrice,
@@ -941,7 +936,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
           id: setupId,
           masterBrokerOrderId: String(rawBrokerOrderId),
           action: 'NEW_ORDER',
-          pair: best.pair || pair,
+          pair: pair,
           direction: best.direction,
           entryPrice: best.entryPrice,
           stopLoss: best.stopLoss,
@@ -951,7 +946,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
           recommendedRiskPct: (best as any).recommendedRiskPct,
           maxRiskPct: (best as any).maxRiskPct,
           reasons: best.reasons
-        });
+        }, approval);
         console.log(`✅ [AutonomousMarketScanner] Published confirmed Copier Signal (ID: ${publishedCopierSig.id}) bound to Master Broker Order #${rawBrokerOrderId}`);
       } catch (autoErr: any) {
         console.warn(`🛑 [AutonomousMarketScanner] Master order execution failed or timed out for ${pair} (${autoErr.message}).`);
@@ -1047,9 +1042,9 @@ export class AutonomousMarketScannerService extends EventEmitter {
 
       const confidence = Number(candidateSetup.confidence || 0);
 
-      // Check if setup meets A-Grade standard (Confidence >= 70%)
+      // Check if setup meets A-Grade standard (Confidence >= 75%)
       // If NOT Grade A, discard immediately without invoking Gemini (saves 95%+ API calls!)
-      if (!direction || confidence < 70) {
+      if (!direction || confidence < MIN_AUTOMATED_SIGNAL_CONFIDENCE) {
         return null;
       }
 
@@ -1084,8 +1079,8 @@ export class AutonomousMarketScannerService extends EventEmitter {
         }).catch(err => {
           console.warn(`[AutonomousMarketScanner] Second opinion failed for ${pair} ${tf}:`, err.message);
           return {
-            confirmed: true,
-            decision: 'CONFIRM' as const,
+            confirmed: false,
+            decision: 'VETO' as const,
             confidence,
             reasons: candidateSetup.reasons || [],
             source: 'DETERMINISTIC_LOCAL' as const
@@ -1185,7 +1180,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
         patternName: primaryPattern?.name
       });
 
-      if (!validationResult.isExecutable || validationResult.canonicalSignal.validationStatus === 'REJECTED') {
+      if (!validationResult.isExecutable || validationResult.canonicalSignal.validationStatus !== 'PASS' || validationResult.canonicalSignal.confidence < MIN_AUTOMATED_SIGNAL_CONFIDENCE) {
         console.warn(`🛑 [AutonomousMarketScanner] Candidate for ${pair} (${tf} ${direction}) REJECTED by SignalValidationGate: ${validationResult.validationReport.errors.join(' | ')}`);
         return null;
       }

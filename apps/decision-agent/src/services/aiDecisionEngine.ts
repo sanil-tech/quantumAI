@@ -2,7 +2,7 @@ import { Type } from "@google/genai";
 import { TradeProposal, MarketDirection, MarketDataMode } from "@iati/core-types";
 import { PostMortemReview, CurrencyPair, Timeframe, TradingStyle } from "../../../../src/types";
 import { getGeminiClient, callGeminiSafe } from "./geminiClient";
-import { SignalIntelligenceService } from "./signalIntelligenceService";
+import { SignalIntelligenceService, signalIntelligenceService } from "./signalIntelligenceService";
 
 // In-Memory Adaptive AI Post-Mortem & Trade Learning Memory
 const postMortemReviews: PostMortemReview[] = [

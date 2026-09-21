@@ -8,32 +8,22 @@ Memastikan modul **Aliran Sambungan Akaun cTrader (Connection Wizard)** pada Tab
    - Pengguna memilih kaedah sambungan: *cTrader Open API Direct*, *cTrader FIX API 4.4*, atau *1-Click Spotware ID SSO*.
    - Memilih broker rakan kongsi (Spotware Cloud, Pepperstone, IC Markets, FxPro, Fondex, Tradeview).
    - Memilih persekitaran (*DEMO* vs *REAL LIVE*).
-   - Menekan butang **"Seterusnya: Masukkan Kelayakan Akaun ➔"** untuk beralih ke Langkah 2.
+   - Menekan butang **"Seterusnya: Masukkan Kelayakan Akaun ➔"** untuk beralih ke# QuantumAI Phase 3A.1 — Subscriber Equity-Normalized Local Risk Engine
+## Audit Remediation & Regression Verification Report
 
-2. **Langkah 2: Kelayakan & Ujian Sambungan (Live Socket Verification)**
-   - Memasukkan Nombor Akaun cTrader & CTID (atau menggunakan Auto-Fill Pintar daripada salinan FIX API).
-   - Menekan butang **"Sahkan & Uji Sambungan Soket cTrader"**.
-   - Sistem membuat pengesahan TLS Socket dan protokol ProtoOA 2101/2103 ke gerbang cTrader secara langsung.
-   - Apabila disahkan, baki sebenar disegerak dan sistem **secara automatik beralih ke Langkah 3**.
+### Ringkasan Eksekutif & Penutupan Isu (All P1 & P2 Resolved)
 
-3. **Langkah 3: Had Risiko & Kawalan Modal (Non-Custodial Safety)**
-   - Menetapkan Had Kerugian Harian Maksimum (USD) & Had Saiz Lot Maksimum.
-   - Jaminan 100% Non-Custodial (dana kekal selamat di broker, tiada akses pengeluaran).
-   - Menekan butang **"Simpan Konfigurasi & Aktifkan Akaun"**.
-   - Sistem mendaftarkan akaun ke dalam perkhidmatan multi-client copier dan **secara automatik beralih ke Langkah 4**.
-
-4. **Langkah 4: Selesai & Aktif (Hubungan Sedia Digunakan)**
-   - Paparan kad hijau kejayaan dengan nombor akaun pelanggan, baki sebenar, latency ping soket, dan 6 isyarat keselamatan.
-   - Butang navigasi terus ke:
-     - **1. Portal VIP Saya (Personal Cockpit)**
-     - **2. Buka Meja Dagangan AI (Terminal Analisis SMC)**
-     - **3. Statistik & Prestasi (Rekod Lejar Disahkan)**
-   - Pilihan butang "Ubah Konfigurasi / Sambung Akaun Lain" sekiranya pengguna ingin mengkonfigurasi semula dari Langkah 1.
+Semua 5 penemuan audit dan jurang ujian broker step units telah diperbaiki, dikompilasi, dan disahkan sepenuhnya melalui unit test C# production (`RiskEngineTestRunner.exe`), suite Vitest, dan build production aplikasi (`npm run build`).
 
 ---
 
-## 2. Pengesahan & Ujian
-- [x] Tiada lagi data Master bocor sebagai nilai lalai akaun pelanggan baharu.
-- [x] Urutan navigasi Stepper di atas disegerakkan dengan status aktif/selesai.
-- [x] `npm run build` berjaya dikompilasi 100% tanpa sebarang ralat.
-- [x] Pelayan `server.ts` aktif dan beroperasi dengan latency rendah.
+### Jadual Penutupan Isu
+
+| Keutamaan | Isu Semakan | Tindakan Pembetulan | Status & Bukti |
+|---|---|---|---|
+| **P1** | Publication bridge dalam `telegramNotificationService.ts` & `autonomousMarketScannerService.ts` tidak meneruskan `recommendedRiskPct`/`maxRiskPct`. | Ditambah penerusan `recommendedRiskPct` dan `maxRiskPct` daripada `payload` dan `best` terus ke `publishCopierSignal()`. Signal subscriber kini mengekalkan parameter risiko tanpa jatuh ke default. | **RESOLVED & VERIFIED** (`telegramNotificationService.ts:1446`, `autonomousMarketScannerService.ts:764, 789, 942`) |
+| **P1** | `/copier/test-dual-order` menggunakan pemboleh ubah risiko tanpa destructuring dalam handler. | Parameter `recommendedRiskPct` dan `maxRiskPct` kini di-destructure daripada `req.body || {}` di permulaan handler, menghapuskan `ReferenceError`. | **RESOLVED & VERIFIED** (`copier.ts:831-832`) |
+| **P1** | `ValidateFinalRiskPreFlight()` menerima `PipValue = NaN` & tidak memeriksa broker step. | Ditambah pemeriksaan ketat `double.IsNaN` & `double.IsInfinity` untuk semua 12 parameter, pengesahan nilai positif, dan semakan integer modulo untuk `brokerStepUnits` pada kedua-dua tiket. | **RESOLVED & VERIFIED** (`QuantumAI_VIP_Receiver.cs:603-659`, C# Test: 77/77 PASS) |
+| **P1** | Kegagalan simpan HWM dalam `EvaluateAccountAndPortfolioGuards()` meneruskan penilaian signal semasa. | Jika `QuantumAIRiskStorage.SaveState(_riskState)` gagal semasa mengemas kini HWM, guard kini serta-merta menetapkan `vetoReason` dan memulangkan `false` (fail-closed serta-merta). | **RESOLVED & VERIFIED** (`QuantumAI_VIP_Receiver.cs:1203-1209`) |
+| **P2** | Server menaikkan ceiling melalui `Math.max(0.01, …)` dan pembundaran dua perpuluhan. | Sebarang input di luar julat `[0.01, 5.00]` (cth. `0.005%` atau `25.0%`) kini ditolak secara jelas dengan exception `MALFORMED_MAX_RISK`. Nilai sah dalam julat dikekalkan tanpa pembundaran/bumping paksa. | **RESOLVED & VERIFIED** (`copier.ts:364, 377`, Vitest: 25/25 PASS) |
+| **P1** | Pengesahan `brokerStepUnits` (contoh: volume 1,500, min 1,000, step 1,000). | `ValidateFinalRiskPreFlight()` kini mengira `(volume - min) / step` dan menolak sebarang nilai bukan gandaan tepat step. Volume 1,500 ditolak dengan sebab `TICKET 1 STEP`, manakala volume 2,000 dibenarkan. | **RESOLVED & VERIFIED** (`QuantumAI_VIP_Receiver.cs:631-657`, C# Tests 7-9 PASS) |

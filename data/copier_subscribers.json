@@ -15,7 +15,8 @@
     "connected": true,
     "latencyMs": 35,
     "totalCopiedTrades": 0,
-    "createdAt": 1789532400000
+    "createdAt": 1789532400000,
+    "executionChannel": "OPEN_API"
   },
   {
     "id": "sub-5916063",
@@ -33,7 +34,8 @@
     "connected": true,
     "latencyMs": 35,
     "totalCopiedTrades": 0,
-    "createdAt": 1789615608878
+    "createdAt": 1789615608878,
+    "executionChannel": "OPEN_API"
   },
   {
     "id": "sub-5877246",
@@ -51,7 +53,8 @@
     "connected": true,
     "latencyMs": 35,
     "totalCopiedTrades": 0,
-    "createdAt": 1789559365808
+    "createdAt": 1789559365808,
+    "executionChannel": "OPEN_API"
   },
   {
     "id": "sub-5912914",
@@ -69,7 +72,8 @@
     "connected": true,
     "latencyMs": 38,
     "totalCopiedTrades": 0,
-    "createdAt": 1789655699596
+    "createdAt": 1789655699596,
+    "executionChannel": "OPEN_API"
   },
   {
     "id": "sub-100001",
@@ -87,7 +91,8 @@
     "connected": true,
     "latencyMs": 38,
     "totalCopiedTrades": 0,
-    "createdAt": 1789656814076
+    "createdAt": 1789656814076,
+    "executionChannel": "CBOT"
   },
   {
     "id": "sub-200002",
@@ -105,7 +110,8 @@
     "connected": true,
     "latencyMs": 38,
     "totalCopiedTrades": 0,
-    "createdAt": 1789656814159
+    "createdAt": 1789656814159,
+    "executionChannel": "CBOT"
   },
   {
     "id": "sub-300003",
@@ -123,7 +129,8 @@
     "connected": true,
     "latencyMs": 38,
     "totalCopiedTrades": 0,
-    "createdAt": 1789656814183
+    "createdAt": 1789656814183,
+    "executionChannel": "CBOT"
   },
   {
     "id": "sub-500005",
@@ -141,7 +148,8 @@
     "connected": true,
     "latencyMs": 38,
     "totalCopiedTrades": 0,
-    "createdAt": 1789656814432
+    "createdAt": 1789656814432,
+    "executionChannel": "CBOT"
   },
   {
     "id": "sub-800008",
@@ -159,7 +167,8 @@
     "connected": true,
     "latencyMs": 38,
     "totalCopiedTrades": 0,
-    "createdAt": 1789656814622
+    "createdAt": 1789656814622,
+    "executionChannel": "CBOT"
   },
   {
     "id": "sub-48218932",
@@ -177,7 +186,8 @@
     "connected": true,
     "latencyMs": 38,
     "totalCopiedTrades": 0,
-    "createdAt": 1789690132968
+    "createdAt": 1789690132968,
+    "executionChannel": "CBOT"
   },
   {
     "id": "sub-48282756",
@@ -195,7 +205,8 @@
     "connected": true,
     "latencyMs": 38,
     "totalCopiedTrades": 0,
-    "createdAt": 1789690132982
+    "createdAt": 1789690132982,
+    "executionChannel": "CBOT"
   },
   {
     "id": "sub-5918523",
@@ -213,7 +224,8 @@
     "connected": true,
     "latencyMs": 38,
     "totalCopiedTrades": 0,
-    "createdAt": 1789862244899
+    "createdAt": 1789862244899,
+    "executionChannel": "CBOT"
   },
   {
     "id": "sub-5918521",
@@ -231,6 +243,7 @@
     "connected": true,
     "latencyMs": 38,
     "totalCopiedTrades": 0,
-    "createdAt": 1789862683291
+    "createdAt": 1789862683291,
+    "executionChannel": "CBOT"
   }
 ]

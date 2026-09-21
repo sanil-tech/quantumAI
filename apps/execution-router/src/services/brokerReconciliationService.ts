@@ -400,19 +400,35 @@ export class BrokerReconciliationService {
             }
           }
 
-          // Auto-persist live cTrader positions to PostgreSQL with ON CONFLICT DO NOTHING
+          // Auto-persist live cTrader positions to PostgreSQL with authoritative broker synchronization
           try {
             await this.tradingRepo.query(`
               INSERT INTO positions (
                 position_id, ticket_id, setup_id, account_id, symbol, direction, quantity,
                 entry_price, current_price, stop_loss, take_profit, status, broker, environment, opened_at, updated_at
               ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'OPEN', 'CTRADER', 'DEMO', NOW(), NOW())
-              ON CONFLICT (position_id) DO NOTHING
+              ON CONFLICT (position_id) DO UPDATE SET
+                status = 'OPEN',
+                close_reason = NULL,
+                closed_at = NULL,
+                close_price = NULL,
+                realized_profit = NULL,
+                current_price = EXCLUDED.current_price,
+                stop_loss = EXCLUDED.stop_loss,
+                take_profit = EXCLUDED.take_profit,
+                updated_at = NOW()
             `, [
               `trade_${bp.position_id}`, bp.position_id, `cTrader_live_${(bp.symbol || '').replace('/', '')}_${bp.direction}`,
               accountId || '48282756', bp.symbol, bp.direction, bp.quantity, bp.entry_price,
               bp.entry_price, bp.stop_loss || 0, bp.take_profit || 0
             ]).catch(() => {});
+
+            // Also restore matching ticket_id if it was previously falsely closed
+            await this.tradingRepo.query(`
+              UPDATE positions 
+              SET status = 'OPEN', close_reason = NULL, closed_at = NULL, close_price = NULL, realized_profit = NULL, updated_at = NOW()
+              WHERE ticket_id = $1 AND status != 'OPEN'
+            `, [String(bp.position_id)]).catch(() => {});
           } catch (_) {}
         }
       }

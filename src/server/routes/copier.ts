@@ -1,3 +1,4 @@
+import { assertCopierApproval, type CopierApproval } from '../services/copierSafetyPolicy';
 import { Router, Request, Response, NextFunction } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -304,6 +305,8 @@ copierRouter.post('/copier/master/toggle', copierAdminAuthMiddleware, (req: Requ
 });
 
 export interface CopierLiveSignal {
+  approvedGrade?: 'A' | 'A+';
+  expiresAt?: number;
   id: string;
   masterBrokerOrderId?: string;
   action?: 'NEW_ORDER' | 'CANCEL_ORDER';
@@ -353,8 +356,20 @@ function saveCopierQueueToDisk() {
 }
 
 let latestCopierSignal: CopierLiveSignal | null = null;
+const receiverHealth = new Map<string,{lastAuthenticatedPollAt:number|null;lastError:string|null;lastDeliveredSignalId?:string;lastDeliveredAt?:number}>();
+copierRouter.get('/copier/receiver-health',copierAdminAuthMiddleware,async(req,res)=>{
+ const account=String(req.query.account || '').trim();
+ if(!/^\d+$/.test(account)) return res.status(400).json({error:'ACCOUNT_REQUIRED'});
+ const {vipSubscriptionService}=await import('../services/vipSubscriptionService');
+ const license=vipSubscriptionService.verifyLicense(account), observed=receiverHealth.get(account);
+ const age=observed?.lastAuthenticatedPollAt ? Date.now()-observed.lastAuthenticatedPollAt : null;
+ loadCopierQueueFromDisk();
+ res.json({accountNumber:account,licenseStatus:license.status,connectionStatus:age===null?'NOT_OBSERVED':age<=30000?'CONNECTED':'STALE',...observed,pollAgeMs:age,
+ pendingSignals:copierSignalsQueue.filter(s=>Date.now()-s.timestamp<7200000 && (s.action==='CANCEL_ORDER'||(s.approvedGrade && Number(s.expiresAt)>Date.now())) && !vipSubscriptionService.isSignalDelivered(account,s.id)).length,
+ note:'Delivery is an HTTP response, not broker execution confirmation.'});
+});
 
-export function publishCopierSignal(signal: Omit<CopierLiveSignal, 'id' | 'timestamp'> & { id?: string }): CopierLiveSignal {
+export function publishCopierSignal(signal: Omit<CopierLiveSignal, 'id' | 'timestamp'> & { id?: string }, approval?: CopierApproval): CopierLiveSignal {
   let recommendedRiskPct: number = 0.50;
   if (signal.recommendedRiskPct !== undefined) {
     if (
@@ -390,13 +405,18 @@ export function publishCopierSignal(signal: Omit<CopierLiveSignal, 'id' | 'times
     recommendedRiskPct = maxRiskPct;
   }
 
+  if (signal.action !== 'CANCEL_ORDER') assertCopierApproval(signal, approval);
   const newSig: CopierLiveSignal = {
     ...signal,
+    approvedGrade: approval ? (approval.confidence >= 85 ? 'A+' : 'A') : undefined,
+    expiresAt: approval?.expiresAt,
     recommendedRiskPct,
     maxRiskPct,
-    id: signal.id || `SIG-${Date.now()}`,
+    id: approval?.signalId || signal.id || `SIG-${crypto.randomUUID()}`,
     timestamp: Date.now()
   };
+  const prior = copierSignalsQueue.find(s => s.id === newSig.id);
+  if (prior) return prior; // Retries never renew or mutate an already-delivered opportunity.
   latestCopierSignal = newSig;
   
   // Add to queue (avoid duplicate IDs)
@@ -454,6 +474,7 @@ copierRouter.get('/copier/signal', productionTlsGuard, copierRateLimiter(180, 60
     const authCheck = vipSubscriptionService.verifyVipToken(token, account);
 
     if (!authCheck.valid) {
+      receiverHealth.set(account, {...receiverHealth.get(account), lastAuthenticatedPollAt: receiverHealth.get(account)?.lastAuthenticatedPollAt || null, lastError: authCheck.error || 'UNAUTHORIZED_VIP_ACCESS'});
       return res.status(403).json({
         hasSignal: false,
         serverTime: Date.now(),
@@ -461,6 +482,8 @@ copierRouter.get('/copier/signal', productionTlsGuard, copierRateLimiter(180, 60
         message: authCheck.message
       });
     }
+
+    receiverHealth.set(account, {...receiverHealth.get(account), lastAuthenticatedPollAt: Date.now(), lastError: null });
 
     // 3. Find next unconsumed active signal within 2-hour TTL
     loadCopierQueueFromDisk();
@@ -472,7 +495,8 @@ copierRouter.get('/copier/signal', productionTlsGuard, copierRateLimiter(180, 60
     const candidateSignal = copierSignalsQueue.find(sig => {
       const isFresh = (now - sig.timestamp) < TWO_HOURS_MS;
       const notDelivered = !vipSubscriptionService.isSignalDelivered(account, sig.id);
-      return isFresh && notDelivered;
+      const approved = sig.action === 'CANCEL_ORDER' || (['A','A+'].includes(sig.approvedGrade || '') && Number(sig.expiresAt) > now);
+      return isFresh && approved && notDelivered;
     });
 
     if (!candidateSignal) {
@@ -482,6 +506,8 @@ copierRouter.get('/copier/signal', productionTlsGuard, copierRateLimiter(180, 60
         message: 'No new active signal available (all signals already consumed or no new signal published).'
       });
     }
+
+    receiverHealth.set(account, {...receiverHealth.get(account)!, lastDeliveredSignalId:candidateSignal.id,lastDeliveredAt:Date.now()});
 
     // Mark as delivered to this license
     vipSubscriptionService.recordSignalDelivery(account, candidateSignal.id);
@@ -569,7 +595,7 @@ copierRouter.post('/copier/signal', copierAdminAuthMiddleware, async (req: Reque
     if (err.message && (err.message.startsWith('MALFORMED_') || err.message.startsWith('RECOMMENDED_RISK_EXCEEDS_MAX'))) {
       return res.status(400).json({ error: err.message });
     }
-    res.status(500).json({ error: err.message });
+    res.status(err.message?.startsWith('GRADE_A_APPROVAL_REQUIRED') ? 422 : 500).json({ error: err.message });
   }
 });
 
@@ -819,136 +845,9 @@ copierRouter.post('/copier/test-dual-order', copierAdminAuthMiddleware, async (r
       });
     }
 
-    const {
-      pair = 'EUR/USD',
-      direction = 'BUY',
-      entryPrice = 1.15350,
-      stopLoss = 1.15150,
-      takeProfit1 = 1.15600,
-      takeProfit2 = 1.15850,
-      lotSize = 0.02,
-      confidence = 94,
-      recommendedRiskPct,
-      maxRiskPct,
-      reasons = [
-        'M15 Bullish Order Block (OB) Retest Confirmed',
-        'Asian Session Lows Liquidity Sweep',
-        'H1 Institutional FVG Mitigation & 200 EMA Support'
-      ]
-    } = req.body || {};
-
-    latestTestSignalPair = pair;
-    latestTestSignalDirection = direction as 'BUY' | 'SELL';
-    latestTestSignalEntry = Number(entryPrice);
-    latestTestSignalSL = Number(stopLoss);
-
-    console.log(`\n🚀 [Dual-Account Test Order] Initiating test dispatch for ${pair} ${direction} Limit @ ${entryPrice}...`);
-
-    // 1. Direct Spotware cTrader Open API (Master Account: 5881460 / CTID: 48282756)
-    let masterResult: any = null;
-    let masterError: string | null = null;
-    try {
-      const { CTraderAdapter } = await import('../../../apps/execution-router/src/adapters/ctraderAdapter');
-      const masterAdapter = new CTraderAdapter({ accountId: '48282756' });
-      await masterAdapter.connect();
-      const orderIdStr = `test_dual_${Date.now()}`;
-      masterResult = await masterAdapter.placeOrder({
-        order_id: orderIdStr,
-        proposal_id: `prop_${orderIdStr}`,
-        symbol: pair,
-        direction: direction as 'BUY' | 'SELL',
-        order_type: 'LIMIT',
-        quantity: Number(lotSize),
-        price: Number(entryPrice),
-        stop_loss: Number(stopLoss),
-        take_profit: Number(takeProfit1),
-        time_in_force: 'GTC',
-        broker_id: 'ctrader-broker-01',
-        timestamp: new Date()
-      });
-      latestMasterTestOrderId = masterResult.broker_order_id || masterResult.brokerOrderId || masterResult.report_id || null;
-      console.log(`✅ [Master OpenAPI Account] Pending Limit Order placed! Broker Order ID: #${latestMasterTestOrderId}`);
-    } catch (err: any) {
-      masterError = err.message;
-      console.warn(`⚠️ [Master OpenAPI Account] Notice:`, err.message);
-    }
-
-    // 2. Client cBot Receiver Bridge (Account: 5877246)
-    const copierSignal = publishCopierSignal({
-      action: 'NEW_ORDER',
-      masterBrokerOrderId: latestMasterTestOrderId || undefined,
-      pair,
-      direction: direction as 'BUY' | 'SELL',
-      entryPrice: Number(entryPrice),
-      stopLoss: Number(stopLoss),
-      takeProfit1: Number(takeProfit1),
-      takeProfit2: Number(takeProfit2),
-      lotSize: Number(lotSize),
-      recommendedRiskPct: recommendedRiskPct !== undefined ? Number(recommendedRiskPct) : undefined,
-      maxRiskPct: maxRiskPct !== undefined ? Number(maxRiskPct) : undefined,
-      reasons: Array.isArray(reasons) ? reasons : [reasons]
-    });
-    console.log(`✅ [Client cBot Bridge] Copier signal published (ID: ${copierSignal.id}, BrokerOrderId: ${latestMasterTestOrderId})`);
-
-    // 3. Telegram VIP & Free Broadcast
-    let telegramDispatched = false;
-    try {
-      const { telegramNotificationService } = await import('../services/telegramNotificationService');
-      telegramDispatched = await telegramNotificationService.broadcastTradeEvent({
-        pair,
-        direction: direction as 'BUY' | 'SELL',
-        timeframe: 'M15',
-        entryPrice: Number(entryPrice),
-        stopLoss: Number(stopLoss),
-        takeProfit1: Number(takeProfit1),
-        takeProfit2: Number(takeProfit2),
-        confidence: Number(confidence),
-        reasons: Array.isArray(reasons) ? reasons : [reasons],
-        lotSize: Number(lotSize),
-        recommendedRiskPct: copierSignal.recommendedRiskPct,
-        maxRiskPct: copierSignal.maxRiskPct,
-        status: 'ENTRY_DISPATCHED',
-        tier: Number(confidence) >= 85 ? 'FREE' : 'VIP',
-        brokerOrderId: latestMasterTestOrderId || 'CTRADER-OPENAPI-MASTER'
-      });
-      console.log(`✅ [Telegram Broadcast] Dispatched alert to VIP & Free channels`);
-    } catch (tgErr: any) {
-      console.warn(`⚠️ [Telegram Broadcast] Warning:`, tgErr.message);
-    }
-
-    res.json({
-      success: true,
-      message: 'Dual-Account Test Order successfully executed across OpenAPI, cBot, and Telegram!',
-      signal: {
-        pair,
-        direction,
-        entryPrice: Number(entryPrice),
-        stopLoss: Number(stopLoss),
-        takeProfit1: Number(takeProfit1),
-        takeProfit2: Number(takeProfit2),
-        lotSize: Number(lotSize),
-        recommendedRiskPct: copierSignal.recommendedRiskPct,
-        maxRiskPct: copierSignal.maxRiskPct
-      },
-      masterOpenApiAccount: {
-        accountId: '5881460 (CTID: 48282756)',
-        brokerOrderId: latestMasterTestOrderId,
-        status: masterError ? 'NOTICE' : 'DISPATCHED',
-        details: masterResult,
-        notice: masterError
-      },
-      clientCbotAccount: {
-        accountId: '5877246',
-        copierSignalId: copierSignal.id,
-        status: 'SIGNAL_PUBLISHED_AWAITING_POLL'
-      },
-      telegramBroadcast: {
-        channels: ['VIP Channel (-1004344482481)', 'Free Channel (-1004354378602)'],
-        sent: telegramDispatched
-      }
-    });
+    return res.status(422).json({success:false,error:'GRADE_A_APPROVAL_REQUIRED: Diagnostic order injection is disabled. Use isolated mock tests; live signal publication requires scanner approval.'});
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({error:err.message});
   }
 });
 

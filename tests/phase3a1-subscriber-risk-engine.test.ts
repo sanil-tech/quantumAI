@@ -1,5 +1,20 @@
-import { describe, it, expect } from 'vitest';
-import { publishCopierSignal, CopierLiveSignal } from '../src/server/routes/copier';
+import { approveCopierSignal } from '../src/server/services/copierSafetyPolicy';
+// Contract tests must never publish into the running application's disk queue or contact a broker.
+const isolatedQueue = vi.hoisted(() => {
+  for (const key of ['TELEGRAM_BOT_TOKEN','TELEGRAM_CHANNEL_ID','TELEGRAM_VIP_CHAT_ID','TELEGRAM_FREE_CHAT_ID']) delete process.env[key];
+  return new Map<string,string>();
+});
+vi.mock('fs',()=>({existsSync:(p:string)=>isolatedQueue.has(p),readFileSync:(p:string)=>isolatedQueue.get(p),writeFileSync:(p:string,s:string)=>isolatedQueue.set(p,s),mkdirSync:vi.fn()}));
+vi.mock('../src/server/services/multiClientCopierService',()=>({multiClientCopierService:{}}));
+let approvedFixtureId = 0;
+function publishCopierSignal(signal: Parameters<typeof publishApprovedSignal>[0]) {
+  const canonical = {signalId:'risk-fixture-'+(++approvedFixtureId),symbol:signal.pair,direction:signal.direction,
+    entryPrice:signal.entryPrice,stopLoss:signal.stopLoss,takeProfit1:signal.takeProfit1,takeProfit2:signal.takeProfit2,
+    confidence:90,validationStatus:'PASS',validationErrors:[],executionStatus:'WAITING_FOR_ENTRY',expiryTime:Date.now()+60000};
+  return publishApprovedSignal(signal,approveCopierSignal(canonical as any,'WAITING_FOR_ENTRY'));
+}
+import { describe, it, expect, vi } from 'vitest';
+import { publishCopierSignal as publishApprovedSignal, CopierLiveSignal } from '../src/server/routes/copier';
 import { TelegramNotificationService, TradeBroadcastPayload } from '../src/server/services/telegramNotificationService';
 
 /**

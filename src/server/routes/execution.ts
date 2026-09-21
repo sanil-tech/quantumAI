@@ -1,3 +1,4 @@
+import { manualEntryOnly } from '../services/copierSafetyPolicy';
 import { AccountService } from '../services/accountService';
 import { Router, Request, Response } from 'express';
 import { executionQueueService } from '../services/executionQueueService';
@@ -1093,18 +1094,7 @@ export async function handleExecuteTrade(req: Request, res: Response) {
       sharedAutoTraderState.openTrades.push(newTrade);
     }
 
-    // Dispatch parallel trade copying to all connected subscriber cTrader accounts
-    import('../services/multiClientCopierService').then(({ multiClientCopierService }) => {
-      multiClientCopierService.dispatchMasterTrade({
-        pair,
-        direction,
-        entryPrice: Number(entryPrice),
-        stopLoss: sanitizedSl,
-        takeProfit1: sanitizedTp,
-        confidence: req.body.confidence || 85,
-        strategyId: req.body.strategyId
-      }).catch((e: any) => console.warn('[COPIER] Parallel copy dispatch error:', e.message));
-    }).catch(() => {});
+    // Manual/AutoTrader entries are not approved scanner signals and must not fan out.
 
     res.json({
       success: true,
@@ -1121,9 +1111,9 @@ export async function handleExecuteTrade(req: Request, res: Response) {
   }
 }
 
-executionRouter.post('/autotrader/open', handleExecuteTrade);
-executionRouter.post('/autotrader/trade/execute', handleExecuteTrade);
-executionRouter.post('/execution/autotrader-submit', handleExecuteTrade);
+executionRouter.post('/autotrader/open', manualEntryOnly, handleExecuteTrade);
+executionRouter.post('/autotrader/trade/execute', manualEntryOnly, handleExecuteTrade);
+executionRouter.post('/execution/autotrader-submit', manualEntryOnly, handleExecuteTrade);
 
 /**
  * POST /api/autotrader/trade/close

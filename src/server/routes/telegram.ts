@@ -133,4 +133,69 @@ const handleWeeklyBroadcast = async (req: Request, res: Response) => {
 telegramRouter.post('/telegram/weekly-report/broadcast', adminAuthMiddleware, handleWeeklyBroadcast);
 telegramRouter.post('/api/telegram/weekly-report/broadcast', adminAuthMiddleware, handleWeeklyBroadcast);
 
+/**
+ * GET /api/telegram/kickoff/preview
+ * Previews the Weekly Kickoff Report in English or Malay
+ */
+const handleKickoffPreview = (req: Request, res: Response) => {
+  try {
+    const lang = (req.query.lang as 'en' | 'ms') || 'en';
+    const preview = telegramNotificationService.generateWeeklyKickoffReport(lang);
+    res.json({ success: true, lang, preview });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+telegramRouter.get('/telegram/kickoff/preview', handleKickoffPreview);
+telegramRouter.get('/api/telegram/kickoff/preview', handleKickoffPreview);
+
+/**
+ * POST /api/telegram/kickoff/broadcast
+ * Broadcasts the Weekly Kickoff Report to Telegram subscribers
+ */
+const handleKickoffBroadcast = async (req: Request, res: Response) => {
+  try {
+    const success = await telegramNotificationService.broadcastWeeklyKickoff();
+    res.json({ success, message: success ? 'Weekly Kickoff report dispatched.' : 'Kickoff dispatch skipped or failed.' });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+telegramRouter.post('/telegram/kickoff/broadcast', adminAuthMiddleware, handleKickoffBroadcast);
+telegramRouter.post('/api/telegram/kickoff/broadcast', adminAuthMiddleware, handleKickoffBroadcast);
+
+/**
+ * GET /api/telegram/briefing/preview
+ * Previews the Session Open Micro-Analysis Briefing
+ */
+const handleBriefingPreview = (req: Request, res: Response) => {
+  try {
+    const session = req.query.session as ('TOKYO' | 'LONDON' | 'NEW_YORK' | undefined);
+    const lang = (req.query.lang as 'en' | 'ms') || 'en';
+    const preview = telegramNotificationService.generateSessionBriefingReport(session, lang);
+    res.json({ success: true, session: session || 'AUTO_DETECTED', lang, preview });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+telegramRouter.get('/telegram/briefing/preview', handleBriefingPreview);
+telegramRouter.get('/api/telegram/briefing/preview', handleBriefingPreview);
+
+/**
+ * POST /api/telegram/briefing/broadcast
+ * Broadcasts the Session Open Micro-Analysis Briefing to Telegram subscribers
+ */
+const handleBriefingBroadcast = async (req: Request, res: Response) => {
+  try {
+    const session = req.body?.session as ('TOKYO' | 'LONDON' | 'NEW_YORK' | undefined);
+    const success = await telegramNotificationService.broadcastSessionBriefing(session);
+    res.json({ success, message: success ? `Session Briefing dispatched for ${session || 'current session'}.` : 'Briefing dispatch skipped or failed.' });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+telegramRouter.post('/telegram/briefing/broadcast', adminAuthMiddleware, handleBriefingBroadcast);
+telegramRouter.post('/api/telegram/briefing/broadcast', adminAuthMiddleware, handleBriefingBroadcast);
+
+
 

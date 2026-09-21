@@ -379,7 +379,7 @@ subscriberRouter.post(['/copier/dispatch', '/dispatch'], async (req: Request, re
     });
     res.json({ success: true, ...result });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(err.message?.startsWith('GRADE_A_APPROVAL_REQUIRED') ? 422 : 500).json({ success: false, error: err.message });
   }
 });
 

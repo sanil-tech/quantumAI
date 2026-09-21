@@ -23,9 +23,11 @@ export class EconomicCalendarProvider {
   public getWeeklyEvents(): EconomicEvent[] {
     const now = new Date();
     
-    // Find Monday of the current trading week
+    // Find Monday of the active trading week (if Sunday 12:00+ UTC, anchor to upcoming Monday)
     const currentDayOfWeek = now.getUTCDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
-    const distanceToMonday = currentDayOfWeek === 0 ? -6 : 1 - currentDayOfWeek;
+    const distanceToMonday = currentDayOfWeek === 0
+      ? (now.getUTCHours() >= 12 ? 1 : -6)
+      : 1 - currentDayOfWeek;
     
     const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + distanceToMonday);
     const mondayMidnight = new Date(Date.UTC(monday.getUTCFullYear(), monday.getUTCMonth(), monday.getUTCDate(), 0, 0, 0)).getTime();
