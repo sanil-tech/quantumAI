@@ -362,6 +362,8 @@ export class DemoAutonomousTradingService extends EventEmitter {
 
     // Broadcast live TP1 Scale-Out event to Telegram
     telegramNotificationService.broadcastTradeEvent({
+      isSimulated: true,
+      isDemo: true,
       pair: pos.symbol,
       direction: pos.tradeSide,
       timeframe: 'M1',
@@ -460,6 +462,8 @@ export class DemoAutonomousTradingService extends EventEmitter {
 
     // Broadcast exit event to Telegram subscribers
     telegramNotificationService.broadcastTradeEvent({
+      isSimulated: true,
+      isDemo: true,
       pair: pos.symbol,
       direction: pos.tradeSide,
       timeframe: 'M1',
@@ -735,6 +739,8 @@ export class DemoAutonomousTradingService extends EventEmitter {
 
       // Broadcast live order entry to Telegram subscribers
       telegramNotificationService.broadcastTradeEvent({
+        isSimulated: true,
+        isDemo: true,
         pair,
         direction: signal.action,
         timeframe: 'M1',

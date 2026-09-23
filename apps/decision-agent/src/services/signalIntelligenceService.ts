@@ -44,6 +44,19 @@ export class SignalIntelligenceService {
    * Evaluates a candidate market state and returns a truthful SignalDecision.
    */
   public evaluateCandidateSetup(input: CandidateEvaluationInput): AiTradeOpportunity {
+    return this.evaluateCore(input, false);
+  }
+
+  // Offline research only. Return no executable proposal or canonical approval.
+  public evaluateResearchCandidate(input: CandidateEvaluationInput) {
+    const result = this.evaluateCore({...input, dataMode: 'HISTORICAL_RESEARCH', postMortemReviews: []}, true);
+    return Object.freeze({action: result.action, confidence: result.confidence,
+      entryZone: result.entryZone, stopLoss: result.stopLoss,
+      takeProfit1: result.takeProfit1, takeProfit2: result.takeProfit2,
+      executable: false as const, provenance: 'OFFLINE_RESEARCH' as const});
+  }
+
+  private evaluateCore(input: CandidateEvaluationInput, researchOnly: boolean): AiTradeOpportunity {
     // ── DATA QUALITY GATE (fail-closed) ────────────────────────────────────
     // If indicators are missing or undefined, we MUST NOT fabricate synthetic
     // defaults. Return NO_SETUP immediately so the observatory records a
@@ -108,7 +121,7 @@ export class SignalIntelligenceService {
     // ── XAU/USD (GOLD) STRICT QUARANTINE GATE ───────────────────────────────
     // Commodity XAUUSD has 10x higher pip volatility than Forex. To protect account
     // capital from extreme volatility and anomalous drawdowns, XAU/USD is strictly quarantined.
-    if (isGold) {
+    if (isGold && !researchOnly) {
       const proposalId = `prop-veto-xau-${Date.now()}`;
       return {
         pair,

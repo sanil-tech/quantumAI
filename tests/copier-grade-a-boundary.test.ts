@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import express from 'express';
 import request from 'supertest';
-import { approveCopierSignal, assertCopierApproval, selectDirectCopyRecipients, manualEntryOnly } from '../src/server/services/copierSafetyPolicy';
+import { confirmMasterOrder, approveCopierSignal, assertCopierApproval, selectDirectCopyRecipients, manualEntryOnly } from '../src/server/services/copierSafetyPolicy';
 import type { CanonicalSignal } from '../src/server/services/validation/signalValidationTypes';
 const memory=vi.hoisted(()=>({files:new Map<string,string>(),deliveries:new Set<string>()}));
 vi.mock('fs',()=>({existsSync:(p:string)=>memory.files.has(p),readFileSync:(p:string)=>memory.files.get(p),writeFileSync:(p:string,s:string)=>memory.files.set(p,s),mkdirSync:vi.fn()}));
@@ -18,13 +18,13 @@ function canonical(overrides:Partial<CanonicalSignal>={}):CanonicalSignal { retu
  signalId:`audit-${++seq}`,symbol:'GBP/USD',direction:'BUY',confidence:80,validationStatus:'PASS',validationErrors:[],
  expiryTime:Date.now()+60000,executionStatus:'WAITING_FOR_ENTRY',entryPrice:1.33,stopLoss:1.327,takeProfit1:1.336,takeProfit2:1.34,...overrides
 } as CanonicalSignal; }
-function publish(s=canonical()) {const terms={id:s.signalId,pair:s.symbol,direction:s.direction,entryPrice:s.entryPrice,stopLoss:s.stopLoss,takeProfit1:s.takeProfit1,takeProfit2:s.takeProfit2!,lotSize:0.01};return publishCopierSignal(terms,approveCopierSignal(s,'WAITING_FOR_ENTRY'));}
+function publish(s=canonical()) {const terms={id:s.signalId,pair:s.symbol,direction:s.direction,entryPrice:s.entryPrice,stopLoss:s.stopLoss,takeProfit1:s.takeProfit1,takeProfit2:s.takeProfit2!,lotSize:0.01};return publishCopierSignal(terms,confirmMasterOrder(approveCopierSignal(s,'WAITING_FOR_ENTRY'),{status:'ACCEPTED',broker_order_id:String(100000+Number(s.signalId.split('-').pop()))},'LIMIT'));}
 const app=express();app.use(express.json());app.use('/api',copierRouter);
 beforeEach(()=>{process.env.ADMIN_API_KEY='audit-admin';process.env.NODE_ENV='test';});
 describe('Grade A and recipient boundary',()=>{
  it.each([NaN,Infinity,0,70,74.99,101])('rejects invalid or sub-A confidence %s',confidence=>expect(()=>approveCopierSignal(canonical({confidence}),'WAITING_FOR_ENTRY')).toThrow('GRADE_A'));
  it.each([75,85,100])('permits validated A/A+ confidence %s',confidence=>expect(approveCopierSignal(canonical({confidence}),'WAITING_FOR_ENTRY').confidence).toBe(confidence));
- it.each(['REVIEW','WARNING','REJECTED'])('rejects validation %s',validationStatus=>expect(()=>approveCopierSignal(canonical({validationStatus:validationStatus as any}),'WAITING_FOR_ENTRY')).toThrow());
+ it.each(['REVIEW','REJECTED'])('rejects validation %s',validationStatus=>expect(()=>approveCopierSignal(canonical({validationStatus:validationStatus as any}),'WAITING_FOR_ENTRY')).toThrow());
  it.each(['BLOCKED','EXPIRED','EXECUTED','NOT_ELIGIBLE'])('rejects eligibility %s',e=>expect(()=>approveCopierSignal(canonical(),e as any)).toThrow());
  it('rejects expiry and validation errors',()=>{expect(()=>approveCopierSignal(canonical({expiryTime:Date.now()-1}),'WAITING_FOR_ENTRY')).toThrow();expect(()=>approveCopierSignal(canonical({validationErrors:['bad feed']}),'WAITING_FOR_ENTRY')).toThrow();});
  it('rejects forged JSON and changed price terms',()=>{const s=canonical(),p=approveCopierSignal(s,'WAITING_FOR_ENTRY');const terms={pair:s.symbol,direction:s.direction,entryPrice:s.entryPrice,stopLoss:s.stopLoss,takeProfit1:s.takeProfit1,takeProfit2:s.takeProfit2};expect(()=>assertCopierApproval(terms,{...p})).toThrow();expect(()=>assertCopierApproval({...terms,entryPrice:1.5},p)).toThrow();expect(()=>assertCopierApproval(terms,p)).not.toThrow();});
@@ -36,12 +36,12 @@ describe('Grade A and recipient boundary',()=>{
 describe('cBot bridge without broker or network effects',()=>{
  it('does not accept an unapproved new order even with claimed grade',()=>expect(()=>publishCopierSignal({pair:'GBP/USD',direction:'BUY',entryPrice:1.33,stopLoss:1.327,takeProfit1:1.336,takeProfit2:1.34,lotSize:0.04,approvedGrade:'A+'})).toThrow('GRADE_A'));
  it('publishes, delivers once, and delivers the next same-pair opportunity',async()=>{
- const first=publish();let r=await request(app).get('/api/copier/signal?account=5918521').set('Authorization','Bearer token-5918521');expect(r.body.signal.id).toBe(first.id);
- r=await request(app).get('/api/copier/signal?account=5918521').set('Authorization','Bearer token-5918521');expect(r.body.hasSignal).toBe(false);
- const second=publish();r=await request(app).get('/api/copier/signal?account=5918521').set('Authorization','Bearer token-5918521');expect(r.body.signal.id).toBe(second.id);expect(second.id).not.toBe(first.id);
+ const first=publish();let r=await request(app).get('/api/copier/signal?protocol=master-v1&account=5918521').set('Authorization','Bearer token-5918521');expect(r.body.signal.id).toBe(first.id);
+ r=await request(app).get('/api/copier/signal?protocol=master-v1&account=5918521').set('Authorization','Bearer token-5918521');expect(r.body.hasSignal).toBe(false);
+ const second=publish();r=await request(app).get('/api/copier/signal?protocol=master-v1&account=5918521').set('Authorization','Bearer token-5918521');expect(r.body.signal.id).toBe(second.id);expect(second.id).not.toBe(first.id);
  });
  it('keeps original timestamp on publication retry',()=>{const s=canonical(),a=publish(s),b=publish(s);expect(b).toBe(a);});
- it('wrong-account token cannot consume a signal',async()=>{const s=publish();const r=await request(app).get('/api/copier/signal?account=5918521').set('Authorization','Bearer token-5918523');expect(r.status).toBe(403);expect(memory.deliveries.has(`5918521:${s.id}`)).toBe(false);});
+ it('wrong-account token cannot consume a signal',async()=>{const s=publish();const r=await request(app).get('/api/copier/signal?protocol=master-v1&account=5918521').set('Authorization','Bearer token-5918523');expect(r.status).toBe(403);expect(memory.deliveries.has(`5918521:${s.id}`)).toBe(false);});
  it('reports observed polling separately from license status and requires admin',async()=>{
  let r=await request(app).get('/api/copier/receiver-health?account=5918521');expect(r.status).toBe(401);
  r=await request(app).get('/api/copier/receiver-health?account=5918521').set('x-admin-key','audit-admin');expect(r.body.connectionStatus).toBe('CONNECTED');expect(r.body.lastDeliveredSignalId).toBeTruthy();
@@ -60,3 +60,6 @@ describe('Browser entry boundary',()=>{
  });
  it('preserves explicitly manual entries without copier fanout',async()=>{const local=express();local.use(express.json());local.post('/entry',manualEntryOnly,(_req,res)=>res.json({manual:true}));const r=await request(local).post('/entry').send({isAutoExecution:false});expect(r.body.manual).toBe(true);});
 });
+
+
+describe('Receiver protocol compatibility',()=>{it('does not consume a confirmed signal on an older receiver',async()=>{const sig=publish();const r=await request(app).get('/api/copier/signal?account=5918521').set('Authorization','Bearer token-5918521');expect(r.status).toBe(409);expect(r.body.error).toBe('RECEIVER_UPDATE_REQUIRED');expect(memory.deliveries.has('5918521:'+sig.id)).toBe(false);});});

@@ -186,9 +186,7 @@ async function startServer() {
       const events = economicCalendarProvider.getWeeklyEvents();
       return res.json({
         events,
-        provider: "GLOBAL_MACRO_CALENDAR_PROVIDER",
-        status: "ACTIVE",
-        message: "Authoritative macroeconomic calendar feed active."
+        ...economicCalendarProvider.getHealth()
       });
     } catch (err: any) {
       return res.json({

@@ -1,4 +1,4 @@
-import { assertCopierApproval, type CopierApproval } from '../services/copierSafetyPolicy';
+import { assertCopierApproval, requireMasterOrder, type CopierApproval } from '../services/copierSafetyPolicy';
 import { Router, Request, Response, NextFunction } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -306,6 +306,8 @@ copierRouter.post('/copier/master/toggle', copierAdminAuthMiddleware, (req: Requ
 
 export interface CopierLiveSignal {
   approvedGrade?: 'A' | 'A+';
+  masterConfirmed?: boolean;
+  orderType?: 'LIMIT' | 'MARKET';
   expiresAt?: number;
   id: string;
   masterBrokerOrderId?: string;
@@ -365,7 +367,7 @@ copierRouter.get('/copier/receiver-health',copierAdminAuthMiddleware,async(req,r
  const age=observed?.lastAuthenticatedPollAt ? Date.now()-observed.lastAuthenticatedPollAt : null;
  loadCopierQueueFromDisk();
  res.json({accountNumber:account,licenseStatus:license.status,connectionStatus:age===null?'NOT_OBSERVED':age<=30000?'CONNECTED':'STALE',...observed,pollAgeMs:age,
- pendingSignals:copierSignalsQueue.filter(s=>Date.now()-s.timestamp<7200000 && (s.action==='CANCEL_ORDER'||(s.approvedGrade && Number(s.expiresAt)>Date.now())) && !vipSubscriptionService.isSignalDelivered(account,s.id)).length,
+ pendingSignals:copierSignalsQueue.filter(s=>Date.now()-s.timestamp<7200000 && (s.action==='CANCEL_ORDER'||(s.masterConfirmed && s.approvedGrade && Number(s.expiresAt)>Date.now())) && !vipSubscriptionService.isSignalDelivered(account,s.id)).length,
  note:'Delivery is an HTTP response, not broker execution confirmation.'});
 });
 
@@ -406,8 +408,12 @@ export function publishCopierSignal(signal: Omit<CopierLiveSignal, 'id' | 'times
   }
 
   if (signal.action !== 'CANCEL_ORDER') assertCopierApproval(signal, approval);
+  const master = signal.action !== 'CANCEL_ORDER' ? requireMasterOrder(approval) : undefined;
   const newSig: CopierLiveSignal = {
     ...signal,
+    masterBrokerOrderId: master?.orderId || signal.masterBrokerOrderId,
+    masterConfirmed: Boolean(master),
+    orderType: master?.orderType,
     approvedGrade: approval ? (approval.confidence >= 85 ? 'A+' : 'A') : undefined,
     expiresAt: approval?.expiresAt,
     recommendedRiskPct,
@@ -415,7 +421,7 @@ export function publishCopierSignal(signal: Omit<CopierLiveSignal, 'id' | 'times
     id: approval?.signalId || signal.id || `SIG-${crypto.randomUUID()}`,
     timestamp: Date.now()
   };
-  const prior = copierSignalsQueue.find(s => s.id === newSig.id);
+  const prior = copierSignalsQueue.find(s => s.id === newSig.id || (master && s.masterConfirmed && s.action !== 'CANCEL_ORDER' && s.masterBrokerOrderId === master.orderId));
   if (prior) return prior; // Retries never renew or mutate an already-delivered opportunity.
   latestCopierSignal = newSig;
   
@@ -495,7 +501,7 @@ copierRouter.get('/copier/signal', productionTlsGuard, copierRateLimiter(180, 60
     const candidateSignal = copierSignalsQueue.find(sig => {
       const isFresh = (now - sig.timestamp) < TWO_HOURS_MS;
       const notDelivered = !vipSubscriptionService.isSignalDelivered(account, sig.id);
-      const approved = sig.action === 'CANCEL_ORDER' || (['A','A+'].includes(sig.approvedGrade || '') && Number(sig.expiresAt) > now);
+      const approved = sig.action === 'CANCEL_ORDER' || (sig.masterConfirmed === true && ['A','A+'].includes(sig.approvedGrade || '') && Number(sig.expiresAt) > now);
       return isFresh && approved && notDelivered;
     });
 
@@ -506,6 +512,16 @@ copierRouter.get('/copier/signal', productionTlsGuard, copierRateLimiter(180, 60
         message: 'No new active signal available (all signals already consumed or no new signal published).'
       });
     }
+
+
+
+    if (candidateSignal.action !== 'CANCEL_ORDER' && req.query.protocol !== 'master-v1') {
+      receiverHealth.set(account, {...receiverHealth.get(account)!, lastError:'RECEIVER_UPDATE_REQUIRED'});
+      return res.status(409).json({hasSignal:false,error:'RECEIVER_UPDATE_REQUIRED',message:'Install the master-v1 QuantumAI VIP receiver before copying confirmed master orders.'});
+    }
+    const direct = multiClientCopierService.getSubscribers?.().some(s =>
+      s.executionChannel === 'OPEN_API' && (s.accountNumber === account || String(s.ctidTraderAccountId) === account));
+    if (direct || ['5881460','48282756'].includes(account)) return res.json({hasSignal:false,message:'Account uses Open API or is the master; cBot delivery suppressed.'});
 
     receiverHealth.set(account, {...receiverHealth.get(account)!, lastDeliveredSignalId:candidateSignal.id,lastDeliveredAt:Date.now()});
 
@@ -519,6 +535,9 @@ copierRouter.get('/copier/signal', productionTlsGuard, copierRateLimiter(180, 60
       hasSignal: true,
       serverTime: Date.now(),
       id: candidateSignal.id,
+      masterBrokerOrderId: candidateSignal.masterBrokerOrderId,
+      masterConfirmed: candidateSignal.masterConfirmed,
+      orderType: candidateSignal.orderType,
       action: candidateSignal.action || 'NEW_ORDER',
       pair: candidateSignal.pair,
       direction: candidateSignal.direction,

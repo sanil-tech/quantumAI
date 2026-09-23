@@ -1062,7 +1062,7 @@ namespace cAlgo.Robots
             {
                 if (string.IsNullOrWhiteSpace(VipAuthToken)) return;
 
-                string url = string.Format("{0}/api/copier/signal?account={1}&token={2}&since={3}", ServerUrl.TrimEnd('/'), _accountNumber, Uri.EscapeDataString(VipAuthToken), _lastSignalTimestamp);
+                string url = string.Format("{0}/api/copier/signal?account={1}&token={2}&since={3}&protocol=master-v1", ServerUrl.TrimEnd('/'), _accountNumber, Uri.EscapeDataString(VipAuthToken), _lastSignalTimestamp);
                 string response = string.Empty;
 
                 using (var webClient = new WebClient())
@@ -1122,6 +1122,14 @@ namespace cAlgo.Robots
                 }
 
                 if (!dirMatch.Success || !slMatch.Success || !tp1Match.Success) return;
+                var orderTypeMatch = Regex.Match(response, "\"orderType\":\\s*\"(LIMIT|MARKET)\"");
+                var masterMatch = Regex.Match(response, "\"masterBrokerOrderId\":\\s*\"([0-9]+)\"");
+                if (!orderTypeMatch.Success || !masterMatch.Success || !Regex.IsMatch(response, "\"masterConfirmed\":\\s*true"))
+                {
+                    Print("Master confirmation missing: order skipped.");
+                    return;
+                }
+                bool masterLimit = orderTypeMatch.Groups[1].Value == "LIMIT";
 
                 // Strict Server Risk Field Validation via JSON token parser (Issue 3 fix)
                 double? serverRecommendedRisk = null;
@@ -1152,7 +1160,7 @@ namespace cAlgo.Robots
                 double takeProfit1 = double.Parse(tp1Match.Groups[1].Value, CultureInfo.InvariantCulture);
                 double? takeProfit2 = tp2Match.Success ? (double?)double.Parse(tp2Match.Groups[1].Value, CultureInfo.InvariantCulture) : null;
 
-                BeginInvokeOnMainThread(() => ExecuteSignalTrade(signalId, pair, tradeType, entryPrice, stopLoss, takeProfit1, takeProfit2, serverRecommendedRisk, serverMaxRisk));
+                BeginInvokeOnMainThread(() => ExecuteSignalTrade(signalId, pair, tradeType, entryPrice, stopLoss, takeProfit1, takeProfit2, serverRecommendedRisk, serverMaxRisk, masterLimit, masterMatch.Groups[1].Value));
             }
             catch (Exception ex)
             {
@@ -1298,7 +1306,7 @@ namespace cAlgo.Robots
             return true;
         }
 
-        private void ExecuteSignalTrade(string signalId, string pairStr, TradeType tradeType, double entryPrice, double stopLoss, double takeProfit1, double? takeProfit2, double? serverRecommendedRisk, double? serverMaxRisk)
+        private void ExecuteSignalTrade(string signalId, string pairStr, TradeType tradeType, double entryPrice, double stopLoss, double takeProfit1, double? takeProfit2, double? serverRecommendedRisk, double? serverMaxRisk, bool masterLimit, string masterOrderId)
         {
             try
             {
@@ -1484,27 +1492,13 @@ namespace cAlgo.Robots
                 }
 
                 double actualTotalUnits = volumeTicket1 + volumeTicket2;
-                string tradeTag = DateTime.UtcNow.ToString("HHmmss");
+                string tradeTag = masterOrderId;
 
                 Print(string.Format("📊 [RISK ENGINE SIZING] Signal: {0} | Symbol: {1} | Equity: {2:F2} | Mode: {3}", signalId, symbol.Name, Account.Equity, RiskMode));
                 Print(string.Format(CultureInfo.InvariantCulture, "💵 Budget: {0:F2} ({1:F2}% risk) | SL: {2:F1} pips (Raw: {3:F1}p) | Units: T1={4:F0}, T2={5:F0} (Total={6:F0}, Risk: {7:F2}%)", monetaryRiskBudget, effectiveRiskPct, effectiveSlPips, rawSlPips, volumeTicket1, volumeTicket2, actualTotalUnits, actualRiskPct));
 
-                // 7. Smart Money Concepts: Decide between Pending Limit Order vs Immediate Market Fill
-                bool isPendingLimitOrder = false;
-                double currentAsk = symbol.Ask;
-                double currentBid = symbol.Bid;
-
-                if (entryPrice > 0)
-                {
-                    if (tradeType == TradeType.Buy && entryPrice < (currentAsk - (symbol.PipSize * 1.5)))
-                    {
-                        isPendingLimitOrder = true;
-                    }
-                    else if (tradeType == TradeType.Sell && entryPrice > (currentBid + (symbol.PipSize * 1.5)))
-                    {
-                        isPendingLimitOrder = true;
-                    }
-                }
+                // Follow the confirmed master order type; never convert LIMIT into MARKET.
+                bool isPendingLimitOrder = masterLimit;
 
                 // 8. Order Execution & Result Verification
                 if (isPendingLimitOrder)

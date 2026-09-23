@@ -161,8 +161,23 @@ brokerRouter.get('/broker/status', async (req: Request, res: Response) => {
  */
 brokerRouter.get('/broker/open-positions', async (req: Request, res: Response) => {
   try {
-    const rawBrokerPos = await ctraderMarketDataFeedService.fetchRawOpenPositions();
-    res.json({ success: true, positions: rawBrokerPos || [] });
+    const rawBrokerPos = await ctraderMarketDataFeedService.fetchRawOpenPositions(true);
+    const normalizedPositions = (rawBrokerPos || []).map((p: any) => {
+      const spec = CTraderSymbolRegistry.getSymbolById(Number(p.tradeData?.symbolId ?? p.symbolId));
+      const name = spec?.symbolName || p.symbol || ('SYMBOL_' + (p.tradeData?.symbolId ?? p.symbolId));
+      const pair = /^[A-Z]{6}$/.test(name) ? name.slice(0,3) + '/' + name.slice(3) : name;
+      const id = String(p.positionId);
+      return { id, positionId: id, brokerTicket: id, pair, symbol: pair,
+        direction: Number(p.tradeData?.tradeSide ?? p.tradeSide) === 2 ? 'SELL' : 'BUY',
+        lotSize: spec ? Number(p.tradeData?.volume ?? p.volume) / spec.lotSize : null,
+        entryPrice: Number(p.price ?? p.entryPrice), stopLoss: Number(p.stopLoss || 0),
+        takeProfit: Number(p.takeProfit || 0), takeProfit1: Number(p.takeProfit || 0),
+        takeProfit2: 0, isMultiTarget: false, status: 'OPEN',
+        openTime: Number(p.tradeData?.openTimestamp || 0),
+        accountId: String(process.env.CTRADER_ACCOUNT_ID || '48282756'),
+        setupId: p.tradeData?.comment || '', source: 'BROKER' };
+    });
+    res.json({ success: true, positions: rawBrokerPos || [], normalizedPositions });
   } catch (err: any) {
     res.json({ success: false, error: err.message, positions: [] });
   }

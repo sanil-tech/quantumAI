@@ -1,4 +1,5 @@
-import { assertCopierApproval, selectDirectCopyRecipients, type CopierApproval } from './copierSafetyPolicy';
+import { quoteUnitsPerUsd } from './fxRiskConversion';
+import { assertCopierApproval, requireMasterOrder, selectDirectCopyRecipients, type CopierApproval } from './copierSafetyPolicy';
 import EventEmitter from 'events';
 import { serverBrokerConnection } from '../routes/broker';
 import { sharedAutoTraderState, SharedAutoTrade } from '../routes/execution';
@@ -40,6 +41,7 @@ export interface CopiedExecutionEvent {
   isMultiTarget?: boolean;
   lotSize: number;
   riskPercent: number;
+  orderType?: 'LIMIT' | 'MARKET';
   status: 'SUCCESS' | 'FAILED' | 'SKIPPED_PAUSED' | 'SKIPPED_RISK';
   latencyMs: number;
   executedAt: number;
@@ -57,10 +59,15 @@ class MultiClientCopierService extends EventEmitter {
   private copyDispatches = new Map<string, number>();
   private filePath: string = path.resolve(process.cwd(), 'data', 'copier_subscribers.json');
 
+  private dispatchPath = path.resolve(process.cwd(), 'data', 'master_copy_dispatches.json');
+  private dispatchLedgerReady = true;
   constructor() {
     super();
     this.ensureDataDirectory();
     this.loadFromDisk();
+    try {
+      if (fs.existsSync(this.dispatchPath)) this.copyDispatches = new Map(JSON.parse(fs.readFileSync(this.dispatchPath, 'utf8')));
+    } catch { this.dispatchLedgerReady = false; }
     this.startBalanceSyncLoop();
   }
 
@@ -332,11 +339,12 @@ class MultiClientCopierService extends EventEmitter {
     strategyId?: string;
   }, approval?: CopierApproval): Promise<{ dispatchedCount: number; results: CopiedExecutionEvent[] }> {
     assertCopierApproval(tradeProposal, approval);
+    const master = requireMasterOrder(approval);
     if (!this.isMasterActive) {
       return { dispatchedCount: 0, results: [] };
     }
 
-    for (const [key, expiry] of this.copyDispatches) if (expiry <= Date.now()) this.copyDispatches.delete(key);
+    if (!this.dispatchLedgerReady) throw new Error('COPY_LEDGER_UNAVAILABLE');
     const subscribers = selectDirectCopyRecipients(Array.from(this.subscribers.values()));
     const results: CopiedExecutionEvent[] = [];
 
@@ -345,7 +353,7 @@ class MultiClientCopierService extends EventEmitter {
       const { publishCopierSignal } = await import('../routes/copier');
       publishCopierSignal({
         id: `sig_${tradeProposal.pair.replace(/[^A-Za-z0-9]/g, '')}_${Date.now()}`,
-        masterBrokerOrderId: `MASTER-${Date.now()}`,
+        masterBrokerOrderId: master.orderId,
         action: 'NEW_ORDER',
         pair: tradeProposal.pair,
         direction: tradeProposal.direction,
@@ -372,20 +380,22 @@ class MultiClientCopierService extends EventEmitter {
     const slPips = slDistance / pipMultiplier;
 
     // Waiting limit setups must not become market copies.
-    if (approval.eligibility !== 'ELIGIBLE_FOR_EXECUTION') return {dispatchedCount:0,results:[]};
+    if (master.orderType === 'MARKET' && approval.eligibility !== 'ELIGIBLE_FOR_EXECUTION') throw new Error('WAITING_SETUP_REQUIRES_LIMIT');
 
     // Parallel Async Dispatch
     const copyPromises = subscribers.map(async (sub) => {
-      const dispatchKey = approval.signalId + ':' + sub.ctidTraderAccountId;
+      const dispatchKey = master.orderId + ':' + sub.ctidTraderAccountId;
       if (this.copyDispatches.has(dispatchKey)) return;
-      this.copyDispatches.set(dispatchKey, approval.expiresAt);
+      this.copyDispatches.set(dispatchKey, Date.now());
+      // Claim durably before broker submission. Ambiguous failures require reconciliation, not blind retry.
+      fs.writeFileSync(this.dispatchPath, JSON.stringify([...this.copyDispatches]), 'utf8');
       const startTime = Date.now();
 
       // Check if subscriber is eligible to receive trade
       if (sub.status === 'PAUSED' || sub.status === 'EXPIRED') {
         const skippedEvent: CopiedExecutionEvent = {
           id: `copy-${Date.now()}-${sub.id}`,
-          masterTradeId: `master-${tradeProposal.pair}-${Date.now()}`,
+          masterTradeId: master.orderId,
           subscriberId: sub.id,
           subscriberName: sub.name,
           accountNumber: sub.accountNumber,
@@ -407,28 +417,24 @@ class MultiClientCopierService extends EventEmitter {
         return;
       }
 
-      // Dynamic Lot Sizing per subscriber balance & risk percent:
-      // Risk Amount = Balance * (Risk% / 100)
-      // Lot = Risk Amount / (SL Pips * $10 per lot)
-      const riskAmountUsd = sub.balance * (sub.riskPercent / 100);
-      let calculatedLot = (riskAmountUsd / (Math.max(10, slPips) * 10));
-
-      // Asset-specific lot boundaries (ensure >= 0.02 if multi-target to permit 50% scale-out)
-      const minLot = tradeProposal.isMultiTarget || (tradeProposal.takeProfit2 && tradeProposal.takeProfit2 > 0) ? 0.02 : 0.01;
-
-      if (isNas) {
-        calculatedLot = Math.max(0.10, Math.min(10.0, Number(calculatedLot.toFixed(2))));
-      } else if (isGold) {
-        calculatedLot = Math.max(minLot, Math.min(5.0, Number(calculatedLot.toFixed(2))));
-      } else if (isBtc) {
-        calculatedLot = Math.max(0.01, Math.min(1.0, Number(calculatedLot.toFixed(2))));
-      } else {
-        calculatedLot = Math.max(minLot, Math.min(5.0, Number(calculatedLot.toFixed(2))));
-      }
-
+      let calculatedLot = 0;
       const executionLatency = sub.latencyMs + Math.floor(Math.random() * 5);
 
       try {
+        const live = await ctraderMarketDataFeedService.fetchLiveAccountStatus(sub.ctidTraderAccountId);
+        if (!live || !Number.isFinite(live.balance) || live.balance <= 0) throw new Error('SUBSCRIBER_BALANCE_UNAVAILABLE');
+        sub.balance = live.balance;
+        const pair = tradeProposal.pair.replace('/', '');
+        if(!/^[A-Z]{6}$/.test(pair))throw Error('UNSUPPORTED_RISK_CONVERSION');
+          const quote=pair.slice(3);
+          const conversionPair=['GBP','AUD','NZD','EUR'].includes(quote)?quote+'/USD':'USD/'+quote;
+          if(quote!=='USD'&&ctraderMarketDataFeedService.getSymbolHealth(conversionPair as any)!=='HEALTHY')throw Error('RISK_CONVERSION_FEED_NOT_HEALTHY');
+          const quotePerUsd=quoteUnitsPerUsd(quote,ctraderMarketDataFeedService.getLatestTick(conversionPair));
+          const riskAmount = live.balance * Math.min(sub.riskPercent, 2) / 100;
+        if (!(riskAmount > 0) || !(slDistance > 0)) throw new Error('INVALID_RISK_BUDGET');
+        calculatedLot = Math.floor((riskAmount / (slDistance * 100000 / quotePerUsd)) * 100 + 1e-9) / 100;
+        calculatedLot = Math.min(5, calculatedLot);
+        if (!(calculatedLot >= 0.01)) throw new Error('RISK_BUDGET_BELOW_MINIMUM_LOT');
         // Execute copy trade into broker ledger
         // Count only confirmed broker fills.
 
@@ -460,11 +466,14 @@ class MultiClientCopierService extends EventEmitter {
             quantity: calculatedLot,
             stopLoss: tradeProposal.stopLoss,
             takeProfit: tradeProposal.takeProfit1,
-            accessToken: subscriberAccessToken
+            accessToken: subscriberAccessToken,
+            orderType: master.orderType,
+            limitPrice: master.orderType === 'LIMIT' ? tradeProposal.entryPrice : undefined,
+            masterOrderId: master.orderId
           });
 
-          if (brokerRes?.success && brokerRes.positionId) {
-            brokerTicket = brokerRes.positionId;
+          if (brokerRes?.success && (brokerRes.positionId || (master.orderType === 'LIMIT' && brokerRes.orderId))) {
+            brokerTicket = brokerRes.positionId || brokerRes.orderId!;
             executionMode = 'LIVE_CONFIRMED';
             if (brokerRes.executionPrice && brokerRes.executionPrice > 0) {
               actualEntryPrice = brokerRes.executionPrice;
@@ -478,7 +487,7 @@ class MultiClientCopierService extends EventEmitter {
 
         const successEvent: CopiedExecutionEvent = {
           id: `copy-${Date.now()}-${sub.id}`,
-          masterTradeId: `master-${tradeProposal.pair}-${Date.now()}`,
+          masterTradeId: master.orderId,
           subscriberId: sub.id,
           subscriberName: sub.name,
           accountNumber: sub.accountNumber,
@@ -492,6 +501,7 @@ class MultiClientCopierService extends EventEmitter {
           lotSize: calculatedLot,
           riskPercent: sub.riskPercent,
           status: 'SUCCESS',
+          orderType: master.orderType,
           latencyMs: executionLatency,
           executedAt: Date.now(),
           brokerTicket
@@ -505,7 +515,7 @@ class MultiClientCopierService extends EventEmitter {
         try {
           const { TradingRepository } = await import('../../../packages/database/src/repository');
           const tradingRepo = new TradingRepository();
-          await tradingRepo.savePosition({
+          if (master.orderType === 'MARKET') await tradingRepo.savePosition({
             positionId: successEvent.id,
             ticketId: successEvent.brokerTicket,
             accountId: sub.accountNumber,
@@ -528,7 +538,7 @@ class MultiClientCopierService extends EventEmitter {
       } catch (err: any) {
         const errorEvent: CopiedExecutionEvent = {
           id: `copy-${Date.now()}-${sub.id}`,
-          masterTradeId: `master-${tradeProposal.pair}-${Date.now()}`,
+          masterTradeId: master.orderId,
           subscriberId: sub.id,
           subscriberName: sub.name,
           accountNumber: sub.accountNumber,

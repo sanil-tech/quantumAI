@@ -461,9 +461,19 @@ export class CTraderMarketDataFeedService extends EventEmitter {
     }
   }
 
+  private async resolveSpotSymbols(accountId:number):Promise<number[]> {
+    const response=await this.transport.sendRequest(2114,{ctidTraderAccountId:accountId,includeArchivedSymbols:false},10000);
+    if(response.payloadType!==2115||!Array.isArray(response.decodedPayload?.symbol))throw Error('BROKER_SYMBOL_LIST_UNAVAILABLE');
+    const wanted=['EUR/USD','GBP/USD','USD/JPY','AUD/USD','USD/CHF','NZD/USD','USD/CAD','EUR/JPY','GBP/JPY','XAU/USD','EUR/GBP','AUD/JPY','EUR/CHF','EUR/AUD','GBP/AUD'];
+    this.symbolMap.clear();this.pairToSymbolId.clear();
+    for(const pair of wanted){const matches=response.decodedPayload.symbol.filter((x:any)=>String(x.symbolName).replace('/','').toUpperCase()===pair.replace('/',''));if(matches.length!==1)continue;const id=Number(matches[0].symbolId);if(!(id>0))continue;this.symbolMap.set(id,pair as CurrencyPair);this.pairToSymbolId.set(pair as CurrencyPair,id);}
+    if(!this.symbolMap.size)throw Error('NO_SUPPORTED_BROKER_SYMBOLS');
+    return [...this.symbolMap.keys()];
+  }
+
   public evaluateFeedHealth(): MarketDataHealthReport {
     const now = Date.now();
-    const subscribedPairs: CurrencyPair[] = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CHF', 'NZD/USD', 'USD/CAD', 'EUR/JPY', 'GBP/JPY', 'XAU/USD'];
+    const subscribedPairs: CurrencyPair[] = Array.from(this.pairToSymbolId.keys());
     let allStale = true;
 
     for (const pair of subscribedPairs) {
@@ -596,7 +606,7 @@ export class CTraderMarketDataFeedService extends EventEmitter {
       this.isAccountAuthenticated = true;
 
       // 4. Resubscribe spots for all supported symbols
-      const spotSymbolIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 41];
+      const spotSymbolIds = await this.resolveSpotSymbols(Number(accountId));
       await this.transport.subscribeSpots(Number(accountId), spotSymbolIds, true, 7000);
       this.logStructuredEvent('CTRADER_SPOT_SUBSCRIBED', { symbols: spotSymbolIds });
 
@@ -793,12 +803,12 @@ export class CTraderMarketDataFeedService extends EventEmitter {
         });
         this.isAccountAuthenticated = true;
 
-        const spotSymbolIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 41];
+        const spotSymbolIds = await this.resolveSpotSymbols(Number(accountId));
         await this.transport.subscribeSpots(Number(accountId), spotSymbolIds, true, 7000);
         this.logStructuredEvent('CTRADER_SPOT_SUBSCRIBED', { symbols: spotSymbolIds });
 
         // Warmup historical M1 candles from REST (display only)
-        const pairsToWarm: CurrencyPair[] = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CAD', 'EUR/JPY', 'GBP/JPY', 'USD/CHF', 'NZD/USD'];
+        const pairsToWarm: CurrencyPair[] = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CAD', 'EUR/JPY', 'GBP/JPY', 'USD/CHF', 'NZD/USD', 'EUR/GBP', 'AUD/JPY', 'EUR/CHF', 'EUR/AUD', 'GBP/AUD'];
         for (const pair of pairsToWarm) {
           try {
             const history = await fetchRealCandleHistory(pair, 'M1', 100);
@@ -1047,11 +1057,12 @@ export class CTraderMarketDataFeedService extends EventEmitter {
     return this.lastOpenPositions;
   }
 
-  public async fetchRawOpenPositions(): Promise<any[]> {
+  public async fetchRawOpenPositions(requireFresh = false): Promise<any[]> {
     if (!this.transport || !this.transport.isConnected() || !this.isAccountAuthenticated) {
       await this.startFeed().catch(() => {});
     }
     if (!this.transport || !this.transport.isConnected() || !this.isAccountAuthenticated) {
+      if (requireFresh) throw new Error('MASTER_POSITIONS_UNAVAILABLE');
       return this.lastOpenPositions;
     }
     try {
@@ -1064,6 +1075,7 @@ export class CTraderMarketDataFeedService extends EventEmitter {
     } catch (err: any) {
       console.warn('[CTRADER-FEED] fetchRawOpenPositions error:', err.message);
     }
+    if (requireFresh) throw new Error('MASTER_POSITIONS_UNAVAILABLE');
     return this.lastOpenPositions;
   }
 
@@ -1221,9 +1233,11 @@ export class CTraderMarketDataFeedService extends EventEmitter {
         try {
           const recRes = await this.transport.sendRequest(2124, { ctidTraderAccountId: accountId }, 3000);
           if (recRes.payloadType === 2125 && Array.isArray(recRes.decodedPayload?.position)) {
-            this.lastOpenPositions = recRes.decodedPayload.position;
-            openPositionsCount = this.lastOpenPositions.length;
-            this.emit('brokerPositionsUpdated', this.lastOpenPositions);
+            openPositionsCount = recRes.decodedPayload.position.length;
+            if (isMasterRequest) {
+              this.lastOpenPositions = recRes.decodedPayload.position;
+              this.emit('brokerPositionsUpdated', this.lastOpenPositions);
+            }
           }
         } catch {}
 
@@ -1235,8 +1249,10 @@ export class CTraderMarketDataFeedService extends EventEmitter {
             maxRows: 500
           }, 4000);
           if (dealsRes.payloadType === 2134 && Array.isArray(dealsRes.decodedPayload?.deal)) {
-            this.lastClosedDeals = dealsRes.decodedPayload.deal;
-            this.emit('brokerClosedDealsUpdated', this.lastClosedDeals);
+            if (isMasterRequest) {
+              this.lastClosedDeals = dealsRes.decodedPayload.deal;
+              this.emit('brokerClosedDealsUpdated', this.lastClosedDeals);
+            }
           }
         } catch {}
 
@@ -1313,6 +1329,9 @@ export class CTraderMarketDataFeedService extends EventEmitter {
     stopLoss?: number;
     takeProfit?: number;
     accessToken?: string;
+    orderType?: 'LIMIT' | 'MARKET';
+    limitPrice?: number;
+    masterOrderId?: string;
   }): Promise<{
     success: boolean;
     positionId?: string;
@@ -1336,19 +1355,9 @@ export class CTraderMarketDataFeedService extends EventEmitter {
 
       // 2. Resolve Symbol ID
       const symNorm = symbol.toUpperCase().replace('/', '').replace('_', '');
-      const symbolId = this.pairToSymbolId.get(symbol as CurrencyPair) || (
-        symNorm === 'EURUSD' ? 1 :
-        symNorm === 'GBPUSD' ? 2 :
-        symNorm === 'EURJPY' ? 3 :
-        symNorm === 'USDJPY' ? 4 :
-        symNorm === 'AUDUSD' ? 5 :
-        symNorm === 'USDCHF' ? 6 :
-        symNorm === 'GBPJPY' ? 7 :
-        symNorm === 'USDCAD' ? 8 :
-        symNorm === 'NZDUSD' ? 12 :
-        symNorm === 'XAUUSD' || symNorm === 'GOLD' ? 41 :
-        symNorm === 'BTCUSD' ? 22395 : 1
-      );
+      const normalizedPair = symNorm.length===6 ? symNorm.slice(0,3)+'/'+symNorm.slice(3) : symbol;
+      const symbolId=this.pairToSymbolId.get(normalizedPair as CurrencyPair);
+      if(!symbolId)throw new Error('BROKER_SYMBOL_UNAVAILABLE');
 
       // 3. Compute Volume in Cents
       const isGold = symNorm.includes('XAU') || symNorm.includes('GOLD') || symbolId === 41;
@@ -1367,21 +1376,27 @@ export class CTraderMarketDataFeedService extends EventEmitter {
       const payload: any = {
         ctidTraderAccountId,
         symbolId,
-        orderType: 1, // MARKET
+        orderType: params.orderType === 'LIMIT' ? 2 : 1,
         tradeSide: direction === 'BUY' ? 1 : 2,
         volume: volumeCents,
-        comment: `QuantumAI_${Date.now()}`
+        comment: params.masterOrderId ? `QuantumAI_COPY_${params.masterOrderId}` : `QuantumAI_${Date.now()}`
       };
 
       const curTick = this.getLatestTick(symbol);
       const isJpy = symNorm.includes('JPY');
       const entryRef = curTick ? (direction === 'BUY' ? curTick.ask : curTick.bid) : (isJpy ? 155.0 : 1.0850);
 
-      if (stopLoss && stopLoss > 0) {
+      if (params.orderType === 'LIMIT') {
+        if (!(params.limitPrice! > 0)) throw new Error('LIMIT_PRICE_REQUIRED');
+        payload.limitPrice = params.limitPrice;
+        payload.stopLoss = stopLoss;
+        payload.takeProfit = takeProfit;
+      }
+      if (params.orderType !== 'LIMIT' && stopLoss && stopLoss > 0) {
         const slDiff = Math.abs(entryRef - stopLoss);
         payload.relativeStopLoss = Math.round(slDiff * 100000);
       }
-      if (takeProfit && takeProfit > 0) {
+      if (params.orderType !== 'LIMIT' && takeProfit && takeProfit > 0) {
         const tpDiff = Math.abs(takeProfit - entryRef);
         payload.relativeTakeProfit = Math.round(tpDiff * 100000);
       }
@@ -1408,7 +1423,7 @@ export class CTraderMarketDataFeedService extends EventEmitter {
         };
       }
 
-      return { success: true };
+      return { success: false, error: 'BROKER_CONFIRMATION_MISSING' };
     } catch (err: any) {
       console.warn(`[CTRADER-LIVE-EXECUTION] ProtoOANewOrderReq notice for CTID #${ctidTraderAccountId}:`, err.message);
       return { success: false, error: err.message };

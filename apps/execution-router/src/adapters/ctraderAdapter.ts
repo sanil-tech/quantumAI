@@ -24,7 +24,26 @@ try {
     { symbolId: 6, symbolName: 'USDCHF', digits: 5, pipPosition: 4, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
     { symbolId: 7, symbolName: 'GBPJPY', digits: 3, pipPosition: 2, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
     { symbolId: 8, symbolName: 'USDCAD', digits: 5, pipPosition: 4, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+    { symbolId: 9, symbolName: 'EURGBP', digits: 5, pipPosition: 4, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+    { symbolId: 10, symbolName: 'EURAUD', digits: 5, pipPosition: 4, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+    { symbolId: 11, symbolName: 'EURCAD', digits: 5, pipPosition: 4, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
     { symbolId: 12, symbolName: 'NZDUSD', digits: 5, pipPosition: 4, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+    { symbolId: 13, symbolName: 'GBPCAD', digits: 5, pipPosition: 4, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+    { symbolId: 14, symbolName: 'GBPAUD', digits: 5, pipPosition: 4, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+    { symbolId: 15, symbolName: 'AUDCAD', digits: 5, pipPosition: 4, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+    { symbolId: 16, symbolName: 'AUDJPY', digits: 3, pipPosition: 2, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+    { symbolId: 17, symbolName: 'CADJPY', digits: 3, pipPosition: 2, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+    { symbolId: 18, symbolName: 'CHFJPY', digits: 3, pipPosition: 2, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+    { symbolId: 19, symbolName: 'EURNZD', digits: 5, pipPosition: 4, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+    { symbolId: 20, symbolName: 'GBPNZD', digits: 5, pipPosition: 4, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+    { symbolId: 21, symbolName: 'AUDNZD', digits: 5, pipPosition: 4, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+    { symbolId: 22, symbolName: 'NZDJPY', digits: 3, pipPosition: 2, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+    { symbolId: 23, symbolName: 'NZDCAD', digits: 5, pipPosition: 4, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+    { symbolId: 24, symbolName: 'NZDCHF', digits: 5, pipPosition: 4, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+    { symbolId: 25, symbolName: 'CADCHF', digits: 5, pipPosition: 4, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+    { symbolId: 26, symbolName: 'AUDCHF', digits: 5, pipPosition: 4, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+    { symbolId: 27, symbolName: 'EURCHF', digits: 5, pipPosition: 4, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
+    { symbolId: 28, symbolName: 'GBPCHF', digits: 5, pipPosition: 4, minVolume: 100000, maxVolume: 1000000000, stepVolume: 100000, lotSize: 10000000 },
     { symbolId: 41, symbolName: 'XAUUSD', digits: 2, pipPosition: 2, minVolume: 100, maxVolume: 1000000000, stepVolume: 100, lotSize: 10000 },
     { symbolId: 22395, symbolName: 'BTCUSD', digits: 2, pipPosition: 2, minVolume: 1, maxVolume: 1000000000, stepVolume: 1, lotSize: 100 },
     { symbolId: 21501, symbolName: 'NASDAQ', digits: 2, pipPosition: 0, minVolume: 100, maxVolume: 750000, stepVolume: 100, lotSize: 100 },
@@ -108,6 +127,9 @@ export class CTraderAdapter implements BrokerAdapter {
     }
 
     this.connected = true;
+    if (process.env.NODE_ENV !== 'test' && (env === 'LIVE' || env === 'DEMO')) {
+      await this.fetchSymbols().catch(() => {});
+    }
     return true;
   }
 
@@ -299,7 +321,7 @@ export class CTraderAdapter implements BrokerAdapter {
   }
 
 
-  async placeOrder(order: Order): Promise<ExecutionReport> {
+  async placeOrder(order: Order, retryCount = 0): Promise<ExecutionReport> {
     const startTime = Date.now();
     if (this.mockTimeout) throw new Error('CTRADER_TIMEOUT: Request timed out');
     if (this.mockReject) throw new Error('CTRADER_REJECT: Order rejected');
@@ -323,21 +345,33 @@ export class CTraderAdapter implements BrokerAdapter {
 
       try {
         const symNorm = order.symbol.toUpperCase().replace('/', '').replace('_', '');
-        const spec = CTraderSymbolRegistry.getSymbolByName(order.symbol) || CTraderSymbolRegistry.getSymbolByName(symNorm);
-        const symbolId = spec ? spec.symbolId : (
-          symNorm === 'EURUSD' ? 1 :
-          symNorm === 'GBPUSD' ? 2 :
-          symNorm === 'EURJPY' ? 3 :
-          symNorm === 'USDJPY' ? 4 :
-          symNorm === 'AUDUSD' ? 5 :
-          symNorm === 'USDCHF' ? 6 :
-          symNorm === 'GBPJPY' ? 7 :
-          symNorm === 'USDCAD' ? 8 :
-          symNorm === 'NZDUSD' ? 12 :
-          symNorm === 'XAUUSD' || symNorm === 'GOLD' ? 41 :
-          symNorm === 'BTCUSD' ? 22395 :
-          symNorm.includes('NAS') || symNorm.includes('TECH') || symNorm.includes('USTEC') ? 21501 : 1
-        );
+        let spec = CTraderSymbolRegistry.getSymbolByName(order.symbol) || CTraderSymbolRegistry.getSymbolByName(symNorm);
+        if (!spec && this.connected) {
+          await this.fetchSymbols().catch(() => {});
+          spec = CTraderSymbolRegistry.getSymbolByName(order.symbol) || CTraderSymbolRegistry.getSymbolByName(symNorm);
+        }
+        const knownSymbolMap: Record<string, number> = {
+          EURUSD: 1, GBPUSD: 2, EURJPY: 3, USDJPY: 4, AUDUSD: 5, USDCHF: 6, GBPJPY: 7, USDCAD: 8,
+          EURGBP: 9, EURAUD: 10, EURCAD: 11, NZDUSD: 12, GBPCAD: 13, GBPAUD: 14, AUDCAD: 15,
+          AUDJPY: 16, CADJPY: 17, CHFJPY: 18, EURNZD: 19, GBPNZD: 20, AUDNZD: 21, NZDJPY: 22,
+          NZDCAD: 23, NZDCHF: 24, CADCHF: 25, AUDCHF: 26, EURCHF: 27, GBPCHF: 28, XAUUSD: 41,
+          GOLD: 41, BTCUSD: 22395, NASDAQ: 21501, USTECH100: 21501, USTEC: 21501, NAS100: 21501
+        };
+        const symbolId = spec ? spec.symbolId : knownSymbolMap[symNorm];
+        if (!symbolId) {
+          throw new Error(`CTRADER_UNSUPPORTED_SYMBOL: Symbol '${order.symbol}' cannot be resolved to a valid cTrader symbolId.`);
+        }
+
+        // Strict Pre-Flight Cross-Symbol ID Verification Gate:
+        // Ensure resolved symbolId matches order symbol name if present in symbol registry
+        const registeredSpec = CTraderSymbolRegistry.getSymbolById(symbolId);
+        if (registeredSpec && registeredSpec.symbolName) {
+          const regNorm = registeredSpec.symbolName.toUpperCase().replace('/', '').replace('_', '');
+          if (regNorm !== symNorm && !regNorm.includes(symNorm) && !symNorm.includes(regNorm)) {
+            throw new Error(`CTRADER_SYMBOL_ID_MISMATCH: Order symbol is ${order.symbol} (${symNorm}), but target symbolId ${symbolId} resolves to ${registeredSpec.symbolName} (${regNorm}). Execution blocked.`);
+          }
+        }
+
         const isJpy = symNorm.includes('JPY');
         const isGold = symNorm.includes('XAU') || symNorm.includes('GOLD') || symbolId === 41;
         const isBtc = symNorm.includes('BTC') || symbolId === 22395;
@@ -398,13 +432,16 @@ export class CTraderAdapter implements BrokerAdapter {
         }
 
         const clientOrderId = order.order_id || `cli_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-        const isLimit = order.order_type === 'LIMIT';
+        const rawDirection = String(order.direction || (order as any).side || (order as any).tradeSide || 'BUY').toUpperCase();
+        const orderDirection: 'BUY' | 'SELL' = rawDirection.includes('BUY') ? 'BUY' : 'SELL';
+
+        const isLimit = order.order_type === 'LIMIT' || (order as any).orderType === 'LIMIT';
         const ctidAccountId = Number(this.config.accountId === '5881460' || !this.config.accountId || this.config.accountId === '5877246' ? 48282756 : (Number(this.config.accountId) || 48282756));
         const payload: any = {
           ctidTraderAccountId: ctidAccountId,
           symbolId,
           orderType: isLimit ? 2 : 1, // 1 = MARKET, 2 = LIMIT
-          tradeSide: order.direction === 'BUY' ? 1 : 2, // 1 = BUY, 2 = SELL
+          tradeSide: orderDirection === 'BUY' ? 1 : 2, // 1 = BUY, 2 = SELL
           volume: volumeCents,
           clientOrderId,
           comment: `QuantumAI_${order.proposal_id || order.order_id}`,
@@ -414,8 +451,11 @@ export class CTraderAdapter implements BrokerAdapter {
         // Pre-Flight Price Sanity & Cross-Symbol Mismatch Gate
         const numPrice = typeof order.price === 'number' && Number.isFinite(order.price) ? order.price : 0;
         if (numPrice > 0) {
-          if (symNorm === 'EURJPY' && (numPrice < 145.0 || numPrice > 210.0)) {
-            throw new Error(`PRICE_OUT_OF_REGIME_REJECTED: EUR/JPY limit price ${numPrice} is invalid (expected EUR/JPY regime 145-210, received out of range scale).`);
+          if (symNorm === 'EURUSD' && numPrice > 1.35) {
+            throw new Error(`PRICE_OUT_OF_REGIME_REJECTED: EUR/USD limit price ${numPrice} is invalid for EUR/USD (expected < 1.35, likely cross-symbol mismatch with GBPAUD).`);
+          }
+          if (symNorm === 'EURJPY' && (numPrice < 170.0 || numPrice > 210.0)) {
+            throw new Error(`PRICE_OUT_OF_REGIME_REJECTED: EUR/JPY limit price ${numPrice} is invalid for EUR/JPY (expected regime 170-210, likely cross-symbol mismatch with USDJPY).`);
           }
           if (symNorm === 'USDJPY' && (numPrice > 175.0 || numPrice < 130.0)) {
             throw new Error(`PRICE_OUT_OF_REGIME_REJECTED: USD/JPY limit price ${numPrice} is out of expected trading regime (130-175).`);
@@ -450,7 +490,7 @@ export class CTraderAdapter implements BrokerAdapter {
           ? order.stop_loss
           : typeof (order as any).stopLoss === 'number' && Number.isFinite((order as any).stopLoss) && (order as any).stopLoss > 0
             ? (order as any).stopLoss
-            : Number((order.direction === 'BUY' ? refEntry - autoSlOffset : refEntry + autoSlOffset).toFixed(decimals));
+            : Number((orderDirection === 'BUY' ? refEntry - autoSlOffset : refEntry + autoSlOffset).toFixed(decimals));
 
         let effectiveTakeProfit = typeof order.take_profit === 'number' && Number.isFinite(order.take_profit) && order.take_profit > 0
           ? order.take_profit
@@ -458,28 +498,28 @@ export class CTraderAdapter implements BrokerAdapter {
             ? (order as any).takeProfit
             : typeof (order as any).takeProfit1 === 'number' && Number.isFinite((order as any).takeProfit1) && (order as any).takeProfit1 > 0
               ? (order as any).takeProfit1
-              : Number((order.direction === 'BUY' ? refEntry + autoTpOffset : refEntry - autoTpOffset).toFixed(decimals));
+              : Number((orderDirection === 'BUY' ? refEntry + autoTpOffset : refEntry - autoTpOffset).toFixed(decimals));
 
         // Pre-Flight SL/TP Regime Validation to prevent cross-pair contamination (e.g. USD/JPY price applied to EUR/JPY)
         if (symNorm === 'EURJPY' && (effectiveStopLoss < 145.0 || effectiveTakeProfit < 145.0)) {
           console.warn(`[CTRADER-REGIME] Correcting out-of-regime EUR/JPY SL/TP (${effectiveStopLoss}, ${effectiveTakeProfit}) to EUR/JPY scale.`);
-          effectiveStopLoss = Number((order.direction === 'BUY' ? refEntry - autoSlOffset : refEntry + autoSlOffset).toFixed(decimals));
-          effectiveTakeProfit = Number((order.direction === 'BUY' ? refEntry + autoTpOffset : refEntry - autoTpOffset).toFixed(decimals));
+          effectiveStopLoss = Number((orderDirection === 'BUY' ? refEntry - autoSlOffset : refEntry + autoSlOffset).toFixed(decimals));
+          effectiveTakeProfit = Number((orderDirection === 'BUY' ? refEntry + autoTpOffset : refEntry - autoTpOffset).toFixed(decimals));
         }
         if (symNorm === 'USDJPY' && (effectiveStopLoss < 130.0 || effectiveStopLoss > 175.0 || effectiveTakeProfit < 130.0 || effectiveTakeProfit > 175.0)) {
           console.warn(`[CTRADER-REGIME] Correcting out-of-regime USD/JPY SL/TP (${effectiveStopLoss}, ${effectiveTakeProfit}) to USD/JPY scale.`);
-          effectiveStopLoss = Number((order.direction === 'BUY' ? refEntry - autoSlOffset : refEntry + autoSlOffset).toFixed(decimals));
-          effectiveTakeProfit = Number((order.direction === 'BUY' ? refEntry + autoTpOffset : refEntry - autoTpOffset).toFixed(decimals));
+          effectiveStopLoss = Number((orderDirection === 'BUY' ? refEntry - autoSlOffset : refEntry + autoSlOffset).toFixed(decimals));
+          effectiveTakeProfit = Number((orderDirection === 'BUY' ? refEntry + autoTpOffset : refEntry - autoTpOffset).toFixed(decimals));
         }
         if (symNorm === 'GBPJPY' && (effectiveStopLoss < 185.0 || effectiveTakeProfit < 185.0)) {
           console.warn(`[CTRADER-REGIME] Correcting out-of-regime GBP/JPY SL/TP (${effectiveStopLoss}, ${effectiveTakeProfit}) to GBP/JPY scale.`);
-          effectiveStopLoss = Number((order.direction === 'BUY' ? refEntry - autoSlOffset : refEntry + autoSlOffset).toFixed(decimals));
-          effectiveTakeProfit = Number((order.direction === 'BUY' ? refEntry + autoTpOffset : refEntry - autoTpOffset).toFixed(decimals));
+          effectiveStopLoss = Number((orderDirection === 'BUY' ? refEntry - autoSlOffset : refEntry + autoSlOffset).toFixed(decimals));
+          effectiveTakeProfit = Number((orderDirection === 'BUY' ? refEntry + autoTpOffset : refEntry - autoTpOffset).toFixed(decimals));
         }
         if (isGold && (effectiveStopLoss < 1800.0 || effectiveTakeProfit < 1800.0)) {
           console.warn(`[CTRADER-REGIME] Correcting out-of-regime Gold SL/TP (${effectiveStopLoss}, ${effectiveTakeProfit}) to Gold scale.`);
-          effectiveStopLoss = Number((order.direction === 'BUY' ? refEntry - autoSlOffset : refEntry + autoSlOffset).toFixed(decimals));
-          effectiveTakeProfit = Number((order.direction === 'BUY' ? refEntry + autoTpOffset : refEntry - autoTpOffset).toFixed(decimals));
+          effectiveStopLoss = Number((orderDirection === 'BUY' ? refEntry - autoSlOffset : refEntry + autoSlOffset).toFixed(decimals));
+          effectiveTakeProfit = Number((orderDirection === 'BUY' ? refEntry + autoTpOffset : refEntry - autoTpOffset).toFixed(decimals));
         }
 
         const maxAllowedSlDiff = isGold ? 120.0 : (isJpy ? 2.0 : 0.0200);
@@ -510,7 +550,7 @@ export class CTraderAdapter implements BrokerAdapter {
             Math.abs(numPrice - effectiveTakeProfit) <= maxAllowedTpDiff;
 
           // 2. Direction check:
-          if (order.direction === 'BUY') {
+          if (orderDirection === 'BUY') {
             payload.stopLoss = (isSlWithinBoundary && effectiveStopLoss < numPrice) 
               ? effectiveStopLoss 
               : Number((numPrice - autoSlOffset).toFixed(decimals));
@@ -527,14 +567,14 @@ export class CTraderAdapter implements BrokerAdapter {
           }
 
           // HARD PRE-FLIGHT ASSERTION: StopLoss MUST NEVER be on wrong side or missing
-          if (order.direction === 'BUY' && payload.stopLoss >= numPrice) {
+          if (orderDirection === 'BUY' && payload.stopLoss >= numPrice) {
             payload.stopLoss = Number((numPrice - autoSlOffset).toFixed(decimals));
-          } else if (order.direction === 'SELL' && payload.stopLoss <= numPrice) {
+          } else if (orderDirection === 'SELL' && payload.stopLoss <= numPrice) {
             payload.stopLoss = Number((numPrice + autoSlOffset).toFixed(decimals));
           }
-          if (order.direction === 'BUY' && payload.takeProfit <= numPrice) {
+          if (orderDirection === 'BUY' && payload.takeProfit <= numPrice) {
             payload.takeProfit = Number((numPrice + autoTpOffset).toFixed(decimals));
-          } else if (order.direction === 'SELL' && payload.takeProfit >= numPrice) {
+          } else if (orderDirection === 'SELL' && payload.takeProfit >= numPrice) {
             payload.takeProfit = Number((numPrice - autoTpOffset).toFixed(decimals));
           }
         } else {
@@ -729,7 +769,7 @@ export class CTraderAdapter implements BrokerAdapter {
 
           const executedVolume = rawDeal?.filledVolume ? Number(rawDeal.filledVolume) : rawOrder?.executedVolume ? Number(rawOrder.executedVolume) : volumeCents;
 
-          return {
+          const report: ExecutionReport = {
             report_id: `rep_${Date.now()}_${brokerOrderId || 'exec'}`,
             order_id: order.order_id,
             requested_price: order.price || authoritativePrice,
@@ -750,6 +790,34 @@ export class CTraderAdapter implements BrokerAdapter {
             brokerDealId: brokerDealId,
             executed_volume: executedVolume
           };
+
+          // --- Post-Flight Verification & Auto-Retry Loop ---
+          if (brokerOrderId && process.env.NODE_ENV !== 'test') {
+            try {
+              const pendingOrders = await this.getPendingOrders(true).catch(() => []);
+              const matchingPending = pendingOrders.find(p => String(p.orderId) === String(brokerOrderId));
+              if (matchingPending) {
+                const normTarget = (order.symbol || '').replace('/', '').toUpperCase();
+                const normActual = (matchingPending.symbol || '').replace('/', '').toUpperCase();
+                if (normTarget !== normActual) {
+                  console.error(`🚨 [POST-FLIGHT AUDIT FAILED] Order #${brokerOrderId} landed on wrong symbol! Requested: ${normTarget}, Broker actual: ${normActual}. Auto-deleting...`);
+                  await this.cancelOrder(brokerOrderId).catch(() => {});
+                  if (retryCount < 3) {
+                    console.log(`🔄 [POST-FLIGHT AUTO-RETRY] Refreshing broker symbols and retrying placeOrder (Attempt ${retryCount + 1}/3)...`);
+                    await this.fetchSymbols().catch(() => {});
+                    return await this.placeOrder(order, retryCount + 1);
+                  } else {
+                    throw new Error(`CTRADER_POST_FLIGHT_MISMATCH_MAX_RETRIES: Order landed on ${normActual} instead of ${normTarget}`);
+                  }
+                }
+              }
+            } catch (auditErr: any) {
+              if (auditErr.message?.includes('POST_FLIGHT')) throw auditErr;
+              console.warn('[POST-FLIGHT AUDIT] Warning during verification:', auditErr.message);
+            }
+          }
+
+          return report;
         }
 
         // If returned an order error or rejection
@@ -1012,7 +1080,7 @@ export class CTraderAdapter implements BrokerAdapter {
     return true;
   }
 
-  async getPendingOrders(): Promise<Array<{
+  async getPendingOrders(requireFresh = false): Promise<Array<{
     orderId: string;
     symbolId: number;
     symbol: string;
@@ -1041,6 +1109,7 @@ export class CTraderAdapter implements BrokerAdapter {
         ctidTraderAccountId: Number(process.env.CTRADER_ACCOUNT_ID || this.config.accountId || 48282756)
       };
       const res = await this.transport.sendRequest(2124, payload, this.config.timeoutMs || 10000);
+      if (res.payloadType !== 2125) throw new Error('PENDING_SNAPSHOT_UNCONFIRMED');
       const rawOrders = res.decodedPayload?.order || [];
       return rawOrders.map((o: any) => {
         const symId = o.tradeData?.symbolId || o.symbolId;
@@ -1065,11 +1134,25 @@ export class CTraderAdapter implements BrokerAdapter {
       });
     } catch (err: any) {
       console.warn('[CTRADER-ADAPTER] getPendingOrders error:', err.message);
+      if (requireFresh) throw err;
       return [];
     }
   }
 
-  async getBrokerLivePositions(): Promise<Array<{
+  private trendHistoryCache = new Map<string, {expires:number; candles:any[]}>();
+  async getPositionTrendHistory(symbolId:number, timeframe:string):Promise<any[]> {
+    const periods:Record<string,number>={M15:7,H1:9,H4:10};
+    const durations:Record<string,number>={M15:900,H1:3600,H4:14400};
+    if(!periods[timeframe]) throw new Error('UNSUPPORTED_POSITION_TIMEFRAME');
+    const now=Date.now(), key=symbolId+':'+timeframe;
+    const cached=this.trendHistoryCache.get(key); if(cached && cached.expires>now)return cached.candles;
+    const end=Math.floor(now/(durations[timeframe]*1000))*durations[timeframe]*1000;
+    const res=await this.transport.sendRequest(2137,{ctidTraderAccountId:Number(process.env.CTRADER_ACCOUNT_ID||this.config.accountId),symbolId,period:periods[timeframe],fromTimestamp:end-120*86400000,toTimestamp:end-1,count:250},10000);
+    if(res.payloadType!==2138 || !Array.isArray(res.decodedPayload?.trendbar))throw new Error('BROKER_HISTORY_UNAVAILABLE');
+    const candles=res.decodedPayload.trendbar.map((b:any)=>({time:Number(b.utcTimestampInMinutes)*60,open:(Number(b.low)+Number(b.deltaOpen||0))/100000,high:(Number(b.low)+Number(b.deltaHigh||0))/100000,low:Number(b.low)/100000,close:(Number(b.low)+Number(b.deltaClose||0))/100000,volume:Number(b.volume)})).sort((a:any,b:any)=>a.time-b.time);
+    this.trendHistoryCache.set(key,{expires:Math.min(now+60000,end+durations[timeframe]*1000),candles});return candles;
+  }
+  async getBrokerLivePositions(requireFresh = false): Promise<Array<{
     positionId: string;
     symbolId: number;
     symbol: string;
@@ -1082,7 +1165,7 @@ export class CTraderAdapter implements BrokerAdapter {
   }>> {
     const clientId = process.env.CTRADER_CLIENT_ID || this.config.clientId;
     const isMockCredentials = clientId?.includes('demo_client_12345') || clientId?.includes('mock');
-    if (isMockCredentials) return [];
+    if (isMockCredentials) { if (requireFresh) throw new Error('MOCK_BROKER_UNAVAILABLE'); return []; }
 
     if (!this.transport.isConnected()) {
       await this.connect().catch(() => {});
@@ -1093,6 +1176,7 @@ export class CTraderAdapter implements BrokerAdapter {
         ctidTraderAccountId: Number(process.env.CTRADER_ACCOUNT_ID || this.config.accountId || 48282756)
       };
       const res = await this.transport.sendRequest(2124, payload, this.config.timeoutMs || 10000);
+      if (requireFresh && (res.payloadType !== 2125 || !res.decodedPayload)) throw new Error('INVALID_POSITION_SNAPSHOT');
       const rawPositions = res.decodedPayload?.position || [];
       return rawPositions.map((p: any) => {
         const symId = p.tradeData?.symbolId || p.symbolId;
@@ -1115,6 +1199,7 @@ export class CTraderAdapter implements BrokerAdapter {
       });
     } catch (err: any) {
       console.warn('[CTRADER-ADAPTER] getOpenPositions error:', err.message);
+      if (requireFresh) throw err;
       return [];
     }
   }

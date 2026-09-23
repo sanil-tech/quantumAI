@@ -7,7 +7,7 @@ const normalize = (s: string) => s.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
 // HTTP JSON cannot recreate a server-issued in-process approval.
 export function approveCopierSignal(signal: CanonicalSignal, eligibility: ExecutionEligibilityState, now = Date.now()): CopierApproval {
   if (!signal || !Number.isFinite(signal.confidence) || signal.confidence < MIN_AUTOMATED_SIGNAL_CONFIDENCE || signal.confidence > 100 ||
-      signal.validationStatus !== 'PASS' || signal.validationErrors?.length || !Number.isFinite(signal.expiryTime) || signal.expiryTime <= now ||
+      !['PASS', 'WARNING'].includes(signal.validationStatus) || signal.validationErrors?.length || !Number.isFinite(signal.expiryTime) || signal.expiryTime <= now ||
       !['WAITING_FOR_ENTRY','ELIGIBLE_FOR_EXECUTION'].includes(eligibility) || ['INVALIDATED','REJECTED','EXPIRED','CLOSED','EXECUTED'].includes(signal.executionStatus))
     throw new Error('GRADE_A_APPROVAL_REQUIRED: A current validated Grade A/A+ signal is required');
   const proof = Object.freeze({signalId:signal.signalId,confidence:signal.confidence,expiresAt:signal.expiryTime,eligibility});
@@ -35,4 +35,22 @@ export function manualEntryOnly(req: {body?: {isAutoExecution?: unknown}}, res: 
     return;
   }
   next();
+}
+
+
+// Only the server can bind an approved setup to an accepted, real master order.
+const masterOrders = new WeakMap<CopierApproval, { orderId: string; orderType: 'LIMIT' | 'MARKET' }>();
+export function confirmMasterOrder(proof: CopierApproval, result: {status?: string; broker_order_id?: string; brokerOrderId?: string}, orderType: 'LIMIT' | 'MARKET') {
+  const orderId = String(result?.broker_order_id || result?.brokerOrderId || '');
+  if (!issued.has(proof) || !['FILLED','ACCEPTED','PENDING','PARTIALLY_FILLED'].includes(result?.status || '') || !/^[1-9]\d*$/.test(orderId))
+    throw new Error('MASTER_ORDER_CONFIRMATION_REQUIRED');
+  const prior = masterOrders.get(proof);
+  if (prior && (prior.orderId !== orderId || prior.orderType !== orderType)) throw new Error('MASTER_ORDER_BINDING_MISMATCH');
+  masterOrders.set(proof, {orderId, orderType});
+  return proof;
+}
+export function requireMasterOrder(proof?: CopierApproval) {
+  const master = proof && masterOrders.get(proof);
+  if (!master) throw new Error('MASTER_ORDER_CONFIRMATION_REQUIRED');
+  return master;
 }

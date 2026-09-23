@@ -1,3 +1,4 @@
+import { claimEntryAlert } from './tradeAlertDedup';
 import * as fs from 'fs';
 import * as path from 'path';
 import { getMarketStatus, isCryptoPair } from '../../lib/marketHours';
@@ -46,6 +47,10 @@ export interface TradeBroadcastPayload {
   analysisNotes?: string;
   session?: string;
   rrRatio?: string;
+  isSimulated?: boolean;
+  isDemo?: boolean;
+  isTest?: boolean;
+  proposalId?: string;
 }
 
 export interface TradingTipPayload {
@@ -1884,6 +1889,31 @@ export class TelegramNotificationService {
   public async broadcastTradeEvent(payload: TradeBroadcastPayload): Promise<boolean> {
     if (!this.isEnabled) return false;
 
+    // Strict Safety Guard: Block dummy, simulated, paper, shadow, and test execution payloads from live Telegram channels
+    if (
+      payload.isSimulated ||
+      payload.isDemo ||
+      payload.isTest ||
+      (payload.proposalId && (
+        payload.proposalId.includes('test') ||
+        payload.proposalId.includes('dummy') ||
+        payload.proposalId.includes('sim') ||
+        payload.proposalId.includes('paper') ||
+        payload.proposalId.includes('mock') ||
+        payload.proposalId.includes('shadow')
+      )) ||
+      (payload.brokerOrderId && (
+        payload.brokerOrderId.includes('test') ||
+        payload.brokerOrderId.includes('dummy') ||
+        payload.brokerOrderId.includes('sim') ||
+        payload.brokerOrderId.includes('mock') ||
+        payload.brokerOrderId === '554433'
+      ))
+    ) {
+      console.log(`🛡️ [TelegramNotificationService] Suppressed simulated/demo trade alert for ${payload.pair} (${payload.status}) - Live Telegram channel protected.`);
+      return false;
+    }
+
     // Suppress internal POSITION_SYNCED routine events from spamming subscriber channels
     if ((payload.status as string) === 'POSITION_SYNCED') {
       return false;
@@ -1895,6 +1925,15 @@ export class TelegramNotificationService {
     if (!isCryptoPair(payload.pair || '') && getMarketStatus(payload.pair || '').status === 'WEEKEND_CLOSED') {
       console.log(`⏸️ [TelegramNotificationService] Suppressed ${payload.status} trade alert for ${payload.pair} during weekend market closure.`);
       return false;
+    }
+
+    if (payload.status === 'ENTRY_DISPATCHED') {
+      try {
+        if (!claimEntryAlert(payload, path.resolve(process.cwd(), 'data', 'telegram_entry_alerts.json'))) return false;
+      } catch (err: any) {
+        console.warn('[TelegramNotificationService] Entry alert suppressed: dedup ledger unavailable:', err.message);
+        return false;
+      }
     }
 
     // Anti-spam deduplication: Prevent duplicate signal broadcasts for the same pair, direction & status within 30 minutes

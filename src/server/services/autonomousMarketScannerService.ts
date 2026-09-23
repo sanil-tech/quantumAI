@@ -1,4 +1,5 @@
-import { approveCopierSignal, MIN_AUTOMATED_SIGNAL_CONFIDENCE } from './copierSafetyPolicy';
+import { observeClosedTrend } from './positionTrendObserver';
+import { approveCopierSignal, confirmMasterOrder, MIN_AUTOMATED_SIGNAL_CONFIDENCE } from './copierSafetyPolicy';
 import { EventEmitter } from 'events';
 import fs from 'fs';
 import path from 'path';
@@ -52,15 +53,19 @@ export class AutonomousMarketScannerService extends EventEmitter {
   private static instance: AutonomousMarketScannerService;
   private tradingRepo: TradingRepository;
   private isScanning: boolean = false;
+  private scanCycleRunning = false;
+  private waitingOpportunities = new Map<string, DiscoveredSetup>();
+  private positionObserverBroker = new CTraderAdapter({accountId:'48282756'});
+  private positionTrendObservation: any = {mode: 'OBSERVE_ONLY', executionAllowed: false, status: 'NOT_RUN', positions: []};
   private scanTimer: NodeJS.Timeout | null = null;
-  private scanIntervalMs: number = 20000; // Scan cycle every 20 seconds
+  private scanIntervalMs: number = 60000; // Scan cycle every 60 seconds (1-minute candle close aligned)
   private lastScannedAt: number = 0;
   private currentlyScanning: { pair: CurrencyPair; timeframe?: Timeframe } | null = null;
   private cacheFilePath: string = path.resolve(process.cwd(), 'data', 'scanner_discovered_setups.json');
 
   private watchlist: CurrencyPair[] = [
     'EUR/USD', 'GBP/USD', 'EUR/JPY', 'GBP/JPY', 'USD/CHF',
-    'NZD/USD', 'USD/CAD', 'AUD/USD'
+    'NZD/USD', 'USD/CAD', 'AUD/USD', 'USD/JPY', 'EUR/GBP', 'AUD/JPY', 'EUR/CHF', 'EUR/AUD', 'GBP/AUD'
   ];
 
   private timeframes: Timeframe[] = ['M15', 'H1', 'H4'];
@@ -96,7 +101,20 @@ export class AutonomousMarketScannerService extends EventEmitter {
         const raw = fs.readFileSync(this.cacheFilePath, 'utf-8');
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          this.discoveredSetups = parsed;
+          this.discoveredSetups = parsed.map((setup: any) => {
+            const econ = EconomicContextService.evaluateEconomicContext({ symbol: setup.pair });
+            if (econ.decisionAllowed && !econ.hasHighImpactEventActive) {
+              if (setup.status === 'SKIPPED_ECONOMIC_EVENT') {
+                setup.status = 'DISCOVERED';
+              }
+              if (Array.isArray(setup.reasons)) {
+                setup.reasons = setup.reasons.filter(
+                  (r: string) => !r.includes('DIELAKKAN: Peristiwa Ekonomi Berimpak Tinggi') && !r.includes('ECONOMIC_CALENDAR_UNAVAILABLE')
+                );
+              }
+            }
+            return setup;
+          });
           console.log(`[AutonomousMarketScanner] Loaded ${parsed.length} persisted setups from disk.`);
         }
       }
@@ -150,8 +168,13 @@ export class AutonomousMarketScannerService extends EventEmitter {
   /**
    * Status overview
    */
+  private scanDiagnostics = new Map<string, {pair: string; timeframe?: string; stage: string; observedAt: number; details: Record<string, unknown>}>();
+
+  private recordScanDiagnostic(pair: string, timeframe: string | undefined, stage: string, details: Record<string, unknown> = {}) {
+    this.scanDiagnostics.set(pair + ':' + (timeframe || 'ALL'), {pair, timeframe, stage, observedAt: Date.now(), details});
+  }
+
   public getStatus() {
-    this.pruneInvalidAndExpiredSetups().catch(() => {});
     const callsSaved = Math.max(0, this.totalScanEvaluations - this.secondOpinionsRequested);
     const savingsPercent = this.totalScanEvaluations > 0
       ? Number(((callsSaved / this.totalScanEvaluations) * 100).toFixed(1))
@@ -166,7 +189,9 @@ export class AutonomousMarketScannerService extends EventEmitter {
       timeframes: this.timeframes,
       maxAccountConcurrentOrders: this.maxAccountConcurrentOrders,
       discoveredSetupsCount: this.discoveredSetups.length,
-      recentSetups: this.discoveredSetups.slice(0, 25),
+      recentSetups: [...Array.from(this.waitingOpportunities.values()).filter(s=>Date.now()-s.timestamp<120000), ...this.discoveredSetups].slice(0, 40),
+      scanDiagnostics: Array.from(this.scanDiagnostics.values()),
+      positionTrendObservation: this.positionTrendObservation,
       secondOpinionTelemetry: {
         totalEvaluations: this.totalScanEvaluations,
         gradeACandidatesFound: this.gradeACandidatesFound,
@@ -238,6 +263,19 @@ export class AutonomousMarketScannerService extends EventEmitter {
     for (const setup of this.discoveredSetups) {
       const pairKey = setup.pair.replace('/', '').toUpperCase();
       const isAlreadyOpen = openDb.some((p: any) => (p.symbol || '').replace('/', '').toUpperCase() === pairKey);
+
+      // Unfreeze economic veto status if economic context is now clear
+      const econCheck = EconomicContextService.evaluateEconomicContext({ symbol: setup.pair });
+      if (econCheck.decisionAllowed && !econCheck.hasHighImpactEventActive) {
+        if (setup.status === 'SKIPPED_ECONOMIC_EVENT') {
+          setup.status = 'DISCOVERED';
+        }
+        if (Array.isArray(setup.reasons)) {
+          setup.reasons = setup.reasons.filter(
+            (r: string) => !r.includes('DIELAKKAN: Peristiwa Ekonomi Berimpak Tinggi') && !r.includes('ECONOMIC_CALENDAR_UNAVAILABLE')
+          );
+        }
+      }
 
       // If position is active in broker/DB, mark as active
       if (isAlreadyOpen) {
@@ -390,16 +428,29 @@ export class AutonomousMarketScannerService extends EventEmitter {
         : null;
 
       let isInvalid = false;
-      if (currentSpot !== null && currentSpot > 0 && typeof newestOrder.limitPrice === 'number') {
-        const isJpy = symKey.includes('JPY');
-        const isGold = symKey.includes('XAU') || symKey.includes('GOLD');
-        const maxDist = isGold ? 50.0 : (isJpy ? 1.0 : 0.0100); // 100 pips max allowed pending limit distance
+      if (typeof newestOrder.limitPrice === 'number' && newestOrder.limitPrice > 0) {
+        const limitPrice = newestOrder.limitPrice;
 
-        const dist = Math.abs(currentSpot - newestOrder.limitPrice);
-        if (dist > maxDist) {
-          console.log(`🛡️ [Self-Healing Watchdog] Auto-cancelling extreme distance pending order #${newestOrder.orderId} on ${symKey} (distance: ${dist.toFixed(4)} > max ${maxDist}).`);
+        // Auto-cancel cross-symbol mis-mapped pending orders
+        if (symKey === 'EURUSD' && limitPrice > 1.35) {
+          console.log(`🛡️ [Self-Healing Watchdog] Auto-cancelling mis-mapped EUR/USD pending order #${newestOrder.orderId} (price: ${limitPrice} is a GBP/AUD price).`);
           await ctrader.cancelOrder(newestOrder.orderId).catch(() => {});
           isInvalid = true;
+        } else if (symKey === 'EURJPY' && limitPrice < 170.0) {
+          console.log(`🛡️ [Self-Healing Watchdog] Auto-cancelling mis-mapped EUR/JPY pending order #${newestOrder.orderId} (price: ${limitPrice} is a USD/JPY price).`);
+          await ctrader.cancelOrder(newestOrder.orderId).catch(() => {});
+          isInvalid = true;
+        } else if (currentSpot !== null && currentSpot > 0) {
+          const isJpy = symKey.includes('JPY');
+          const isGold = symKey.includes('XAU') || symKey.includes('GOLD');
+          const maxDist = isGold ? 50.0 : (isJpy ? 1.0 : 0.0100); // 100 pips max allowed pending limit distance
+
+          const dist = Math.abs(currentSpot - limitPrice);
+          if (dist > maxDist) {
+            console.log(`🛡️ [Self-Healing Watchdog] Auto-cancelling extreme distance pending order #${newestOrder.orderId} on ${symKey} (distance: ${dist.toFixed(4)} > max ${maxDist}).`);
+            await ctrader.cancelOrder(newestOrder.orderId).catch(() => {});
+            isInvalid = true;
+          }
         }
       }
 
@@ -422,12 +473,36 @@ export class AutonomousMarketScannerService extends EventEmitter {
    * Execute one full scan cycle across all pairs sequentially per symbol to eliminate race conditions
    */
   public async triggerScanCycle(): Promise<void> {
+    if (this.scanCycleRunning) return;
+    this.scanCycleRunning = true;
     try {
       this.lastScannedAt = Date.now();
       await this.pruneInvalidAndExpiredSetups();
 
       // Query live broker state (both active positions and pending limit orders)
       const ctrader = new CTraderAdapter({ accountId: '48282756' });
+      // Independent of entry eligibility: observe existing positions before pending-order checks.
+      try {
+        const positions = await this.positionObserverBroker.getBrokerLivePositions(true);
+        const observations: any[] = [];
+        for (const position of positions) {
+          observations.push(await (async () => {
+          const matches = this.discoveredSetups.filter(setup => position.comment === 'QuantumAI_' + setup.id && setup.pair.replace('/', '') === position.symbol.replace('/', '') && setup.direction === position.tradeSide);
+          const setup = matches.length === 1 ? matches[0] : undefined;
+          const base = {positionId: position.positionId, symbol: position.symbol, direction: position.tradeSide};
+          if (!setup) return {...base,status:'UNAVAILABLE',reasons:['ORIGINAL_SETUP_NOT_UNIQUELY_LINKED']};
+          const feed = ctraderMarketDataFeedService.getLiveCandles(setup.pair);
+          if (!feed.valid) return {...base,status:'UNAVAILABLE',reasons:[feed.reason || 'BROKER_DATA_UNAVAILABLE']};
+          try {
+            const candles=await this.positionObserverBroker.getPositionTrendHistory(position.symbolId,setup.timeframe);
+            return {...base,setupId:setup.id,...observeClosedTrend(position.tradeSide,setup.timeframe,candles)};
+          } catch {return {...base,status:'UNAVAILABLE',reasons:['BROKER_HISTORY_UNAVAILABLE']};}
+          })());
+        }
+        this.positionTrendObservation = {mode:'OBSERVE_ONLY',executionAllowed:false,status:'OBSERVED',observedAt:Date.now(),positions:observations};
+      } catch {
+        this.positionTrendObservation = {mode:'OBSERVE_ONLY',executionAllowed:false,status:'BROKER_UNAVAILABLE',observedAt:Date.now(),positions:[]};
+      }
       let pendingOrders: any[] = [];
       let openDbPositions: any[] = [];
 
@@ -437,15 +512,19 @@ export class AutonomousMarketScannerService extends EventEmitter {
       } catch (_) {}
 
       try {
-        const rawPending = await ctrader.getPendingOrders();
+        const rawPending = await ctrader.getPendingOrders(true);
         pendingOrders = await this.reconcileAndHealBrokerOrders(rawPending, ctrader);
       } catch (err: any) {
         console.warn('[AutonomousMarketScanner] Notice: could not fetch broker pending orders:', err.message);
-        pendingOrders = [];
+        return; // Unknown broker state must never be treated as an empty order book.
       }
 
       try {
-        const allOpenDb = await this.tradingRepo.query(`SELECT * FROM positions WHERE status = 'OPEN'`);
+        const masterAccountId = process.env.CTRADER_ACCOUNT_ID || '48282756';
+        const allOpenDb = await this.tradingRepo.query(
+          `SELECT * FROM positions WHERE status = 'OPEN' AND (account_id = $1 OR account_id = 'master' OR account_id IS NULL OR account_id = '')`,
+          [masterAccountId]
+        );
         openDbPositions = allOpenDb.rows.map(r => this.tradingRepo.mapPositionRow(r));
       } catch {
         openDbPositions = [];
@@ -472,6 +551,9 @@ export class AutonomousMarketScannerService extends EventEmitter {
       this.currentlyScanning = null;
     } catch (err: any) {
       console.error('[AutonomousMarketScanner] Scan cycle error:', err.message);
+    } finally {
+      this.scanCycleRunning = false;
+      this.currentlyScanning = null;
     }
   }
 
@@ -496,19 +578,26 @@ export class AutonomousMarketScannerService extends EventEmitter {
 
     try {
       this.currentlyScanning = { pair };
+      for (const key of this.scanDiagnostics.keys()) if (key.startsWith(pair + ':')) this.scanDiagnostics.delete(key);
 
       // 1. Strict Invariant: Check if there is already an OPEN position on this pair (DB or live Broker)
       const isAlreadyOpen = openDbPositions.some(
         (p: any) => (p.symbol || '').replace('/', '').toUpperCase() === pairKey
       ) || liveBrokerSymbols.has(pairKey);
+      this.waitingOpportunities.delete(pair);
       if (isAlreadyOpen) {
-        return;
+        this.recordScanDiagnostic(pair, undefined, 'EXISTING_OPEN_POSITION', {brokerPosition: liveBrokerSymbols.has(pairKey), databasePosition: openDbPositions.some((p: any) => (p.symbol || '').replace('/', '').toUpperCase() === pairKey)});
       }
 
       // 2. Check existing broker pending orders for this pair
       const existingPending = brokerPendingOrders.filter(
         (o: any) => (o.symbol || '').replace('/', '').toUpperCase() === pairKey
       );
+
+      if (existingPending.length > 0) {
+        this.recordScanDiagnostic(pair, undefined, 'EXISTING_PENDING_ORDER', {orderIds: existingPending.map(o => o.orderId)});
+        // Continue analysis for display; execution remains blocked below.
+      }
 
       // 3. Scan all timeframes for this pair and collect candidate setups
       const candidateSetups: NonNullable<Awaited<ReturnType<AutonomousMarketScannerService['analyzePairTimeframe']>>>[] = [];
@@ -528,55 +617,28 @@ export class AutonomousMarketScannerService extends EventEmitter {
       candidateSetups.sort((a, b) => b.confidence - a.confidence);
       const best = candidateSetups[0];
 
+      // Display opportunity without replacing an executed setup, cancelling orders or publishing copies.
+      if (isAlreadyOpen || existingPending.length > 0) {
+        const status = isAlreadyOpen ? 'SKIPPED_ALREADY_OPEN' : 'SKIPPED_PENDING_ORDER_EXISTS';
+        const reason = isAlreadyOpen ? 'Menunggu: pair mempunyai posisi terbuka. Bukan order baharu.' : 'Menunggu: pair mempunyai pending order. Bukan order baharu.';
+        this.waitingOpportunities.set(pair, {
+          id: 'waiting:' + pair, timestamp: Date.now(), pair, timeframe: best.timeframe,
+          direction: best.direction, confidence: best.confidence, entryPrice: best.entryPrice,
+          stopLoss: best.stopLoss, takeProfit1: best.takeProfit1, takeProfit2: best.takeProfit2,
+          reasons: [reason, 'Perlu dinilai semula sebelum execution; bukan barisan order automatik.', ...best.reasons],
+          status, isValid: true, executionDetails: {displayOnly:true,finalExecutionApproval:false,blockers:[...(isAlreadyOpen?['OPEN_POSITION']:[]),...(existingPending.length?['PENDING_ORDER']:[])]}
+        });
+        return;
+      }
       if (!best.canonicalSignal) return;
       const eligibility = executionEligibilityGate.evaluateEligibility(best.canonicalSignal, {currentPrice:best.canonicalSignal.currentPrice,spreadPips:1.2});
       let approval;
       try { approval = approveCopierSignal(best.canonicalSignal, eligibility.executionEligibility); }
-      catch (err: any) { console.warn('[Scanner Grade A Gate]', err.message); return; }
+      catch (err: any) { this.recordScanDiagnostic(pair, best.timeframe, 'FINAL_APPROVAL_BLOCKED', {error: err.message, eligibility: eligibility.executionEligibility}); console.warn('[Scanner Grade A Gate]', err.message); return; }
       // Opportunity-specific identity prevents permanent cBot deduplication by pair/timeframe.
       const setupId = best.canonicalSignal.signalId;
       const existingIdx = this.discoveredSetups.findIndex(s => s.pair === pair);
       const existingSetup = existingIdx >= 0 ? this.discoveredSetups[existingIdx] : null;
-
-      // 5. If broker already has a valid pending order for this pair:
-      if (existingPending.length > 0) {
-        const activeOrder = existingPending[0];
-
-        // Check if existing pending order is for the exact same direction and within price tolerance
-        const isSameDirection = activeOrder.tradeSide === best.direction;
-        const priceDiffPips = activeOrder.limitPrice
-          ? Math.abs(activeOrder.limitPrice - best.entryPrice) * (pair.includes('JPY') ? 100 : 10000)
-          : 0;
-
-        if (isSameDirection && priceDiffPips <= 5.0) {
-          // Existing order is already optimal — do not duplicate
-          const item: DiscoveredSetup = {
-            id: setupId,
-            timestamp: Date.now(),
-            pair,
-            timeframe: best.timeframe,
-            direction: best.direction,
-            confidence: best.confidence,
-            entryPrice: best.entryPrice,
-            stopLoss: best.stopLoss,
-            takeProfit1: best.takeProfit1,
-            reasons: best.reasons,
-            pattern: best.pattern,
-            status: 'SKIPPED_PENDING_ORDER_EXISTS'
-          };
-          if (existingIdx >= 0) this.discoveredSetups[existingIdx] = item;
-          else this.recordDiscoveredSetup(item);
-          return;
-        }
-
-        // Stale or divergent pending order exists -> CANCEL the old order first before replacing
-        for (const staleOrder of existingPending) {
-          console.log(`🔄 [AutonomousMarketScanner] Cancelling stale pending order #${staleOrder.orderId} on ${pair} before placing updated setup.`);
-          await ctrader.cancelOrder(staleOrder.orderId).catch(err => {
-            console.warn(`[AutonomousMarketScanner] Warning: could not cancel stale order #${staleOrder.orderId}:`, err.message);
-          });
-        }
-      }
 
       // 6. Check Account-Wide Concurrent Exposure Limit
       const isMasterAccountFull = totalActiveAndPending >= this.maxAccountConcurrentOrders;
@@ -715,85 +777,10 @@ export class AutonomousMarketScannerService extends EventEmitter {
       }
 
       // 1. Immediate Broadcast of Grade-A Discovered Signal to Telegram Subscribers
-      const lastPushed = this.pushedSignalLedger.get(pairKey);
-      const PUSH_DEBOUNCE_MS = 15 * 60 * 1000; // 15 mins debounce per pair
-      const canPushTelegram = !lastPushed || (Date.now() - lastPushed > PUSH_DEBOUNCE_MS);
-
-      if (canPushTelegram && best.confidence >= MIN_AUTOMATED_SIGNAL_CONFIDENCE && discovered.isValid) {
-        discovered.telegramBroadcastSent = true;
-        this.pushedSignalLedger.set(pairKey, Date.now());
-        telegramNotificationService.broadcastTradeEvent({
-          pair: pair,
-          direction: best.direction,
-          timeframe: best.timeframe,
-          entryPrice: best.entryPrice,
-          currentPrice: best.canonicalSignal?.currentPrice,
-          entryMode: best.entryMode,
-          distancePips: best.distancePips,
-          setupStatus: best.canonicalSignal?.executionStatus,
-          stopLoss: best.stopLoss,
-          takeProfit1: best.takeProfit1,
-          takeProfit2: tp2Runner,
-          confidence: best.confidence,
-          modelConfidence: best.modelConfidence,
-          validationConfidence: best.validationConfidence,
-          reasons: best.reasons,
-          bullishEvidence: best.bullishEvidence,
-          bearishEvidence: best.bearishEvidence,
-          riskWarnings: best.riskWarnings,
-          lotSize: best.lotSize,
-          tier: best.confidence >= 85 ? 'FREE' : 'VIP',
-          status: 'ENTRY_DISPATCHED',
-          brokerOrderId: `SIG-${setupId.slice(0, 8)}`
-        }).catch((err) => {
-          console.warn(`[AutonomousMarketScanner] Broadcast error:`, err.message);
-        });
-
-        // Instant Copier Bridge Dispatch for cBot subscribers
-        import('../routes/copier').then(({ publishCopierSignal }) => {
-          publishCopierSignal({
-            id: setupId,
-            masterBrokerOrderId: `SIG-${setupId.slice(0, 8)}`,
-            action: 'NEW_ORDER',
-            pair: pair,
-            direction: best.direction,
-            entryPrice: best.entryPrice,
-            stopLoss: best.stopLoss,
-            takeProfit1: best.takeProfit1,
-            takeProfit2: tp2Runner,
-            lotSize: best.lotSize,
-            recommendedRiskPct: (best as any).recommendedRiskPct,
-            maxRiskPct: (best as any).maxRiskPct,
-            reasons: best.reasons
-          }, approval);
-        }).catch(() => {});
-
-        this.saveToDisk();
-        console.log(`📡 [AutonomousMarketScanner] PUSHED Confirmed Grade-A Signal for ${pair} (Confidence: ${best.confidence}%) to Telegram & Copier Bridge!`);
-      }
-
-      // Guard: Check if Master account is full
+      // Master-first: no subscriber publication when capacity blocks the master.
       if (isMasterAccountFull) {
-        console.log(`🛡️ [AutonomousMarketScanner] Master account position limit reached (${totalActiveAndPending}/${this.maxAccountConcurrentOrders}). Master cTrader broker order skipped, but Copier signal published for subscribers.`);
         discovered.status = 'DISCOVERED_CAPACITY_REACHED';
-        
-        // Dispatch to Copier Bridge for subscribers
-        const { publishCopierSignal } = await import('../routes/copier');
-        publishCopierSignal({
-          id: setupId,
-          masterBrokerOrderId: `COPIER-${setupId.slice(0, 8)}`,
-          action: 'NEW_ORDER',
-          pair: pair,
-          direction: best.direction,
-          entryPrice: best.entryPrice,
-          stopLoss: best.stopLoss,
-          takeProfit1: best.takeProfit1,
-          takeProfit2: tp2Runner,
-          lotSize: best.lotSize,
-          recommendedRiskPct: (best as any).recommendedRiskPct,
-          maxRiskPct: (best as any).maxRiskPct,
-          reasons: best.reasons
-        }, approval);
+        this.saveToDisk();
         return;
       }
 
@@ -860,8 +847,8 @@ export class AutonomousMarketScannerService extends EventEmitter {
           timestamp: new Date()
         });
 
-        const rawBrokerOrderId = orderResult.broker_order_id || orderResult.brokerOrderId || orderResult.report_id;
-        const isConfirmed = orderResult && orderResult.status !== 'REJECTED' && Boolean(rawBrokerOrderId);
+        const rawBrokerOrderId = orderResult.broker_order_id || orderResult.brokerOrderId;
+        const isConfirmed = orderResult && ['FILLED','ACCEPTED','PENDING','PARTIALLY_FILLED'].includes(orderResult.status) && /^[1-9]\d*$/.test(String(rawBrokerOrderId || ''));
 
         // Strict Broker Confirmation Verification
         if (!isConfirmed) {
@@ -873,6 +860,8 @@ export class AutonomousMarketScannerService extends EventEmitter {
           this.saveToDisk();
           return;
         }
+
+        confirmMasterOrder(approval, orderResult, 'LIMIT');
 
         // Idempotency: Record successful execution in ledger
         executionEligibilityGate.recordExecution(setupId, String(rawBrokerOrderId));
@@ -930,24 +919,15 @@ export class AutonomousMarketScannerService extends EventEmitter {
         }
         this.saveToDisk();
 
-        // 3. Dispatch Confirmed Signal to VIP Copier Bridge
-        const { publishCopierSignal } = await import('../routes/copier');
-        const publishedCopierSig = publishCopierSignal({
-          id: setupId,
-          masterBrokerOrderId: String(rawBrokerOrderId),
-          action: 'NEW_ORDER',
-          pair: pair,
-          direction: best.direction,
-          entryPrice: best.entryPrice,
-          stopLoss: best.stopLoss,
-          takeProfit1: best.takeProfit1,
-          takeProfit2: tp2Runner,
-          lotSize: best.lotSize,
-          recommendedRiskPct: (best as any).recommendedRiskPct,
-          maxRiskPct: (best as any).maxRiskPct,
-          reasons: best.reasons
+        // A single confirmed master order feeds both receiver channels.
+        const { multiClientCopierService } = await import('./multiClientCopierService');
+        const copies = await multiClientCopierService.dispatchMasterTrade({
+          pair, direction: best.direction, entryPrice: best.entryPrice,
+          stopLoss: best.stopLoss, takeProfit1: best.takeProfit1,
+          takeProfit2: tp2Runner, confidence: best.confidence
         }, approval);
-        console.log(`✅ [AutonomousMarketScanner] Published confirmed Copier Signal (ID: ${publishedCopierSig.id}) bound to Master Broker Order #${rawBrokerOrderId}`);
+        discovered.executionDetails.copyResults = copies.results;
+        this.saveToDisk();
       } catch (autoErr: any) {
         console.warn(`🛑 [AutonomousMarketScanner] Master order execution failed or timed out for ${pair} (${autoErr.message}).`);
         discovered.status = 'DISCOVERED_EXECUTION_FAILED';
@@ -965,6 +945,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
     try {
       let candles: CandleData[] = [];
       const liveResult = ctraderMarketDataFeedService.getLiveCandles(pair);
+      if (['USD/JPY','EUR/GBP','AUD/JPY','EUR/CHF','EUR/AUD','GBP/AUD'].includes(pair) && ctraderMarketDataFeedService.getSymbolHealth(pair) !== 'HEALTHY') { this.recordScanDiagnostic(pair,tf,'BROKER_FEED_NOT_READY'); return null; }
       if (liveResult.valid && liveResult.candles.length >= 15) {
         if (tf === 'M1') {
           candles = liveResult.candles;
@@ -981,6 +962,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
       }
 
       if (!candles || candles.length < 15) {
+        this.recordScanDiagnostic(pair, tf, 'INSUFFICIENT_CANDLES', {candleCount: candles?.length || 0, liveValid: liveResult.valid});
         return null;
       }
 
@@ -1033,7 +1015,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
         candles
       });
 
-      if (!candidateSetup) return null;
+      if (!candidateSetup) { this.recordScanDiagnostic(pair, tf, 'NO_CANDIDATE'); return null; }
 
       const rawAction = String((candidateSetup as any).type || candidateSetup.action || (candidateSetup.bias === 'BULLISH' ? 'BUY' : candidateSetup.bias === 'BEARISH' ? 'SELL' : '')).toUpperCase();
       let direction: 'BUY' | 'SELL' | null = null;
@@ -1045,6 +1027,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
       // Check if setup meets A-Grade standard (Confidence >= 75%)
       // If NOT Grade A, discard immediately without invoking Gemini (saves 95%+ API calls!)
       if (!direction || confidence < MIN_AUTOMATED_SIGNAL_CONFIDENCE) {
+        this.recordScanDiagnostic(pair, tf, !direction ? 'WAIT_OR_NO_SETUP' : 'BELOW_GRADE_A', {action: candidateSetup.action, confidence, minimumConfidence: MIN_AUTOMATED_SIGNAL_CONFIDENCE, reasons: candidateSetup.reasons, confirmationRequirements: candidateSetup.confirmationRequirements, vetoReasons: candidateSetup.vetoReasons, candleCount: candles.length, currentPrice});
         return null;
       }
 
@@ -1096,6 +1079,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
       // If Gemini AI Risk Controller vetoed this Grade A candidate, respect the veto!
       if (!secondOpinion.confirmed || secondOpinion.decision === 'VETO') {
         this.secondOpinionsVetoed++;
+        this.recordScanDiagnostic(pair, tf, 'SECOND_OPINION_VETO', {reason: secondOpinion.vetoReason, reasons: secondOpinion.reasons});
         console.log(`🛑 [AutonomousMarketScanner] Grade A candidate for ${pair} (${tf} ${direction}) VETOED by Gemini Second Opinion: ${secondOpinion.vetoReason || 'Risk boundary conflict'}`);
         return null;
       }
@@ -1180,7 +1164,8 @@ export class AutonomousMarketScannerService extends EventEmitter {
         patternName: primaryPattern?.name
       });
 
-      if (!validationResult.isExecutable || validationResult.canonicalSignal.validationStatus !== 'PASS' || validationResult.canonicalSignal.confidence < MIN_AUTOMATED_SIGNAL_CONFIDENCE) {
+      this.recordScanDiagnostic(pair, tf, 'FINAL_VALIDATION', {candidateConfidence: confidence, finalConfidence: validationResult.canonicalSignal.confidence, validationStatus: validationResult.canonicalSignal.validationStatus, isExecutable: validationResult.isExecutable, errors: validationResult.validationReport.errors, warnings: validationResult.validationReport.warnings, eligibility: validationResult.canonicalSignal.executionEligibility, secondOpinionSource: secondOpinion.source});
+      if (!validationResult.isExecutable || !['PASS', 'WARNING'].includes(validationResult.canonicalSignal.validationStatus) || validationResult.canonicalSignal.confidence < MIN_AUTOMATED_SIGNAL_CONFIDENCE) {
         console.warn(`🛑 [AutonomousMarketScanner] Candidate for ${pair} (${tf} ${direction}) REJECTED by SignalValidationGate: ${validationResult.validationReport.errors.join(' | ')}`);
         return null;
       }
@@ -1238,7 +1223,8 @@ export class AutonomousMarketScannerService extends EventEmitter {
         pattern: primaryPattern,
         lotSize
       };
-    } catch {
+    } catch (err: any) {
+      this.recordScanDiagnostic(pair, tf, 'ANALYSIS_ERROR', {error: err?.message || String(err)});
       return null;
     }
   }
@@ -1253,3 +1239,4 @@ export class AutonomousMarketScannerService extends EventEmitter {
 }
 
 export const autonomousMarketScannerService = AutonomousMarketScannerService.getInstance();
+

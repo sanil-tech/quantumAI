@@ -212,9 +212,7 @@ aiIntelligenceRouter.get('/forex/economic-calendar', (req: Request, res: Respons
     const events = economicCalendarProvider.getWeeklyEvents();
     res.json({
       events,
-      provider: 'GLOBAL_MACRO_CALENDAR_PROVIDER',
-      status: 'ACTIVE',
-      message: 'Authoritative macroeconomic calendar feed active.'
+      ...economicCalendarProvider.getHealth()
     });
   } catch (err: any) {
     res.json({

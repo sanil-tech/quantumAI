@@ -1,0 +1,11 @@
+import {it,expect,vi,afterEach} from 'vitest';
+import {parseCalendar,EconomicCalendarProvider} from '../src/server/services/economicCalendarProvider';
+const now=Date.parse('2026-09-22T12:00:00Z');
+const row={title:'CPI',country:'USD',date:'2026-09-22T08:30:00-04:00',impact:'High',forecast:'2.5%',previous:'2.4%'};
+afterEach(()=>vi.restoreAllMocks());
+it('preserves schedule but never invents actual',()=>{const e=parseCalendar([row],now)[0];expect(e.timestamp).toBe(Date.parse('2026-09-22T12:30:00Z'));expect(e.actual).toBeUndefined();});
+it('does not convert forecast into actual after release',()=>expect(parseCalendar([row],now+3600000)[0].actual).toBeUndefined());
+it('rejects stale week',()=>expect(()=>parseCalendar([{...row,date:'2025-01-01T12:00:00Z'}],now)).toThrow('WEEK_MISMATCH'));
+it('rejects missing timezone',()=>expect(()=>parseCalendar([{...row,date:'2026-09-22T12:00:00'}],now)).toThrow());
+it('rejects empty response',()=>expect(()=>parseCalendar([],now)).toThrow());
+it('fails closed when fetch fails',async()=>{vi.stubGlobal('fetch',vi.fn().mockRejectedValue(new Error('offline')));const p=new EconomicCalendarProvider();await p.refresh();expect(p.getWeeklyEvents()).toEqual([]);expect(p.getHealth()).toMatchObject({status:'CALENDAR_UNAVAILABLE',actualResultsAvailable:false});vi.unstubAllGlobals();});

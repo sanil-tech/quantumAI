@@ -76,7 +76,7 @@ describe('Telegram Weekend Notifications & Content Intelligence', () => {
         takeProfit1: 63500,
         confidence: 88,
         reasons: ['Weekend Crypto Momentum'],
-        status: 'ENTRY_DISPATCHED'
+        status: 'NEW_ORDER'
       });
 
       expect(btcResult).toBe(true);
