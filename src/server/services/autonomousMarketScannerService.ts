@@ -492,11 +492,11 @@ export class AutonomousMarketScannerService extends EventEmitter {
 
         // Auto-cancel cross-symbol mis-mapped pending orders
         if (symKey === 'EURUSD' && limitPrice > 1.35) {
-          console.log(`🛡️ [Self-Healing Watchdog] Auto-cancelling mis-mapped EUR/USD pending order #${newestOrder.orderId} (price: ${limitPrice} is a GBP/AUD price).`);
+          console.log(`🛡️ [Self-Healing Watchdog] Auto-cancelling mis-mapped EUR/USD pending order #${newestOrder.orderId} (price: ${limitPrice} is out of EUR/USD range).`);
           await ctrader.cancelOrder(newestOrder.orderId).catch(() => {});
           isInvalid = true;
-        } else if (symKey === 'EURJPY' && limitPrice < 170.0) {
-          console.log(`🛡️ [Self-Healing Watchdog] Auto-cancelling mis-mapped EUR/JPY pending order #${newestOrder.orderId} (price: ${limitPrice} is a USD/JPY price).`);
+        } else if (symKey.includes('JPY') && limitPrice < 50.0) {
+          console.log(`🛡️ [Self-Healing Watchdog] Auto-cancelling mis-mapped JPY pending order #${newestOrder.orderId} (price: ${limitPrice} is a non-JPY price).`);
           await ctrader.cancelOrder(newestOrder.orderId).catch(() => {});
           isInvalid = true;
         } else if (currentSpot !== null && currentSpot > 0) {

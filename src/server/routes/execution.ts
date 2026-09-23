@@ -533,18 +533,8 @@ executionRouter.get('/autotrader/state', async (req: Request, res: Response) => 
       let sym = (pos.symbol || '').toUpperCase().replace('/', '').replace('_', '');
       const decimals = sym.includes('JPY') ? 3 : sym.includes('XAU') ? 2 : 5;
 
-      // Fix cross-pair mislabeling bidirectionally between EUR/JPY and USD/JPY
-      if (sym.includes("USDJPY") && pos.entryPrice > 175) {
-        console.warn(`[SYMBOL-CORRECTION] Detected USD/JPY labeled but price ${pos.entryPrice} is in EUR/JPY range. Correcting...`);
-        pos.symbol = 'EUR/JPY';
-        sym = 'EURJPY';
-        await tradingRepo.query(`UPDATE positions SET symbol = 'EUR/JPY' WHERE position_id = $1`, [pos.positionId]).catch(() => {});
-      } else if (sym.includes("EURJPY") && pos.entryPrice < 165 && pos.entryPrice > 130) {
-        console.warn(`[SYMBOL-CORRECTION] Detected EUR/JPY labeled but price ${pos.entryPrice} is in USD/JPY range. Correcting...`);
-        pos.symbol = 'USD/JPY';
-        sym = 'USDJPY';
-        await tradingRepo.query(`UPDATE positions SET symbol = 'USD/JPY' WHERE position_id = $1`, [pos.positionId]).catch(() => {});
-      } else if (!pos.symbol.includes('/') && pos.symbol.length === 6) {
+      // Ensure slash formatting for 6-character forex pairs
+      if (!pos.symbol.includes('/') && pos.symbol.length === 6) {
         pos.symbol = `${pos.symbol.slice(0, 3)}/${pos.symbol.slice(3)}`;
         await tradingRepo.query(`UPDATE positions SET symbol = $1 WHERE position_id = $2`, [pos.symbol, pos.positionId]).catch(() => {});
       }

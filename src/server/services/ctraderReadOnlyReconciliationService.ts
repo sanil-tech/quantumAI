@@ -114,6 +114,16 @@ export class CTraderReadOnlyReconciliationService {
     });
     CTraderSymbolRegistry.registerSymbol({
       symbolId: 3,
+      symbolName: 'EURJPY',
+      digits: 3,
+      pipPosition: 2,
+      minVolume: 100000,
+      maxVolume: 1000000000,
+      stepVolume: 100000,
+      lotSize: 10000000
+    });
+    CTraderSymbolRegistry.registerSymbol({
+      symbolId: 4,
       symbolName: 'USDJPY',
       digits: 3,
       pipPosition: 2,
