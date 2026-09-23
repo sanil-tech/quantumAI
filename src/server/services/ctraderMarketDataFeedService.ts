@@ -188,7 +188,26 @@ export class CTraderMarketDataFeedService extends EventEmitter {
     [6, 'USD/CHF'],
     [7, 'GBP/JPY'],
     [8, 'USD/CAD'],
+    [9, 'EUR/GBP'],
+    [10, 'EUR/CHF'],
+    [11, 'EUR/AUD'],
     [12, 'NZD/USD'],
+    [13, 'GBP/AUD'],
+    [14, 'GBP/CAD'],
+    [15, 'GBP/CHF'],
+    [16, 'AUD/JPY'],
+    [17, 'AUD/CAD'],
+    [18, 'AUD/CHF'],
+    [19, 'AUD/NZD'],
+    [20, 'CAD/JPY'],
+    [21, 'CAD/CHF'],
+    [22, 'CHF/JPY'],
+    [23, 'EUR/CAD'],
+    [24, 'EUR/NZD'],
+    [25, 'GBP/NZD'],
+    [26, 'NZD/JPY'],
+    [27, 'NZD/CAD'],
+    [28, 'NZD/CHF'],
     [41, 'XAU/USD'],
     [21501, 'NASDAQ'],
     [22395, 'BTC/USD']
@@ -203,7 +222,26 @@ export class CTraderMarketDataFeedService extends EventEmitter {
     ['USD/CHF', 6],
     ['GBP/JPY', 7],
     ['USD/CAD', 8],
+    ['EUR/GBP', 9],
+    ['EUR/CHF', 10],
+    ['EUR/AUD', 11],
     ['NZD/USD', 12],
+    ['GBP/AUD', 13],
+    ['GBP/CAD', 14],
+    ['GBP/CHF', 15],
+    ['AUD/JPY', 16],
+    ['AUD/CAD', 17],
+    ['AUD/CHF', 18],
+    ['AUD/NZD', 19],
+    ['CAD/JPY', 20],
+    ['CAD/CHF', 21],
+    ['CHF/JPY', 22],
+    ['EUR/CAD', 23],
+    ['EUR/NZD', 24],
+    ['GBP/NZD', 25],
+    ['NZD/JPY', 26],
+    ['NZD/CAD', 27],
+    ['NZD/CHF', 28],
     ['XAU/USD', 41],
     ['NASDAQ', 21501],
     ['BTC/USD', 22395]
@@ -1335,6 +1373,7 @@ export class CTraderMarketDataFeedService extends EventEmitter {
     quantity: number;
     stopLoss?: number;
     takeProfit?: number;
+    entryPrice?: number;
     accessToken?: string;
     orderType?: 'LIMIT' | 'MARKET';
     limitPrice?: number;
@@ -1391,7 +1430,13 @@ export class CTraderMarketDataFeedService extends EventEmitter {
 
       const curTick = this.getLatestTick(symbol);
       const isJpy = symNorm.includes('JPY');
-      const entryRef = curTick ? (direction === 'BUY' ? curTick.ask : curTick.bid) : (isJpy ? 155.0 : 1.0850);
+      const entryRef = curTick
+        ? (direction === 'BUY' ? curTick.ask : curTick.bid)
+        : (params.entryPrice && params.entryPrice > 0
+            ? params.entryPrice
+            : (params.limitPrice && params.limitPrice > 0
+                ? params.limitPrice
+                : (isJpy ? 155.0 : (isGold ? 2600.0 : 1.0850))));
 
       if (params.orderType === 'LIMIT') {
         if (!(params.limitPrice! > 0)) throw new Error('LIMIT_PRICE_REQUIRED');
@@ -1400,12 +1445,16 @@ export class CTraderMarketDataFeedService extends EventEmitter {
         payload.takeProfit = takeProfit;
       }
       if (params.orderType !== 'LIMIT' && stopLoss && stopLoss > 0) {
-        const slDiff = Math.abs(entryRef - stopLoss);
-        payload.relativeStopLoss = Math.round(slDiff * 100000);
+        const slDiff = direction === 'BUY' ? (entryRef - stopLoss) : (stopLoss - entryRef);
+        if (slDiff > 0) {
+          payload.relativeStopLoss = Math.round(slDiff * 100000);
+        }
       }
       if (params.orderType !== 'LIMIT' && takeProfit && takeProfit > 0) {
-        const tpDiff = Math.abs(takeProfit - entryRef);
-        payload.relativeTakeProfit = Math.round(tpDiff * 100000);
+        const tpDiff = direction === 'BUY' ? (takeProfit - entryRef) : (entryRef - takeProfit);
+        if (tpDiff > 0) {
+          payload.relativeTakeProfit = Math.round(tpDiff * 100000);
+        }
       }
 
       console.log(`[CTRADER-LIVE-EXECUTION] Transmitting ProtoOANewOrderReq to cTrader broker for CTID #${ctidTraderAccountId}: symbol=${symbol} (${symbolId}), vol=${volumeCents}, side=${direction}`);
@@ -1420,6 +1469,20 @@ export class CTraderMarketDataFeedService extends EventEmitter {
         const orderId = rawOrder?.orderId ? String(rawOrder.orderId) : undefined;
         const dealId = rawDeal?.dealId ? String(rawDeal.dealId) : undefined;
         const execPrice = rawDeal?.executionPrice || rawPos?.price || entryRef;
+
+        // Immediately amend position with absolute SL & TP to guarantee exact broker price level locking
+        if (posId && ((stopLoss && stopLoss > 0) || (takeProfit && takeProfit > 0))) {
+          const amendPayload: any = {
+            ctidTraderAccountId,
+            positionId: Number(posId)
+          };
+          if (stopLoss && stopLoss > 0) amendPayload.stopLoss = stopLoss;
+          if (takeProfit && takeProfit > 0) amendPayload.takeProfit = takeProfit;
+
+          this.transport.sendRequest(2110, amendPayload, 5000).catch((amendErr: any) => {
+            console.warn(`[CTRADER-LIVE-EXECUTION] Post-execution absolute SL/TP amendment warning for pos #${posId}:`, amendErr.message);
+          });
+        }
 
         return {
           success: true,

@@ -466,6 +466,7 @@ class MultiClientCopierService extends EventEmitter {
             quantity: calculatedLot,
             stopLoss: tradeProposal.stopLoss,
             takeProfit: tradeProposal.takeProfit1,
+            entryPrice: tradeProposal.entryPrice,
             accessToken: subscriberAccessToken,
             orderType: master.orderType,
             limitPrice: master.orderType === 'LIMIT' ? tradeProposal.entryPrice : undefined,

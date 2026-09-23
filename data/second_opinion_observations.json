@@ -1,6 +1,6 @@
 [
   {
-    "id": "obs_sig_iso_1_1789826901132",
+    "id": "obs_sig_iso_1_1790139726059",
     "signalId": "sig_iso_1",
     "symbol": "EUR/USD",
     "timeframe": "M15",
@@ -19,8 +19,8 @@
     "stopLoss": 1.08,
     "takeProfit": 1.095,
     "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
-    "signalCreatedAt": "2026-09-19T14:08:21.132Z",
-    "secondOpinionAt": "2026-09-19T14:08:21.132Z",
+    "signalCreatedAt": "2026-09-23T05:02:06.059Z",
+    "secondOpinionAt": "2026-09-23T05:02:06.059Z",
     "model": "gpt-4o-mini",
     "latencyMs": 10,
     "dataMode": "LIVE",
@@ -28,8 +28,4215 @@
       "source": "LIVE"
     },
     "outcomeStatus": "OPEN",
-    "createdAt": "2026-09-19T14:08:21.132Z",
-    "updatedAt": "2026-09-19T14:08:21.132Z",
+    "createdAt": "2026-09-23T05:02:06.059Z",
+    "updatedAt": "2026-09-23T05:02:06.059Z",
     "dataQualityFlags": []
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790139782758_1790139782807",
+    "signalId": "sig_USDCAD_H4_1790139782758",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40721,
+    "stopLoss": 1.40421,
+    "takeProfit": 1.41321,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:03:02.807Z",
+    "secondOpinionAt": "2026-09-23T05:03:02.806Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "brokerOrderId": "319426150",
+    "createdAt": "2026-09-23T05:03:02.807Z",
+    "updatedAt": "2026-09-23T05:03:04.040Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790139828391_1790139828430",
+    "signalId": "sig_USDCAD_H4_1790139828391",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40721,
+    "stopLoss": 1.40421,
+    "takeProfit": 1.41321,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:03:48.429Z",
+    "secondOpinionAt": "2026-09-23T05:03:48.429Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 1,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:03:48.429Z",
+    "updatedAt": "2026-09-23T05:03:48.429Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790140018671_1790140018677",
+    "signalId": "sig_USDCAD_H4_1790140018671",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40715,
+    "stopLoss": 1.40415,
+    "takeProfit": 1.41315,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:06:58.677Z",
+    "secondOpinionAt": "2026-09-23T05:06:58.676Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:06:58.677Z",
+    "updatedAt": "2026-09-23T05:06:58.677Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790140033802_1790140033807",
+    "signalId": "sig_USDCAD_H4_1790140033802",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40715,
+    "stopLoss": 1.40415,
+    "takeProfit": 1.41315,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:07:13.807Z",
+    "secondOpinionAt": "2026-09-23T05:07:13.807Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:07:13.807Z",
+    "updatedAt": "2026-09-23T05:07:13.807Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790140136097_1790140136102",
+    "signalId": "sig_USDCAD_H4_1790140136097",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.4072,
+    "stopLoss": 1.4042,
+    "takeProfit": 1.4132,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:08:56.102Z",
+    "secondOpinionAt": "2026-09-23T05:08:56.102Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 1,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:08:56.102Z",
+    "updatedAt": "2026-09-23T05:08:56.102Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790140154442_1790140154447",
+    "signalId": "sig_USDCAD_H4_1790140154442",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.4072,
+    "stopLoss": 1.4042,
+    "takeProfit": 1.4132,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:09:14.447Z",
+    "secondOpinionAt": "2026-09-23T05:09:14.447Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:09:14.447Z",
+    "updatedAt": "2026-09-23T05:09:14.447Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790140279333_1790140279338",
+    "signalId": "sig_USDCAD_H4_1790140279333",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40721,
+    "stopLoss": 1.40421,
+    "takeProfit": 1.41321,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:11:19.338Z",
+    "secondOpinionAt": "2026-09-23T05:11:19.338Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:11:19.338Z",
+    "updatedAt": "2026-09-23T05:11:19.338Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790140294509_1790140294513",
+    "signalId": "sig_USDCAD_H4_1790140294509",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40729,
+    "stopLoss": 1.40429,
+    "takeProfit": 1.41329,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:11:34.513Z",
+    "secondOpinionAt": "2026-09-23T05:11:34.513Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:11:34.513Z",
+    "updatedAt": "2026-09-23T05:11:34.513Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790140358464_1790140358467",
+    "signalId": "sig_USDCAD_H4_1790140358464",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.4072,
+    "stopLoss": 1.4042,
+    "takeProfit": 1.4132,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:12:38.467Z",
+    "secondOpinionAt": "2026-09-23T05:12:38.467Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:12:38.467Z",
+    "updatedAt": "2026-09-23T05:12:38.467Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790140374518_1790140374521",
+    "signalId": "sig_USDCAD_H4_1790140374518",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.4072,
+    "stopLoss": 1.4042,
+    "takeProfit": 1.4132,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:12:54.521Z",
+    "secondOpinionAt": "2026-09-23T05:12:54.521Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:12:54.521Z",
+    "updatedAt": "2026-09-23T05:12:54.521Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790140478667_1790140478670",
+    "signalId": "sig_USDCAD_H4_1790140478667",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40721,
+    "stopLoss": 1.40421,
+    "takeProfit": 1.41321,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:14:38.670Z",
+    "secondOpinionAt": "2026-09-23T05:14:38.670Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:14:38.670Z",
+    "updatedAt": "2026-09-23T05:14:38.670Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790140495780_1790140495784",
+    "signalId": "sig_USDCAD_H4_1790140495780",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40721,
+    "stopLoss": 1.40421,
+    "takeProfit": 1.41321,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:14:55.784Z",
+    "secondOpinionAt": "2026-09-23T05:14:55.784Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:14:55.784Z",
+    "updatedAt": "2026-09-23T05:14:55.784Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790140523691_1790140523695",
+    "signalId": "sig_USDCAD_H4_1790140523691",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40723,
+    "stopLoss": 1.40423,
+    "takeProfit": 1.41323,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:15:23.695Z",
+    "secondOpinionAt": "2026-09-23T05:15:23.695Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 1,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:15:23.695Z",
+    "updatedAt": "2026-09-23T05:15:23.695Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790140595953_1790140595955",
+    "signalId": "sig_USDCAD_H4_1790140595953",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40719,
+    "stopLoss": 1.40419,
+    "takeProfit": 1.41319,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:16:35.955Z",
+    "secondOpinionAt": "2026-09-23T05:16:35.955Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:16:35.955Z",
+    "updatedAt": "2026-09-23T05:16:35.955Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790140613910_1790140613917",
+    "signalId": "sig_USDCAD_H4_1790140613910",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.4072,
+    "stopLoss": 1.4042,
+    "takeProfit": 1.4132,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:16:53.917Z",
+    "secondOpinionAt": "2026-09-23T05:16:53.917Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:16:53.917Z",
+    "updatedAt": "2026-09-23T05:16:53.917Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790140639000_1790140639002",
+    "signalId": "sig_USDCAD_H4_1790140639000",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.4072,
+    "stopLoss": 1.4042,
+    "takeProfit": 1.4132,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:17:19.002Z",
+    "secondOpinionAt": "2026-09-23T05:17:19.002Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:17:19.002Z",
+    "updatedAt": "2026-09-23T05:17:19.002Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790140653976_1790140653980",
+    "signalId": "sig_USDCAD_H4_1790140653976",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40719,
+    "stopLoss": 1.40419,
+    "takeProfit": 1.41319,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:17:33.980Z",
+    "secondOpinionAt": "2026-09-23T05:17:33.980Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:17:33.980Z",
+    "updatedAt": "2026-09-23T05:17:33.980Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790140679606_1790140679608",
+    "signalId": "sig_USDCAD_H4_1790140679606",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.4072,
+    "stopLoss": 1.4042,
+    "takeProfit": 1.4132,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:17:59.608Z",
+    "secondOpinionAt": "2026-09-23T05:17:59.608Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:17:59.608Z",
+    "updatedAt": "2026-09-23T05:17:59.608Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790140693922_1790140693924",
+    "signalId": "sig_USDCAD_H4_1790140693922",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.4072,
+    "stopLoss": 1.4042,
+    "takeProfit": 1.4132,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:18:13.924Z",
+    "secondOpinionAt": "2026-09-23T05:18:13.924Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:18:13.924Z",
+    "updatedAt": "2026-09-23T05:18:13.924Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790140720442_1790140720445",
+    "signalId": "sig_USDCAD_H4_1790140720442",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.4072,
+    "stopLoss": 1.4042,
+    "takeProfit": 1.4132,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:18:40.445Z",
+    "secondOpinionAt": "2026-09-23T05:18:40.445Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:18:40.445Z",
+    "updatedAt": "2026-09-23T05:18:40.445Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790140733969_1790140733972",
+    "signalId": "sig_USDCAD_H4_1790140733969",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40719,
+    "stopLoss": 1.40419,
+    "takeProfit": 1.41319,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:18:53.972Z",
+    "secondOpinionAt": "2026-09-23T05:18:53.972Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:18:53.972Z",
+    "updatedAt": "2026-09-23T05:18:53.972Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790140759955_1790140759958",
+    "signalId": "sig_USDCAD_H4_1790140759955",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40714,
+    "stopLoss": 1.40414,
+    "takeProfit": 1.41314,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:19:19.958Z",
+    "secondOpinionAt": "2026-09-23T05:19:19.958Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:19:19.958Z",
+    "updatedAt": "2026-09-23T05:19:19.958Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790140773906_1790140773910",
+    "signalId": "sig_USDCAD_H4_1790140773906",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.4071,
+    "stopLoss": 1.4041,
+    "takeProfit": 1.4131,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:19:33.910Z",
+    "secondOpinionAt": "2026-09-23T05:19:33.910Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 1,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:19:33.910Z",
+    "updatedAt": "2026-09-23T05:19:33.910Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790140840219_1790140840238",
+    "signalId": "sig_USDCAD_H4_1790140840219",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.4071,
+    "stopLoss": 1.4041,
+    "takeProfit": 1.4131,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:20:40.238Z",
+    "secondOpinionAt": "2026-09-23T05:20:40.238Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 1,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:20:40.238Z",
+    "updatedAt": "2026-09-23T05:20:40.238Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790140854295_1790140854297",
+    "signalId": "sig_USDCAD_H4_1790140854295",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.4071,
+    "stopLoss": 1.4041,
+    "takeProfit": 1.4131,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:20:54.297Z",
+    "secondOpinionAt": "2026-09-23T05:20:54.297Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:20:54.297Z",
+    "updatedAt": "2026-09-23T05:20:54.297Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790141000179_1790141000182",
+    "signalId": "sig_USDCAD_H4_1790141000179",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40718,
+    "stopLoss": 1.40418,
+    "takeProfit": 1.41318,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:23:20.182Z",
+    "secondOpinionAt": "2026-09-23T05:23:20.182Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:23:20.182Z",
+    "updatedAt": "2026-09-23T05:23:20.182Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790141014366_1790141014368",
+    "signalId": "sig_USDCAD_H4_1790141014366",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40718,
+    "stopLoss": 1.40418,
+    "takeProfit": 1.41318,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:23:34.368Z",
+    "secondOpinionAt": "2026-09-23T05:23:34.368Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:23:34.368Z",
+    "updatedAt": "2026-09-23T05:23:34.368Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790141040313_1790141040316",
+    "signalId": "sig_USDCAD_H4_1790141040313",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.4072,
+    "stopLoss": 1.4042,
+    "takeProfit": 1.4132,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:24:00.316Z",
+    "secondOpinionAt": "2026-09-23T05:24:00.316Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:24:00.316Z",
+    "updatedAt": "2026-09-23T05:24:00.316Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790141054431_1790141054434",
+    "signalId": "sig_USDCAD_H4_1790141054431",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.4072,
+    "stopLoss": 1.4042,
+    "takeProfit": 1.4132,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:24:14.434Z",
+    "secondOpinionAt": "2026-09-23T05:24:14.433Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:24:14.434Z",
+    "updatedAt": "2026-09-23T05:24:14.434Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790141287047_1790141287049",
+    "signalId": "sig_USDCAD_H4_1790141287047",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40712,
+    "stopLoss": 1.40412,
+    "takeProfit": 1.41312,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:28:07.049Z",
+    "secondOpinionAt": "2026-09-23T05:28:07.049Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:28:07.049Z",
+    "updatedAt": "2026-09-23T05:28:07.049Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790141359532_1790141359534",
+    "signalId": "sig_USDCAD_H4_1790141359532",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40717,
+    "stopLoss": 1.40417,
+    "takeProfit": 1.41317,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:29:19.534Z",
+    "secondOpinionAt": "2026-09-23T05:29:19.534Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:29:19.534Z",
+    "updatedAt": "2026-09-23T05:29:19.534Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790141374418_1790141374421",
+    "signalId": "sig_USDCAD_H4_1790141374418",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40717,
+    "stopLoss": 1.40417,
+    "takeProfit": 1.41317,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:29:34.421Z",
+    "secondOpinionAt": "2026-09-23T05:29:34.421Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:29:34.421Z",
+    "updatedAt": "2026-09-23T05:29:34.421Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790141399793_1790141399795",
+    "signalId": "sig_USDCAD_H4_1790141399793",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40721,
+    "stopLoss": 1.40421,
+    "takeProfit": 1.41321,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:29:59.795Z",
+    "secondOpinionAt": "2026-09-23T05:29:59.795Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:29:59.795Z",
+    "updatedAt": "2026-09-23T05:29:59.795Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790141414489_1790141414492",
+    "signalId": "sig_USDCAD_H4_1790141414489",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40716,
+    "stopLoss": 1.40416,
+    "takeProfit": 1.41316,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:30:14.492Z",
+    "secondOpinionAt": "2026-09-23T05:30:14.492Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:30:14.492Z",
+    "updatedAt": "2026-09-23T05:30:14.492Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790141479948_1790141479951",
+    "signalId": "sig_USDCAD_H4_1790141479948",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40714,
+    "stopLoss": 1.40414,
+    "takeProfit": 1.41314,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:31:19.951Z",
+    "secondOpinionAt": "2026-09-23T05:31:19.951Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:31:19.951Z",
+    "updatedAt": "2026-09-23T05:31:19.951Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790141494430_1790141494433",
+    "signalId": "sig_USDCAD_H4_1790141494430",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40721,
+    "stopLoss": 1.40421,
+    "takeProfit": 1.41321,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:31:34.433Z",
+    "secondOpinionAt": "2026-09-23T05:31:34.432Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:31:34.433Z",
+    "updatedAt": "2026-09-23T05:31:34.433Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790141572639_1790141572686",
+    "signalId": "sig_USDCAD_H4_1790141572639",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40714,
+    "stopLoss": 1.40414,
+    "takeProfit": 1.41314,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:32:52.686Z",
+    "secondOpinionAt": "2026-09-23T05:32:52.686Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:32:52.686Z",
+    "updatedAt": "2026-09-23T05:32:52.686Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790141585590_1790141585594",
+    "signalId": "sig_USDCAD_H4_1790141585590",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40714,
+    "stopLoss": 1.40414,
+    "takeProfit": 1.41314,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:33:05.594Z",
+    "secondOpinionAt": "2026-09-23T05:33:05.594Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:33:05.594Z",
+    "updatedAt": "2026-09-23T05:33:05.594Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790141611696_1790141611702",
+    "signalId": "sig_USDCAD_H4_1790141611696",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40713,
+    "stopLoss": 1.40413,
+    "takeProfit": 1.41313,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:33:31.701Z",
+    "secondOpinionAt": "2026-09-23T05:33:31.701Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:33:31.701Z",
+    "updatedAt": "2026-09-23T05:33:31.701Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790141625974_1790141625978",
+    "signalId": "sig_USDCAD_H4_1790141625974",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.4072,
+    "stopLoss": 1.4042,
+    "takeProfit": 1.4132,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:33:45.978Z",
+    "secondOpinionAt": "2026-09-23T05:33:45.978Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 1,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:33:45.978Z",
+    "updatedAt": "2026-09-23T05:33:45.978Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790141659827_1790141659891",
+    "signalId": "sig_USDCAD_H4_1790141659827",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40719,
+    "stopLoss": 1.40419,
+    "takeProfit": 1.41319,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:34:19.891Z",
+    "secondOpinionAt": "2026-09-23T05:34:19.890Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 1,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:34:19.891Z",
+    "updatedAt": "2026-09-23T05:34:19.891Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790141683274_1790141683279",
+    "signalId": "sig_USDCAD_H4_1790141683274",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.4072,
+    "stopLoss": 1.4042,
+    "takeProfit": 1.4132,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:34:43.279Z",
+    "secondOpinionAt": "2026-09-23T05:34:43.279Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:34:43.279Z",
+    "updatedAt": "2026-09-23T05:34:43.279Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790141708421_1790141708426",
+    "signalId": "sig_USDCAD_H4_1790141708421",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40713,
+    "stopLoss": 1.40413,
+    "takeProfit": 1.41313,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:35:08.426Z",
+    "secondOpinionAt": "2026-09-23T05:35:08.426Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:35:08.426Z",
+    "updatedAt": "2026-09-23T05:35:08.426Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790141723264_1790141723268",
+    "signalId": "sig_USDCAD_H4_1790141723264",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40714,
+    "stopLoss": 1.40414,
+    "takeProfit": 1.41314,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:35:23.268Z",
+    "secondOpinionAt": "2026-09-23T05:35:23.268Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:35:23.268Z",
+    "updatedAt": "2026-09-23T05:35:23.268Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790141851382_1790141851431",
+    "signalId": "sig_USDCAD_H4_1790141851382",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.4072,
+    "stopLoss": 1.4042,
+    "takeProfit": 1.4132,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:37:31.431Z",
+    "secondOpinionAt": "2026-09-23T05:37:31.430Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 1,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:37:31.431Z",
+    "updatedAt": "2026-09-23T05:37:31.431Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790141864073_1790141864079",
+    "signalId": "sig_USDCAD_H4_1790141864073",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40722,
+    "stopLoss": 1.40422,
+    "takeProfit": 1.41322,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:37:44.078Z",
+    "secondOpinionAt": "2026-09-23T05:37:44.078Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:37:44.078Z",
+    "updatedAt": "2026-09-23T05:37:44.078Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790141873611_1790141873615",
+    "signalId": "sig_USDCAD_H4_1790141873611",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40722,
+    "stopLoss": 1.40422,
+    "takeProfit": 1.41322,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:37:53.615Z",
+    "secondOpinionAt": "2026-09-23T05:37:53.615Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:37:53.615Z",
+    "updatedAt": "2026-09-23T05:37:53.615Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790141898563_1790141898566",
+    "signalId": "sig_USDCAD_H4_1790141898563",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40723,
+    "stopLoss": 1.40423,
+    "takeProfit": 1.41323,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:38:18.566Z",
+    "secondOpinionAt": "2026-09-23T05:38:18.566Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:38:18.566Z",
+    "updatedAt": "2026-09-23T05:38:18.566Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790141913357_1790141913361",
+    "signalId": "sig_USDCAD_H4_1790141913357",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40723,
+    "stopLoss": 1.40423,
+    "takeProfit": 1.41323,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:38:33.361Z",
+    "secondOpinionAt": "2026-09-23T05:38:33.361Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:38:33.361Z",
+    "updatedAt": "2026-09-23T05:38:33.361Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790142206513_1790142206563",
+    "signalId": "sig_USDCAD_H4_1790142206513",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40726,
+    "stopLoss": 1.40426,
+    "takeProfit": 1.41326,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:43:26.563Z",
+    "secondOpinionAt": "2026-09-23T05:43:26.562Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:43:26.563Z",
+    "updatedAt": "2026-09-23T05:43:26.563Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790142220550_1790142220553",
+    "signalId": "sig_USDCAD_H4_1790142220550",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40727,
+    "stopLoss": 1.40427,
+    "takeProfit": 1.41327,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:43:40.553Z",
+    "secondOpinionAt": "2026-09-23T05:43:40.553Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:43:40.553Z",
+    "updatedAt": "2026-09-23T05:43:40.553Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790142633485_1790142633538",
+    "signalId": "sig_USDCAD_H4_1790142633485",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40749,
+    "stopLoss": 1.40449,
+    "takeProfit": 1.41349,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:50:33.538Z",
+    "secondOpinionAt": "2026-09-23T05:50:33.537Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 1,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:50:33.538Z",
+    "updatedAt": "2026-09-23T05:50:33.538Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790142647970_1790142647974",
+    "signalId": "sig_USDCAD_H4_1790142647970",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40742,
+    "stopLoss": 1.40442,
+    "takeProfit": 1.41342,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:50:47.974Z",
+    "secondOpinionAt": "2026-09-23T05:50:47.974Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:50:47.974Z",
+    "updatedAt": "2026-09-23T05:50:47.974Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790142762833_1790142762872",
+    "signalId": "sig_USDCAD_H4_1790142762833",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40748,
+    "stopLoss": 1.40448,
+    "takeProfit": 1.41348,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:52:42.872Z",
+    "secondOpinionAt": "2026-09-23T05:52:42.871Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:52:42.872Z",
+    "updatedAt": "2026-09-23T05:52:42.872Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790142787961_1790142787969",
+    "signalId": "sig_USDCAD_H4_1790142787961",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40749,
+    "stopLoss": 1.40449,
+    "takeProfit": 1.41349,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T05:53:07.969Z",
+    "secondOpinionAt": "2026-09-23T05:53:07.969Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T05:53:07.969Z",
+    "updatedAt": "2026-09-23T05:53:07.969Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_GBPAUD_H4_1790143253978_1790143254031",
+    "signalId": "sig_GBPAUD_H4_1790143253978",
+    "symbol": "GBP/AUD",
+    "timeframe": "H4",
+    "quantumAiDirection": "SELL",
+    "quantumAiConfidence": 79,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.87582,
+    "stopLoss": 1.87882,
+    "takeProfit": 1.86982,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T06:00:54.031Z",
+    "secondOpinionAt": "2026-09-23T06:00:54.031Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 1,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "brokerOrderId": "319432741",
+    "createdAt": "2026-09-23T06:00:54.031Z",
+    "updatedAt": "2026-09-23T06:00:55.254Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_GBPAUD_H4_1790143263881_1790143263883",
+    "signalId": "sig_GBPAUD_H4_1790143263881",
+    "symbol": "GBP/AUD",
+    "timeframe": "H4",
+    "quantumAiDirection": "SELL",
+    "quantumAiConfidence": 79,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.87582,
+    "stopLoss": 1.87882,
+    "takeProfit": 1.86982,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T06:01:03.883Z",
+    "secondOpinionAt": "2026-09-23T06:01:03.883Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T06:01:03.883Z",
+    "updatedAt": "2026-09-23T06:01:03.883Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790143410974_1790143410978",
+    "signalId": "sig_USDCAD_H4_1790143410974",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 83,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40738,
+    "stopLoss": 1.40438,
+    "takeProfit": 1.41338,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T06:03:30.978Z",
+    "secondOpinionAt": "2026-09-23T06:03:30.977Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T06:03:30.978Z",
+    "updatedAt": "2026-09-23T06:03:30.978Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790143424035_1790143424039",
+    "signalId": "sig_USDCAD_H4_1790143424035",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 83,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40741,
+    "stopLoss": 1.40441,
+    "takeProfit": 1.41341,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T06:03:44.039Z",
+    "secondOpinionAt": "2026-09-23T06:03:44.039Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 1,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T06:03:44.039Z",
+    "updatedAt": "2026-09-23T06:03:44.039Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790143446160_1790143446163",
+    "signalId": "sig_USDCAD_H4_1790143446160",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 83,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40743,
+    "stopLoss": 1.40443,
+    "takeProfit": 1.41343,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T06:04:06.163Z",
+    "secondOpinionAt": "2026-09-23T06:04:06.163Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T06:04:06.163Z",
+    "updatedAt": "2026-09-23T06:04:06.163Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790143463974_1790143463982",
+    "signalId": "sig_USDCAD_H4_1790143463974",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 83,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40749,
+    "stopLoss": 1.40449,
+    "takeProfit": 1.41349,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T06:04:23.982Z",
+    "secondOpinionAt": "2026-09-23T06:04:23.982Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T06:04:23.982Z",
+    "updatedAt": "2026-09-23T06:04:23.982Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790143489719_1790143489724",
+    "signalId": "sig_USDCAD_H4_1790143489719",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 83,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40749,
+    "stopLoss": 1.40449,
+    "takeProfit": 1.41349,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T06:04:49.724Z",
+    "secondOpinionAt": "2026-09-23T06:04:49.724Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T06:04:49.724Z",
+    "updatedAt": "2026-09-23T06:04:49.724Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790143503936_1790143503939",
+    "signalId": "sig_USDCAD_H4_1790143503936",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 83,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.4075,
+    "stopLoss": 1.4045,
+    "takeProfit": 1.4135,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T06:05:03.939Z",
+    "secondOpinionAt": "2026-09-23T06:05:03.939Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T06:05:03.939Z",
+    "updatedAt": "2026-09-23T06:05:03.939Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDJPY_H4_1790146817708_1790146817786",
+    "signalId": "sig_USDJPY_H4_1790146817708",
+    "symbol": "USD/JPY",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 76,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 157.553,
+    "stopLoss": 157.203,
+    "takeProfit": 158.253,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T07:00:17.786Z",
+    "secondOpinionAt": "2026-09-23T07:00:17.785Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 1,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "brokerOrderId": "319517835",
+    "createdAt": "2026-09-23T07:00:17.786Z",
+    "updatedAt": "2026-09-23T07:00:19.479Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDJPY_H4_1790146840914_1790146840917",
+    "signalId": "sig_USDJPY_H4_1790146840914",
+    "symbol": "USD/JPY",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 76,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 157.561,
+    "stopLoss": 157.211,
+    "takeProfit": 158.261,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T07:00:40.917Z",
+    "secondOpinionAt": "2026-09-23T07:00:40.917Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T07:00:40.917Z",
+    "updatedAt": "2026-09-23T07:00:40.917Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDJPY_H4_1790146853989_1790146853993",
+    "signalId": "sig_USDJPY_H4_1790146853989",
+    "symbol": "USD/JPY",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 76,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 157.586,
+    "stopLoss": 157.236,
+    "takeProfit": 158.286,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T07:00:53.993Z",
+    "secondOpinionAt": "2026-09-23T07:00:53.993Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T07:00:53.993Z",
+    "updatedAt": "2026-09-23T07:00:53.993Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790146937836_1790146937841",
+    "signalId": "sig_USDCAD_H4_1790146937836",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 84,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40753,
+    "stopLoss": 1.40453,
+    "takeProfit": 1.41353,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T07:02:17.841Z",
+    "secondOpinionAt": "2026-09-23T07:02:17.841Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T07:02:17.841Z",
+    "updatedAt": "2026-09-23T07:02:17.841Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790148510937_1790148510984",
+    "signalId": "sig_USDCAD_H4_1790148510937",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 83,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40764,
+    "stopLoss": 1.40464,
+    "takeProfit": 1.41364,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T07:28:30.983Z",
+    "secondOpinionAt": "2026-09-23T07:28:30.983Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 1,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T07:28:30.983Z",
+    "updatedAt": "2026-09-23T07:28:30.983Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790148694657_1790148694661",
+    "signalId": "sig_USDCAD_H4_1790148694657",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 83,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.4077,
+    "stopLoss": 1.4047,
+    "takeProfit": 1.4137,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T07:31:34.661Z",
+    "secondOpinionAt": "2026-09-23T07:31:34.661Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T07:31:34.661Z",
+    "updatedAt": "2026-09-23T07:31:34.661Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790148708623_1790148708627",
+    "signalId": "sig_USDCAD_H4_1790148708623",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 83,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40771,
+    "stopLoss": 1.40471,
+    "takeProfit": 1.41371,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T07:31:48.627Z",
+    "secondOpinionAt": "2026-09-23T07:31:48.627Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T07:31:48.627Z",
+    "updatedAt": "2026-09-23T07:31:48.627Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790148775494_1790148775498",
+    "signalId": "sig_USDCAD_H4_1790148775494",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 83,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40773,
+    "stopLoss": 1.40473,
+    "takeProfit": 1.41373,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T07:32:55.498Z",
+    "secondOpinionAt": "2026-09-23T07:32:55.498Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T07:32:55.498Z",
+    "updatedAt": "2026-09-23T07:32:55.498Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790148789021_1790148789025",
+    "signalId": "sig_USDCAD_H4_1790148789021",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 83,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40773,
+    "stopLoss": 1.40473,
+    "takeProfit": 1.41373,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T07:33:09.025Z",
+    "secondOpinionAt": "2026-09-23T07:33:09.024Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T07:33:09.025Z",
+    "updatedAt": "2026-09-23T07:33:09.025Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790148891787_1790148891791",
+    "signalId": "sig_USDCAD_H4_1790148891787",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 83,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40771,
+    "stopLoss": 1.40471,
+    "takeProfit": 1.41371,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T07:34:51.791Z",
+    "secondOpinionAt": "2026-09-23T07:34:51.791Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T07:34:51.791Z",
+    "updatedAt": "2026-09-23T07:34:51.791Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790148909206_1790148909210",
+    "signalId": "sig_USDCAD_H4_1790148909206",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 83,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40771,
+    "stopLoss": 1.40471,
+    "takeProfit": 1.41371,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T07:35:09.210Z",
+    "secondOpinionAt": "2026-09-23T07:35:09.210Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T07:35:09.210Z",
+    "updatedAt": "2026-09-23T07:35:09.210Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790149334820_1790149334825",
+    "signalId": "sig_USDCAD_H4_1790149334820",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 83,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.4077,
+    "stopLoss": 1.4047,
+    "takeProfit": 1.4137,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T07:42:14.825Z",
+    "secondOpinionAt": "2026-09-23T07:42:14.824Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T07:42:14.825Z",
+    "updatedAt": "2026-09-23T07:42:14.825Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790149348991_1790149348997",
+    "signalId": "sig_USDCAD_H4_1790149348991",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 83,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40771,
+    "stopLoss": 1.40471,
+    "takeProfit": 1.41371,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T07:42:28.997Z",
+    "secondOpinionAt": "2026-09-23T07:42:28.997Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T07:42:28.997Z",
+    "updatedAt": "2026-09-23T07:42:28.997Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790150538048_1790150538090",
+    "signalId": "sig_USDCAD_H4_1790150538048",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 84,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40792,
+    "stopLoss": 1.40492,
+    "takeProfit": 1.41392,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T08:02:18.090Z",
+    "secondOpinionAt": "2026-09-23T08:02:18.090Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 1,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T08:02:18.090Z",
+    "updatedAt": "2026-09-23T08:02:18.090Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790150775942_1790150775947",
+    "signalId": "sig_USDCAD_H4_1790150775942",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 84,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40801,
+    "stopLoss": 1.40501,
+    "takeProfit": 1.41401,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T08:06:15.947Z",
+    "secondOpinionAt": "2026-09-23T08:06:15.947Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T08:06:15.947Z",
+    "updatedAt": "2026-09-23T08:06:15.947Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790151344475_1790151344535",
+    "signalId": "sig_USDCAD_H4_1790151344475",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 85,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40815,
+    "stopLoss": 1.40515,
+    "takeProfit": 1.41415,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T08:15:44.535Z",
+    "secondOpinionAt": "2026-09-23T08:15:44.534Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 1,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T08:15:44.535Z",
+    "updatedAt": "2026-09-23T08:15:44.535Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790151383774_1790151383777",
+    "signalId": "sig_USDCAD_H4_1790151383774",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 85,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40815,
+    "stopLoss": 1.40515,
+    "takeProfit": 1.41415,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T08:16:23.777Z",
+    "secondOpinionAt": "2026-09-23T08:16:23.777Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T08:16:23.777Z",
+    "updatedAt": "2026-09-23T08:16:23.777Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790162817397_1790162817462",
+    "signalId": "sig_USDCAD_H4_1790162817397",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 83,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40788,
+    "stopLoss": 1.40488,
+    "takeProfit": 1.41388,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T11:26:57.461Z",
+    "secondOpinionAt": "2026-09-23T11:26:57.460Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T11:26:57.461Z",
+    "updatedAt": "2026-09-23T11:26:57.461Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790162871378_1790162871382",
+    "signalId": "sig_USDCAD_H4_1790162871378",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 83,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40792,
+    "stopLoss": 1.40492,
+    "takeProfit": 1.41392,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T11:27:51.382Z",
+    "secondOpinionAt": "2026-09-23T11:27:51.382Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T11:27:51.382Z",
+    "updatedAt": "2026-09-23T11:27:51.382Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790162928750_1790162928755",
+    "signalId": "sig_USDCAD_H4_1790162928750",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 83,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.4078,
+    "stopLoss": 1.4048,
+    "takeProfit": 1.4138,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T11:28:48.755Z",
+    "secondOpinionAt": "2026-09-23T11:28:48.755Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T11:28:48.755Z",
+    "updatedAt": "2026-09-23T11:28:48.755Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790162989008_1790162989015",
+    "signalId": "sig_USDCAD_H4_1790162989008",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 83,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40788,
+    "stopLoss": 1.40488,
+    "takeProfit": 1.41388,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T11:29:49.015Z",
+    "secondOpinionAt": "2026-09-23T11:29:49.015Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T11:29:49.015Z",
+    "updatedAt": "2026-09-23T11:29:49.015Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790163170078_1790163170086",
+    "signalId": "sig_USDCAD_H4_1790163170078",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 83,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40782,
+    "stopLoss": 1.40482,
+    "takeProfit": 1.41382,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T11:32:50.086Z",
+    "secondOpinionAt": "2026-09-23T11:32:50.086Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 1,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T11:32:50.086Z",
+    "updatedAt": "2026-09-23T11:32:50.086Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790164913499_1790164913506",
+    "signalId": "sig_USDCAD_H4_1790164913499",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 84,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40781,
+    "stopLoss": 1.40481,
+    "takeProfit": 1.41381,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T12:01:53.505Z",
+    "secondOpinionAt": "2026-09-23T12:01:53.504Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T12:01:53.505Z",
+    "updatedAt": "2026-09-23T12:01:53.505Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790164970512_1790164970515",
+    "signalId": "sig_USDCAD_H4_1790164970512",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 84,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40781,
+    "stopLoss": 1.40481,
+    "takeProfit": 1.41381,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T12:02:50.515Z",
+    "secondOpinionAt": "2026-09-23T12:02:50.515Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 1,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T12:02:50.515Z",
+    "updatedAt": "2026-09-23T12:02:50.515Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790165148813_1790165148872",
+    "signalId": "sig_USDCAD_H4_1790165148813",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 84,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40814,
+    "stopLoss": 1.40514,
+    "takeProfit": 1.41414,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T12:05:48.871Z",
+    "secondOpinionAt": "2026-09-23T12:05:48.870Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 1,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T12:05:48.871Z",
+    "updatedAt": "2026-09-23T12:05:48.871Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790166480197_1790166480208",
+    "signalId": "sig_USDCAD_H4_1790166480197",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 84,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40814,
+    "stopLoss": 1.40514,
+    "takeProfit": 1.41414,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T12:28:00.208Z",
+    "secondOpinionAt": "2026-09-23T12:28:00.208Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T12:28:00.208Z",
+    "updatedAt": "2026-09-23T12:28:00.208Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790166530567_1790166530570",
+    "signalId": "sig_USDCAD_H4_1790166530567",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 84,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40823,
+    "stopLoss": 1.40523,
+    "takeProfit": 1.41423,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T12:28:50.570Z",
+    "secondOpinionAt": "2026-09-23T12:28:50.570Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T12:28:50.570Z",
+    "updatedAt": "2026-09-23T12:28:50.570Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_USDCAD_H4_1790168696356_1790168696409",
+    "signalId": "sig_USDCAD_H4_1790168696356",
+    "symbol": "USD/CAD",
+    "timeframe": "H4",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.40768,
+    "stopLoss": 1.40468,
+    "takeProfit": 1.41368,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T13:04:56.409Z",
+    "secondOpinionAt": "2026-09-23T13:04:56.408Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 1,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T13:04:56.409Z",
+    "updatedAt": "2026-09-23T13:04:56.409Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_GBPAUD_M5_1790170409744_1790170409795",
+    "signalId": "sig_GBPAUD_M5_1790170409744",
+    "symbol": "GBP/AUD",
+    "timeframe": "M5",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 92,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.88038,
+    "stopLoss": 1.87738,
+    "takeProfit": 1.88638,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T13:33:29.795Z",
+    "secondOpinionAt": "2026-09-23T13:33:29.794Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T13:33:29.795Z",
+    "updatedAt": "2026-09-23T13:33:29.795Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_EURGBP_M5_1790171020003_1790171020074",
+    "signalId": "sig_EURGBP_M5_1790171020003",
+    "symbol": "EUR/GBP",
+    "timeframe": "M5",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 90,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 0.85826,
+    "stopLoss": 0.85526,
+    "takeProfit": 0.86426,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T13:43:40.074Z",
+    "secondOpinionAt": "2026-09-23T13:43:40.074Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 1,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "brokerOrderId": "319598247",
+    "createdAt": "2026-09-23T13:43:40.074Z",
+    "updatedAt": "2026-09-23T13:43:43.263Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_EURAUD_M5_1790171124238_1790171124242",
+    "signalId": "sig_EURAUD_M5_1790171124238",
+    "symbol": "EUR/AUD",
+    "timeframe": "M5",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 92,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.61625,
+    "stopLoss": 1.61325,
+    "takeProfit": 1.62225,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T13:45:24.242Z",
+    "secondOpinionAt": "2026-09-23T13:45:24.242Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "brokerOrderId": "319599502",
+    "createdAt": "2026-09-23T13:45:24.242Z",
+    "updatedAt": "2026-09-23T13:45:27.554Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_GBPAUD_M5_1790171129959_1790171129962",
+    "signalId": "sig_GBPAUD_M5_1790171129959",
+    "symbol": "GBP/AUD",
+    "timeframe": "M5",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 92,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.8809,
+    "stopLoss": 1.8779,
+    "takeProfit": 1.8869,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T13:45:29.962Z",
+    "secondOpinionAt": "2026-09-23T13:45:29.962Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "brokerOrderId": "319599575",
+    "createdAt": "2026-09-23T13:45:29.962Z",
+    "updatedAt": "2026-09-23T13:45:33.134Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_AUDJPY_M5_1790171134644_1790171134647",
+    "signalId": "sig_AUDJPY_M5_1790171134644",
+    "symbol": "AUD/JPY",
+    "timeframe": "M5",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 90,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 111.325,
+    "stopLoss": 110.975,
+    "takeProfit": 112.025,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T13:45:34.647Z",
+    "secondOpinionAt": "2026-09-23T13:45:34.647Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "brokerOrderId": "319599627",
+    "createdAt": "2026-09-23T13:45:34.647Z",
+    "updatedAt": "2026-09-23T13:45:37.424Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_AUDJPY_M5_1790171186947_1790171186952",
+    "signalId": "sig_AUDJPY_M5_1790171186947",
+    "symbol": "AUD/JPY",
+    "timeframe": "M5",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 90,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 111.34,
+    "stopLoss": 110.99,
+    "takeProfit": 112.04,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T13:46:26.952Z",
+    "secondOpinionAt": "2026-09-23T13:46:26.952Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 1,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T13:46:26.952Z",
+    "updatedAt": "2026-09-23T13:46:26.952Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_AUDJPY_M5_1790171246143_1790171246146",
+    "signalId": "sig_AUDJPY_M5_1790171246143",
+    "symbol": "AUD/JPY",
+    "timeframe": "M5",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 90,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 111.363,
+    "stopLoss": 111.013,
+    "takeProfit": 112.063,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T13:47:26.146Z",
+    "secondOpinionAt": "2026-09-23T13:47:26.146Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T13:47:26.146Z",
+    "updatedAt": "2026-09-23T13:47:26.146Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_AUDJPY_M5_1790171320737_1790171320741",
+    "signalId": "sig_AUDJPY_M5_1790171320737",
+    "symbol": "AUD/JPY",
+    "timeframe": "M5",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 90,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 111.361,
+    "stopLoss": 111.011,
+    "takeProfit": 112.061,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T13:48:40.741Z",
+    "secondOpinionAt": "2026-09-23T13:48:40.741Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T13:48:40.741Z",
+    "updatedAt": "2026-09-23T13:48:40.741Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_EURAUD_M5_1790171527460_1790171527464",
+    "signalId": "sig_EURAUD_M5_1790171527460",
+    "symbol": "EUR/AUD",
+    "timeframe": "M5",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 92,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.61665,
+    "stopLoss": 1.61365,
+    "takeProfit": 1.62265,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T13:52:07.464Z",
+    "secondOpinionAt": "2026-09-23T13:52:07.464Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T13:52:07.464Z",
+    "updatedAt": "2026-09-23T13:52:07.464Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_GBPAUD_M5_1790171533242_1790171533244",
+    "signalId": "sig_GBPAUD_M5_1790171533242",
+    "symbol": "GBP/AUD",
+    "timeframe": "M5",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 92,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.88101,
+    "stopLoss": 1.87801,
+    "takeProfit": 1.88701,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T13:52:13.244Z",
+    "secondOpinionAt": "2026-09-23T13:52:13.244Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T13:52:13.244Z",
+    "updatedAt": "2026-09-23T13:52:13.244Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_EURAUD_M5_1790171603491_1790171603495",
+    "signalId": "sig_EURAUD_M5_1790171603491",
+    "symbol": "EUR/AUD",
+    "timeframe": "M5",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 92,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.6168,
+    "stopLoss": 1.6138,
+    "takeProfit": 1.6228,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T13:53:23.495Z",
+    "secondOpinionAt": "2026-09-23T13:53:23.495Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T13:53:23.495Z",
+    "updatedAt": "2026-09-23T13:53:23.495Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_GBPAUD_M5_1790171605630_1790171605632",
+    "signalId": "sig_GBPAUD_M5_1790171605630",
+    "symbol": "GBP/AUD",
+    "timeframe": "M5",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 92,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.88107,
+    "stopLoss": 1.87807,
+    "takeProfit": 1.88707,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T13:53:25.632Z",
+    "secondOpinionAt": "2026-09-23T13:53:25.632Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T13:53:25.632Z",
+    "updatedAt": "2026-09-23T13:53:25.632Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_EURAUD_M5_1790171669776_1790171669781",
+    "signalId": "sig_EURAUD_M5_1790171669776",
+    "symbol": "EUR/AUD",
+    "timeframe": "M5",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 92,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.61705,
+    "stopLoss": 1.61405,
+    "takeProfit": 1.62305,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T13:54:29.781Z",
+    "secondOpinionAt": "2026-09-23T13:54:29.781Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T13:54:29.781Z",
+    "updatedAt": "2026-09-23T13:54:29.781Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_GBPAUD_M5_1790171673591_1790171673593",
+    "signalId": "sig_GBPAUD_M5_1790171673591",
+    "symbol": "GBP/AUD",
+    "timeframe": "M5",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 92,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.88106,
+    "stopLoss": 1.87806,
+    "takeProfit": 1.88706,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T13:54:33.593Z",
+    "secondOpinionAt": "2026-09-23T13:54:33.593Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T13:54:33.593Z",
+    "updatedAt": "2026-09-23T13:54:33.593Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
   }
 ]

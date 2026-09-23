@@ -9,8 +9,8 @@
       "entryPrice": 1.365,
       "closePrice": 1.352,
       "realizedPnL": 13,
-      "openTime": "2026-09-19T14:08:40.540Z",
-      "closeTime": "2026-09-19T14:28:53.655Z",
+      "openTime": "2026-09-23T07:24:14.757Z",
+      "closeTime": "2026-09-23T07:25:31.010Z",
       "exitReason": "TAKE_PROFIT_2",
       "proposalId": "prop_sell_test"
     },
@@ -22,13 +22,153 @@
       "entryPrice": 1.365,
       "closePrice": 1.359,
       "realizedPnL": 12,
-      "openTime": "2026-09-19T14:08:40.540Z",
-      "closeTime": "2026-09-19T14:08:40.540Z",
+      "openTime": "2026-09-23T07:24:14.757Z",
+      "closeTime": "2026-09-23T07:24:14.757Z",
       "exitReason": "TAKE_PROFIT_1",
       "proposalId": "prop_sell_test"
     }
   ],
   "executionLogs": [
+    {
+      "id": "scaleout_1790148254757",
+      "timestamp": "2026-09-23T07:24:14.757Z",
+      "pair": "GBP/USD",
+      "direction": "SELL",
+      "confidence": 90,
+      "price": 1.359,
+      "status": "PARTIAL_SCALE_OUT",
+      "reason": "Method 2 TP1 reached. 50% closed (+60.0 pips). SL moved to Break-Even (1.365). Runner tracking TP2 (1.352)."
+    },
+    {
+      "id": "scaleout_1790148254744",
+      "timestamp": "2026-09-23T07:24:14.744Z",
+      "pair": "EUR/USD",
+      "direction": "BUY",
+      "confidence": 90,
+      "price": 1.171,
+      "status": "PARTIAL_SCALE_OUT",
+      "reason": "Method 2 TP1 reached. 50% closed (+60.0 pips). SL moved to Break-Even (1.165). Runner tracking TP2 (1.178)."
+    },
+    {
+      "id": "scaleout_1790146027168",
+      "timestamp": "2026-09-23T06:47:07.168Z",
+      "pair": "GBP/USD",
+      "direction": "SELL",
+      "confidence": 90,
+      "price": 1.359,
+      "status": "PARTIAL_SCALE_OUT",
+      "reason": "Method 2 TP1 reached. 50% closed (+60.0 pips). SL moved to Break-Even (1.365). Runner tracking TP2 (1.352)."
+    },
+    {
+      "id": "scaleout_1790146027158",
+      "timestamp": "2026-09-23T06:47:07.158Z",
+      "pair": "EUR/USD",
+      "direction": "BUY",
+      "confidence": 90,
+      "price": 1.171,
+      "status": "PARTIAL_SCALE_OUT",
+      "reason": "Method 2 TP1 reached. 50% closed (+60.0 pips). SL moved to Break-Even (1.165). Runner tracking TP2 (1.178)."
+    },
+    {
+      "id": "scaleout_1790143389700",
+      "timestamp": "2026-09-23T06:03:09.700Z",
+      "pair": "GBP/USD",
+      "direction": "SELL",
+      "confidence": 90,
+      "price": 1.359,
+      "status": "PARTIAL_SCALE_OUT",
+      "reason": "Method 2 TP1 reached. 50% closed (+60.0 pips). SL moved to Break-Even (1.365). Runner tracking TP2 (1.352)."
+    },
+    {
+      "id": "scaleout_1790143389689",
+      "timestamp": "2026-09-23T06:03:09.689Z",
+      "pair": "EUR/USD",
+      "direction": "BUY",
+      "confidence": 90,
+      "price": 1.171,
+      "status": "PARTIAL_SCALE_OUT",
+      "reason": "Method 2 TP1 reached. 50% closed (+60.0 pips). SL moved to Break-Even (1.165). Runner tracking TP2 (1.178)."
+    },
+    {
+      "id": "scaleout_1790142643976",
+      "timestamp": "2026-09-23T05:50:43.976Z",
+      "pair": "GBP/USD",
+      "direction": "SELL",
+      "confidence": 90,
+      "price": 1.359,
+      "status": "PARTIAL_SCALE_OUT",
+      "reason": "Method 2 TP1 reached. 50% closed (+60.0 pips). SL moved to Break-Even (1.365). Runner tracking TP2 (1.352)."
+    },
+    {
+      "id": "scaleout_1790142643967",
+      "timestamp": "2026-09-23T05:50:43.967Z",
+      "pair": "EUR/USD",
+      "direction": "BUY",
+      "confidence": 90,
+      "price": 1.171,
+      "status": "PARTIAL_SCALE_OUT",
+      "reason": "Method 2 TP1 reached. 50% closed (+60.0 pips). SL moved to Break-Even (1.165). Runner tracking TP2 (1.178)."
+    },
+    {
+      "id": "scaleout_1790142405873",
+      "timestamp": "2026-09-23T05:46:45.873Z",
+      "pair": "GBP/USD",
+      "direction": "SELL",
+      "confidence": 90,
+      "price": 1.359,
+      "status": "PARTIAL_SCALE_OUT",
+      "reason": "Method 2 TP1 reached. 50% closed (+60.0 pips). SL moved to Break-Even (1.365). Runner tracking TP2 (1.352)."
+    },
+    {
+      "id": "scaleout_1790142405862",
+      "timestamp": "2026-09-23T05:46:45.862Z",
+      "pair": "EUR/USD",
+      "direction": "BUY",
+      "confidence": 90,
+      "price": 1.171,
+      "status": "PARTIAL_SCALE_OUT",
+      "reason": "Method 2 TP1 reached. 50% closed (+60.0 pips). SL moved to Break-Even (1.165). Runner tracking TP2 (1.178)."
+    },
+    {
+      "id": "scaleout_1790141665026",
+      "timestamp": "2026-09-23T05:34:25.026Z",
+      "pair": "GBP/USD",
+      "direction": "SELL",
+      "confidence": 90,
+      "price": 1.359,
+      "status": "PARTIAL_SCALE_OUT",
+      "reason": "Method 2 TP1 reached. 50% closed (+60.0 pips). SL moved to Break-Even (1.365). Runner tracking TP2 (1.352)."
+    },
+    {
+      "id": "scaleout_1790141665017",
+      "timestamp": "2026-09-23T05:34:25.017Z",
+      "pair": "EUR/USD",
+      "direction": "BUY",
+      "confidence": 90,
+      "price": 1.171,
+      "status": "PARTIAL_SCALE_OUT",
+      "reason": "Method 2 TP1 reached. 50% closed (+60.0 pips). SL moved to Break-Even (1.165). Runner tracking TP2 (1.178)."
+    },
+    {
+      "id": "scaleout_1790139731719",
+      "timestamp": "2026-09-23T05:02:11.719Z",
+      "pair": "GBP/USD",
+      "direction": "SELL",
+      "confidence": 90,
+      "price": 1.359,
+      "status": "PARTIAL_SCALE_OUT",
+      "reason": "Method 2 TP1 reached. 50% closed (+60.0 pips). SL moved to Break-Even (1.365). Runner tracking TP2 (1.352)."
+    },
+    {
+      "id": "scaleout_1790139731686",
+      "timestamp": "2026-09-23T05:02:11.686Z",
+      "pair": "EUR/USD",
+      "direction": "BUY",
+      "confidence": 90,
+      "price": 1.171,
+      "status": "PARTIAL_SCALE_OUT",
+      "reason": "Method 2 TP1 reached. 50% closed (+60.0 pips). SL moved to Break-Even (1.165). Runner tracking TP2 (1.178)."
+    },
     {
       "id": "scaleout_1789826920540",
       "timestamp": "2026-09-19T14:08:40.540Z",
@@ -271,5 +411,5 @@
     }
   ],
   "isAutoPilotEnabled": true,
-  "lastSavedAt": "2026-09-19T14:28:53.661Z"
+  "lastSavedAt": "2026-09-23T07:25:31.012Z"
 }

@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { CTraderAdapter } from '../apps/execution-router/src/adapters/ctraderAdapter';
+import { CTraderAdapter } from '../apps/execution-router/src/adapters/ctraderAdapter.ts';
 
 async function main() {
   const ctrader = new CTraderAdapter({ accountId: '48282756' });
