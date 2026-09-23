@@ -1,5 +1,67 @@
 [
   {
+    "id": "sig_USDCAD_H4_1790173120384",
+    "masterBrokerOrderId": "319613446",
+    "action": "NEW_ORDER",
+    "pair": "USD/CAD",
+    "direction": "BUY",
+    "entryPrice": 1.40884,
+    "stopLoss": 1.40584,
+    "takeProfit1": 1.41484,
+    "takeProfit2": 1.41964,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: USD/CAD BUY (Confidence: 83%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A",
+    "expiresAt": 1790259520384,
+    "timestamp": 1790173122624
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "USD/JPY",
+    "direction": "BUY",
+    "entryPrice": 157.553,
+    "stopLoss": 157.203,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Market price (158.269) reached TP1 (158.253) before entry fill"
+    ],
+    "masterConfirmed": false,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "id": "SIG-72fa4102-8754-401a-a66c-f121ffcf6c99",
+    "timestamp": 1790173042730
+  },
+  {
+    "id": "sig_USDCHF_M5_1790172853844",
+    "masterBrokerOrderId": "319612514",
+    "action": "NEW_ORDER",
+    "pair": "USD/CHF",
+    "direction": "BUY",
+    "entryPrice": 0.82343,
+    "stopLoss": 0.82043,
+    "takeProfit1": 0.82943,
+    "takeProfit2": 0.83423,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: USD/CHF BUY (Confidence: 92%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790259253844,
+    "timestamp": 1790172856773
+  },
+  {
     "id": "sig_GBPAUD_M5_1790172176988",
     "masterBrokerOrderId": "319609746",
     "action": "NEW_ORDER",
