@@ -665,7 +665,7 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
               </span>
               <span className="px-2 py-0.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[10px] font-mono font-bold rounded-full flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                {scannerConnectionError ? 'SAMBUNGAN TERPUTUS' : !scannerStatus ? 'MENGAMBIL STATUS' : scannerStatus.isScanning ? 'ACTIVE' : 'TIDAK AKTIF'} ({scannerStatus?.watchlist?.length ?? WATCHLIST_PAIRS.length} PAIRS • 1-MIN LOOP / M15 / H1 / H4)
+                {scannerConnectionError ? 'SAMBUNGAN TERPUTUS' : !scannerStatus ? 'MENGAMBIL STATUS' : scannerStatus.isScanning ? 'ACTIVE' : 'TIDAK AKTIF'} ({scannerStatus?.watchlist?.length ?? WATCHLIST_PAIRS.length} PAIRS • 1-MIN LOOP / M5 / M15 / H1 / H4)
               </span>
             </div>
             <p className="text-[11px] text-slate-400 font-mono mt-0.5">

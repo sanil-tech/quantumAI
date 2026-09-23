@@ -73,7 +73,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
     'CHF/JPY'
   ];
 
-  private timeframes: Timeframe[] = ['M15', 'H1', 'H4'];
+  private timeframes: Timeframe[] = ['M5', 'M15', 'H1', 'H4'];
   private cooldownLedger: Map<string, number> = new Map(); // pairKey -> last executed timestamp
   private pushedSignalLedger: Map<string, number> = new Map(); // pairKey -> last pushed signal timestamp
   private discoveredSetups: DiscoveredSetup[] = [];
