@@ -1,5 +1,27 @@
 [
   {
+    "id": "sig_NZDUSD_H4_1790173722528",
+    "masterBrokerOrderId": "319617151",
+    "action": "NEW_ORDER",
+    "pair": "NZD/USD",
+    "direction": "SELL",
+    "entryPrice": 0.56817,
+    "stopLoss": 0.57117,
+    "takeProfit1": 0.56217,
+    "takeProfit2": 0.55737,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: NZD/USD SELL (Confidence: 86%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790260122528,
+    "timestamp": 1790173724644
+  },
+  {
     "id": "sig_USDJPY_M5_1790173485959",
     "masterBrokerOrderId": "319614953",
     "action": "NEW_ORDER",

@@ -5003,5 +5003,166 @@
       "OPENAI_UNAVAILABLE",
       "MISSING_ECONOMIC_CONTEXT"
     ]
+  },
+  {
+    "id": "obs_sig_NZDUSD_H4_1790173722528_1790173722556",
+    "signalId": "sig_NZDUSD_H4_1790173722528",
+    "symbol": "NZD/USD",
+    "timeframe": "H4",
+    "quantumAiDirection": "SELL",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 0.56817,
+    "stopLoss": 0.57117,
+    "takeProfit": 0.56217,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T14:28:42.555Z",
+    "secondOpinionAt": "2026-09-23T14:28:42.555Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "brokerOrderId": "319617151",
+    "createdAt": "2026-09-23T14:28:42.555Z",
+    "updatedAt": "2026-09-23T14:28:44.638Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_NZDUSD_H4_1790173781981_1790173781986",
+    "signalId": "sig_NZDUSD_H4_1790173781981",
+    "symbol": "NZD/USD",
+    "timeframe": "H4",
+    "quantumAiDirection": "SELL",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 0.56812,
+    "stopLoss": 0.57112,
+    "takeProfit": 0.56212,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T14:29:41.986Z",
+    "secondOpinionAt": "2026-09-23T14:29:41.986Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T14:29:41.986Z",
+    "updatedAt": "2026-09-23T14:29:41.986Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_NZDUSD_H4_1790173811022_1790173811069",
+    "signalId": "sig_NZDUSD_H4_1790173811022",
+    "symbol": "NZD/USD",
+    "timeframe": "H4",
+    "quantumAiDirection": "SELL",
+    "quantumAiConfidence": 86,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 0.56824,
+    "stopLoss": 0.57124,
+    "takeProfit": 0.56224,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T14:30:11.068Z",
+    "secondOpinionAt": "2026-09-23T14:30:11.068Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 1,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T14:30:11.068Z",
+    "updatedAt": "2026-09-23T14:30:11.068Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
+  },
+  {
+    "id": "obs_sig_GBPAUD_M5_1790173814515_1790173814518",
+    "signalId": "sig_GBPAUD_M5_1790173814515",
+    "symbol": "GBP/AUD",
+    "timeframe": "M5",
+    "quantumAiDirection": "BUY",
+    "quantumAiConfidence": 94,
+    "openAiReview": "UNAVAILABLE",
+    "openAiBias": "NEUTRAL",
+    "openAiConfidence": 0,
+    "agreement": "DISAGREE",
+    "contradictionLevel": "LOW",
+    "economicRisk": "UNKNOWN",
+    "riskFlags": [
+      "OPENAI_SERVICE_UNAVAILABLE"
+    ],
+    "keyConcerns": [
+      "OpenAI second opinion shadow layer is disabled (OPENAI_SECOND_OPINION_ENABLED!=true)."
+    ],
+    "invalidationConcerns": [],
+    "entry": 1.8825,
+    "stopLoss": 1.8795,
+    "takeProfit": 1.8885,
+    "executionEligibilityAtReview": "WAITING_FOR_ENTRY",
+    "signalCreatedAt": "2026-09-23T14:30:14.518Z",
+    "secondOpinionAt": "2026-09-23T14:30:14.518Z",
+    "model": "UNCONFIGURED",
+    "latencyMs": 0,
+    "dataMode": "LIVE",
+    "dataLineage": {
+      "source": "LIVE_CTRADER"
+    },
+    "outcomeStatus": "OPEN",
+    "createdAt": "2026-09-23T14:30:14.518Z",
+    "updatedAt": "2026-09-23T14:30:14.518Z",
+    "dataQualityFlags": [
+      "OPENAI_UNAVAILABLE",
+      "MISSING_ECONOMIC_CONTEXT"
+    ]
   }
 ]

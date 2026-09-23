@@ -1564,12 +1564,13 @@ export class CTraderMarketDataFeedService extends EventEmitter {
       if (!pos || !pos.positionId) continue;
 
       const posId = Number(pos.positionId);
-      const symbolId = Number(pos.symbolId);
-      const symbol = this.symbolMap.get(symbolId) || 'EUR/USD';
-      const tradeSide = pos.tradeSide === 1 || pos.tradeSide === 'BUY' ? 'BUY' : 'SELL';
-      const entryPrice = pos.price || pos.entryPrice;
-      const currentSl = pos.stopLoss;
-      const currentTp = pos.takeProfit;
+      const rawSymbolId = Number(pos.tradeData?.symbolId ?? pos.symbolId);
+      const symbol = this.symbolMap.get(rawSymbolId) || (pos.symbol ? String(pos.symbol) : 'EUR/USD');
+      const rawTradeSide = pos.tradeData?.tradeSide ?? pos.tradeSide;
+      const tradeSide = Number(rawTradeSide) === 2 || String(rawTradeSide).toUpperCase() === 'SELL' ? 'SELL' : 'BUY';
+      const entryPrice = Number(pos.price ?? pos.entryPrice ?? pos.executionPrice ?? 0);
+      const currentSl = Number(pos.stopLoss || 0);
+      const currentTp = Number(pos.takeProfit || 0);
 
       if (!entryPrice || entryPrice <= 0) continue;
 

@@ -1,5 +1,258 @@
 [
   {
+    "id": "sig_NZDUSD_H4_1790173722528",
+    "timestamp": 1790173722536,
+    "pair": "NZD/USD",
+    "timeframe": "H4",
+    "direction": "SELL",
+    "confidence": 86,
+    "entryPrice": 0.56817,
+    "stopLoss": 0.57117,
+    "takeProfit1": 0.56217,
+    "takeProfit2": 0.55737,
+    "breakEvenPrice": 0.56817,
+    "reasons": [
+      "📐 Autochartist: Corak Channel Down disahkan (Kualiti 7/10) menyokong SELL.",
+      "NZD/USD live price (0.56717) is holding below 50 EMA trend filter.",
+      "ADX (24.6) mengukur kekuatan trend (moderate); hala tuju disahkan oleh penunjuk directional (+DI: 11.9 / -DI: 33.9).",
+      "SuperTrend filter is BEARISH and ATR volatility is 0.00178.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
+      "[CANDLE CONFIRMATION] Bearish Shooting Star confirmed on closed candle."
+    ],
+    "pattern": {
+      "id": "pat_chan_down_H4_1790173722525",
+      "name": "Channel Down",
+      "type": "CHANNEL_DOWN",
+      "direction": "DOWN",
+      "timeframe": "H4",
+      "quality": 7,
+      "length": 57,
+      "identificationTime": 1790173722525,
+      "targetPrice": 0.56494,
+      "description": "Saluran harga selari menurun (Lower Highs & Lower Lows). Trend menurun berterusan."
+    },
+    "status": "EXECUTED",
+    "isValid": true,
+    "entryMode": "SELL_PULLBACK",
+    "distancePips": 10,
+    "canonicalSignal": {
+      "signalId": "sig_NZDUSD_H4_1790173722528",
+      "symbol": "NZD/USD",
+      "timeframe": "H4",
+      "generatedAt": 1790173722528,
+      "expiryTime": 1790260122528,
+      "marketDataTimestamp": 1790173722528,
+      "dataSource": "CTRADER_LIVE_FEED",
+      "currentPrice": 0.56717,
+      "direction": "SELL",
+      "signalType": "ORDER_BLOCK_RETEST",
+      "entryPrice": 0.56817,
+      "entryMode": "SELL_PULLBACK",
+      "distancePips": 10,
+      "stopLoss": 0.57117,
+      "takeProfit1": 0.56217,
+      "takeProfit2": 0.55737,
+      "riskPips": 30,
+      "rewardPipsTP1": 60,
+      "rewardPipsTP2": 108,
+      "rrTP1": 2,
+      "rrTP2": 3.6,
+      "recommendedLot": 0.02,
+      "indicators": {
+        "ema50": 0.5746167558048793,
+        "ema200": 0.56721,
+        "rsi14": 31.67,
+        "adx": 24.56,
+        "plusDI": 11.86,
+        "minusDI": 33.94,
+        "superTrendDirection": "BEARISH",
+        "atr": 0.00178,
+        "macdHistogram": -0.00039,
+        "vwap": 0.5804
+      },
+      "marketRegime": "TRENDING_BEARISH",
+      "modelConfidence": 92,
+      "validationConfidence": 82,
+      "confidence": 86,
+      "reasoningEvidence": [
+        "📐 Autochartist: Corak Channel Down disahkan (Kualiti 7/10) menyokong SELL.",
+        "NZD/USD live price (0.56717) is holding below 50 EMA trend filter.",
+        "ADX (24.6) mengukur kekuatan trend (moderate); hala tuju disahkan oleh penunjuk directional (+DI: 11.9 / -DI: 33.9).",
+        "SuperTrend filter is BEARISH and ATR volatility is 0.00178.",
+        "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
+        "[CANDLE CONFIRMATION] Bearish Shooting Star confirmed on closed candle."
+      ],
+      "bullishEvidence": [
+        "EMA 50 di atas EMA 200 (Aliran Bullish Makro)"
+      ],
+      "bearishEvidence": [
+        "Harga (0.56717) di bawah EMA 50 (0.575)",
+        "SuperTrend dalam zon Bearish",
+        "-DI (33.9) mendominasi +DI (11.9)",
+        "Histogram MACD negatif (-0.0004)"
+      ],
+      "riskWarnings": [],
+      "validationStatus": "WARNING",
+      "validationErrors": [],
+      "validationWarnings": [
+        "Entri diklasifikasikan sebagai SELL_PULLBACK. Pesanan menunggu harga mencecah 0.56817 (10 pip)."
+      ],
+      "executionStatus": "WAITING_FOR_ENTRY",
+      "executionEligibility": "WAITING_FOR_ENTRY",
+      "eligibilityReason": "Pullback entry not yet reached. Waiting for market price to retrace to 0.56817 (10 pips away)."
+    },
+    "validationReport": {
+      "signalId": "sig_NZDUSD_H4_1790173722528",
+      "symbol": "NZD/USD",
+      "timeframe": "H4",
+      "direction": "SELL",
+      "entryMode": "SELL_PULLBACK",
+      "currentPrice": 0.56717,
+      "plannedEntry": 0.56817,
+      "distancePips": 10,
+      "timestamp": 1790173722528,
+      "dataCheck": {
+        "checkName": "Data Integrity",
+        "passed": true,
+        "status": "PASS",
+        "message": "All price fields, timestamps, and indicators are populated and finite numbers."
+      },
+      "indicatorSemantics": {
+        "checkName": "Indicator Semantics",
+        "passed": true,
+        "status": "PASS",
+        "message": "Indicators adhere strictly to standard quantitative definitions (ADX=Strength, DI/EMA/SuperTrend=Direction)."
+      },
+      "directionConsistency": {
+        "checkName": "Direction Consistency",
+        "passed": true,
+        "status": "PASS",
+        "message": "Direction SELL matches technical evidence (Bull: 15 pts, Bear: 70 pts)."
+      },
+      "rsiInterpretation": {
+        "checkName": "RSI Interpretation",
+        "passed": true,
+        "status": "PASS",
+        "message": "RSI = 31.7 in normal momentum range."
+      },
+      "adxInterpretation": {
+        "checkName": "ADX Interpretation",
+        "passed": true,
+        "status": "PASS",
+        "message": "ADX = 24.6 indicates moderate trend strength. Directional component confirmed via +DI (11.9) vs -DI (33.9)."
+      },
+      "entryConsistency": {
+        "checkName": "Entry Consistency",
+        "passed": true,
+        "status": "WARNING",
+        "message": "Entry mode classified as SELL_PULLBACK. Current price: 0.56717, Planned entry: 0.56817 (10 pips distance). Lifecycle status: WAITING_FOR_ENTRY."
+      },
+      "riskRewardCheck": {
+        "checkName": "Risk / Reward & Geometry Check",
+        "passed": true,
+        "status": "PASS",
+        "message": "SL, TP1, and TP2 strictly adhere to directional geometry and positive R:R."
+      },
+      "confidenceCheck": {
+        "checkName": "Confidence Validation",
+        "passed": true,
+        "status": "PASS",
+        "message": "AI Model Confidence: 92% (Advisory). Deterministic Validation Confidence: 82% (Authoritative). Effective: 86%."
+      },
+      "explanationCheck": {
+        "checkName": "Explanation Consistency",
+        "passed": true,
+        "status": "PASS",
+        "message": "Explanations sanitized and verified to never contradict technical indicators or misinterpret ADX/RSI semantics."
+      },
+      "overallStatus": "WARNING",
+      "finalLifecycleStatus": "WAITING_FOR_ENTRY",
+      "executionEligibility": "WAITING_FOR_ENTRY",
+      "eligibilityReason": "Pullback entry not yet reached. Waiting for market price to retrace to 0.56817 (10 pips away).",
+      "errors": [],
+      "warnings": [
+        "Entri diklasifikasikan sebagai SELL_PULLBACK. Pesanan menunggu harga mencecah 0.56817 (10 pip)."
+      ],
+      "sanitizedReasons": [
+        "📐 Autochartist: Corak Channel Down disahkan (Kualiti 7/10) menyokong SELL.",
+        "NZD/USD live price (0.56717) is holding below 50 EMA trend filter.",
+        "ADX (24.6) mengukur kekuatan trend (moderate); hala tuju disahkan oleh penunjuk directional (+DI: 11.9 / -DI: 33.9).",
+        "SuperTrend filter is BEARISH and ATR volatility is 0.00178.",
+        "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
+        "[CANDLE CONFIRMATION] Bearish Shooting Star confirmed on closed candle."
+      ],
+      "isExecutable": true
+    },
+    "executionDetails": {
+      "brokerOrderId": "319617151",
+      "dispatchedAt": 1790173724620,
+      "copyResults": [
+        {
+          "id": "copy-1790173725088-sub-5916063",
+          "masterTradeId": "319617151",
+          "subscriberId": "sub-5916063",
+          "subscriberName": "cTID Trader (5916063)",
+          "accountNumber": "5916063",
+          "pair": "NZD/USD",
+          "direction": "SELL",
+          "entryPrice": 0.56817,
+          "stopLoss": 0.57117,
+          "takeProfit": 0.56217,
+          "takeProfit2": 0.55737,
+          "isMultiTarget": true,
+          "lotSize": 0,
+          "riskPercent": 1,
+          "status": "FAILED",
+          "latencyMs": 439,
+          "executedAt": 1790173725088,
+          "error": "SUBSCRIBER_BALANCE_UNAVAILABLE"
+        },
+        {
+          "id": "copy-1790173725116-sub-5912914",
+          "masterTradeId": "319617151",
+          "subscriberId": "sub-5912914",
+          "subscriberName": "cTID Trader (5912914)",
+          "accountNumber": "5912914",
+          "pair": "NZD/USD",
+          "direction": "SELL",
+          "entryPrice": 0.56817,
+          "stopLoss": 0.57117,
+          "takeProfit": 0.56217,
+          "takeProfit2": 0.55737,
+          "isMultiTarget": true,
+          "lotSize": 0,
+          "riskPercent": 1,
+          "status": "FAILED",
+          "latencyMs": 462,
+          "executedAt": 1790173725116,
+          "error": "SUBSCRIBER_BALANCE_UNAVAILABLE"
+        },
+        {
+          "id": "copy-1790173726176-sub-5877246",
+          "masterTradeId": "319617151",
+          "subscriberId": "sub-5877246",
+          "subscriberName": "cTID Trader (5877246)",
+          "accountNumber": "5877246",
+          "pair": "NZD/USD",
+          "direction": "SELL",
+          "entryPrice": 0.56715,
+          "stopLoss": 0.57117,
+          "takeProfit": 0.56217,
+          "takeProfit2": 0.55737,
+          "isMultiTarget": true,
+          "lotSize": 0.02,
+          "riskPercent": 1,
+          "status": "SUCCESS",
+          "orderType": "LIMIT",
+          "latencyMs": 36,
+          "executedAt": 1790173726176,
+          "brokerTicket": "292036810"
+        }
+      ]
+    },
+    "telegramBroadcastSent": true
+  },
+  {
     "id": "sig_USDJPY_M5_1790173485959",
     "timestamp": 1790173486620,
     "pair": "USD/JPY",
