@@ -333,4 +333,96 @@ describe('AutoTrader Persistent Trade Ledger & Source of Truth Tests', () => {
     expect(events[0].eventType).toBe('AI_SIGNAL');
     expect(events[1].eventType).toBe('POSITION_OPENED');
   });
+
+  describe('Fail-Closed Idempotency & Database Error Propagation (Task 8B-P15C)', () => {
+    it('TEST A: Database query succeeds and no position exists -> returns null', async () => {
+      const result = await repository.getPositionByIdempotencyKeyOrSetupId('non_existent_key', 'non_existent_setup');
+      expect(result).toBeNull();
+    });
+
+    it('TEST B: Database query succeeds and matching idempotency key exists -> returns position', async () => {
+      await repository.savePosition({
+        positionId: 'trade_test_b',
+        accountId: '5877246',
+        symbol: 'EUR/USD',
+        direction: 'BUY',
+        quantity: 0.1,
+        entryPrice: 1.0850,
+        currentPrice: 1.0850,
+        status: 'OPEN',
+        idempotencyKey: 'idem_key_test_b'
+      });
+
+      const result = await repository.getPositionByIdempotencyKeyOrSetupId('idem_key_test_b');
+      expect(result).not.toBeNull();
+      expect(result!.positionId).toBe('trade_test_b');
+      expect(result!.idempotencyKey).toBe('idem_key_test_b');
+    });
+
+    it('TEST C: Database query throws ECONNREFUSED -> error propagates; function MUST NOT return null', async () => {
+      const failingRepo = new TradingRepository();
+      (failingRepo as any).pool = {
+        query: vi.fn().mockRejectedValue(new Error('connect ECONNREFUSED 127.0.0.1:5432'))
+      };
+
+      await expect(
+        failingRepo.getPositionByIdempotencyKeyOrSetupId('any_key', 'any_setup')
+      ).rejects.toThrow('connect ECONNREFUSED 127.0.0.1:5432');
+    });
+
+    it('TEST D: Database query throws a generic PostgreSQL error -> error propagates', async () => {
+      const failingRepo = new TradingRepository();
+      (failingRepo as any).pool = {
+        query: vi.fn().mockRejectedValue(new Error('canceling statement due to statement timeout'))
+      };
+
+      await expect(
+        failingRepo.getPositionByIdempotencyKeyOrSetupId('any_key', 'any_setup')
+      ).rejects.toThrow('statement timeout');
+    });
+
+    it('TEST E: Idempotency lookup failure prevents execution from proceeding (fails closed)', async () => {
+      const failingRepo = new TradingRepository();
+      (failingRepo as any).pool = {
+        query: vi.fn().mockRejectedValue(new Error('DATABASE_CONNECTION_LOST'))
+      };
+
+      let executed = false;
+      const attemptExecution = async (key: string) => {
+        // Idempotency pre-check
+        const existing = await failingRepo.getPositionByIdempotencyKeyOrSetupId(key);
+        if (existing) return { duplicate: true };
+        executed = true;
+        return { executed: true };
+      };
+
+      await expect(attemptExecution('key_fail_closed')).rejects.toThrow('DATABASE_CONNECTION_LOST');
+      expect(executed).toBe(false); // Execution was blocked because error propagated instead of returning null
+    });
+
+    it('TEST F: Existing duplicate/idempotency behavior remains intact', async () => {
+      await repository.savePosition({
+        positionId: 'trade_test_f',
+        setupId: 'setup_test_f_123',
+        accountId: '5877246',
+        symbol: 'GBP/USD',
+        direction: 'SELL',
+        quantity: 0.2,
+        entryPrice: 1.2650,
+        currentPrice: 1.2650,
+        status: 'OPEN',
+        idempotencyKey: 'idem_test_f'
+      });
+
+      // Query by idempotencyKey
+      const byKey = await repository.getPositionByIdempotencyKeyOrSetupId('idem_test_f', undefined);
+      expect(byKey).not.toBeNull();
+      expect(byKey!.positionId).toBe('trade_test_f');
+
+      // Query by setupId
+      const bySetup = await repository.getPositionByIdempotencyKeyOrSetupId(undefined, 'setup_test_f_123');
+      expect(bySetup).not.toBeNull();
+      expect(bySetup!.positionId).toBe('trade_test_f');
+    });
+  });
 });

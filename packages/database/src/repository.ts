@@ -471,14 +471,14 @@ export class TradingRepository {
     }
   }
 
-  async getPositionByIdempotencyKeyOrSetupId(idempotencyKey?: string, setupId?: string): Promise<PositionRecord | null> {
+  async getPositionByIdempotencyKeyOrSetupId(idempotencyKey?: string, setupId?: string, client?: PoolClient): Promise<PositionRecord | null> {
     try {
       if (idempotencyKey) {
-        const resKey = await this.query(`SELECT * FROM positions WHERE idempotency_key = $1 LIMIT 1`, [idempotencyKey]);
+        const resKey = await this.query(`SELECT * FROM positions WHERE idempotency_key = $1 LIMIT 1`, [idempotencyKey], client);
         if (resKey && resKey.rows && resKey.rows.length) return this.mapPositionRow(resKey.rows[0]);
       }
       if (setupId) {
-        const resSetup = await this.query(`SELECT * FROM positions WHERE setup_id = $1 LIMIT 1`, [setupId]);
+        const resSetup = await this.query(`SELECT * FROM positions WHERE setup_id = $1 LIMIT 1`, [setupId], client);
         if (resSetup && resSetup.rows && resSetup.rows.length) return this.mapPositionRow(resSetup.rows[0]);
       }
       return null;
