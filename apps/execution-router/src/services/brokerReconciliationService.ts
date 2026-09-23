@@ -173,6 +173,17 @@ export class BrokerReconciliationService {
           brokerMatchedSet.add(match.position_id);
           dbMatchedSet.add(dbPos.positionId);
 
+          // DB Symbol & Entry Price Parity Auto-Correction: if DB holds mis-mapped symbol/entry, sync from cTrader truth!
+          if (match.symbol && (dbPos.symbol !== match.symbol || Math.abs(dbPos.entryPrice - match.entry_price) > 0.001)) {
+            console.log(`🛡️ [BrokerReconciliation] Symbol/Price discrepancy on ticket #${match.position_id}: DB was (${dbPos.symbol} @ ${dbPos.entryPrice}), correcting to cTrader truth (${match.symbol} @ ${match.entry_price}).`);
+            await this.tradingRepo.query(
+              `UPDATE positions SET symbol = $1, entry_price = $2, current_price = $2, updated_at = NOW() WHERE position_id = $3 OR ticket_id = $3`,
+              [match.symbol, match.entry_price, dbPos.positionId]
+            ).catch(() => {});
+            dbPos.symbol = match.symbol;
+            dbPos.entryPrice = match.entry_price;
+          }
+
           const volumeDiff = Math.abs(match.quantity - dbPos.quantity);
           const priceDiff = Math.abs(match.entry_price - dbPos.entryPrice);
           const isDiverged = volumeDiff > 0.001 || (match.direction !== dbPos.direction);

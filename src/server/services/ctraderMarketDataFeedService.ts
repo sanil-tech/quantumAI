@@ -511,9 +511,42 @@ export class CTraderMarketDataFeedService extends EventEmitter {
       'CAD/JPY','CAD/CHF','CHF/JPY','XAU/USD'
     ];
     this.symbolMap.clear();this.pairToSymbolId.clear();
-    for(const pair of wanted){const matches=response.decodedPayload.symbol.filter((x:any)=>String(x.symbolName).replace('/','').toUpperCase()===pair.replace('/',''));if(matches.length!==1)continue;const id=Number(matches[0].symbolId);if(!(id>0))continue;this.symbolMap.set(id,pair as CurrencyPair);this.pairToSymbolId.set(pair as CurrencyPair,id);}
+
+    // Register all live broker symbols into CTraderSymbolRegistry dynamically
+    for (const rawSym of response.decodedPayload.symbol) {
+      const sId = Number(rawSym.symbolId);
+      const sName = String(rawSym.symbolName || '');
+      if (sId > 0 && sName) {
+        const normName = sName.includes('/') ? sName : (sName.length === 6 ? `${sName.slice(0,3)}/${sName.slice(3)}` : sName);
+        try {
+          CTraderSymbolRegistry.registerSymbol({
+            symbolId: sId,
+            symbolName: normName,
+            digits: Number(rawSym.digits || (sName.includes('JPY') ? 3 : 5)),
+            pipPosition: Number(rawSym.pipPosition || (sName.includes('JPY') ? 2 : 4)),
+            minVolume: Number(rawSym.minVolume || 100000),
+            maxVolume: Number(rawSym.maxVolume || 1000000000),
+            stepVolume: Number(rawSym.stepVolume || 100000),
+            lotSize: Number(rawSym.lotSize || 10000000)
+          });
+        } catch (_) {}
+      }
+    }
+
+    for (const pair of wanted) {
+      const matches = response.decodedPayload.symbol.filter((x: any) => String(x.symbolName).replace('/','').toUpperCase() === pair.replace('/',''));
+      if (matches.length < 1) continue;
+      const id = Number(matches[0].symbolId);
+      if (!(id > 0)) continue;
+      this.symbolMap.set(id, pair as CurrencyPair);
+      this.pairToSymbolId.set(pair as CurrencyPair, id);
+    }
     if(!this.symbolMap.size)throw Error('NO_SUPPORTED_BROKER_SYMBOLS');
     return [...this.symbolMap.keys()];
+  }
+
+  public getSymbolName(symbolId: number): CurrencyPair | undefined {
+    return this.symbolMap.get(symbolId);
   }
 
   public evaluateFeedHealth(): MarketDataHealthReport {
