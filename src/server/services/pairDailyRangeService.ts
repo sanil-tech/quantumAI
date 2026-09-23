@@ -292,19 +292,29 @@ export class PairDailyRangeService {
   }
 
   /**
-   * Calculate precise Intraday SL, TP1, and TP2 levels to guarantee trade completion within 1 day
+   * Calculate precise timeframe-calibrated SL, TP1, and TP2 targets.
+   * Scales distances appropriately for M5 (scalping), M15, H1, and H4 timeframes.
    */
   public static calculateIntradayTargets(
     rawPair: string,
     direction: 'BUY' | 'SELL',
-    entryPrice: number
+    entryPrice: number,
+    timeframe: string = 'H1'
   ): IntradayTargetsResult {
     const profile = this.getProfile(rawPair);
     const isBuy = direction === 'BUY';
 
-    const slDist = profile.slPips * profile.pipMultiplier;
-    const tp1Dist = profile.tp1Pips * profile.pipMultiplier;
-    const tp2Dist = profile.tp2Pips * profile.pipMultiplier;
+    // Timeframe scaling multiplier: M5=0.45x (Scalping), M15=0.65x, H1=1.0x, H4=1.35x
+    const tfUpper = (timeframe || 'H1').toUpperCase();
+    const tfMultiplier = tfUpper === 'M5' ? 0.45 : (tfUpper === 'M15' ? 0.65 : (tfUpper === 'H4' ? 1.35 : 1.0));
+
+    const calibratedSlPips = Math.max(5, Number((profile.slPips * tfMultiplier).toFixed(1)));
+    const calibratedTp1Pips = Math.max(8, Number((profile.tp1Pips * tfMultiplier).toFixed(1)));
+    const calibratedTp2Pips = Math.max(14, Number((profile.tp2Pips * tfMultiplier).toFixed(1)));
+
+    const slDist = calibratedSlPips * profile.pipMultiplier;
+    const tp1Dist = calibratedTp1Pips * profile.pipMultiplier;
+    const tp2Dist = calibratedTp2Pips * profile.pipMultiplier;
 
     const slPrice = isBuy
       ? Number((entryPrice - slDist).toFixed(profile.decimals))
@@ -318,8 +328,12 @@ export class PairDailyRangeService {
       ? Number((entryPrice + tp2Dist).toFixed(profile.decimals))
       : Number((entryPrice - tp2Dist).toFixed(profile.decimals));
 
-    const rrTp1 = (profile.tp1Pips / profile.slPips).toFixed(1);
-    const rrTp2 = (profile.tp2Pips / profile.slPips).toFixed(1);
+    const rrTp1 = (calibratedTp1Pips / calibratedSlPips).toFixed(1);
+    const rrTp2 = (calibratedTp2Pips / calibratedSlPips).toFixed(1);
+
+    const durationText = tfUpper === 'M5' 
+      ? { tp1: '15-45 min (Scalping)', tp2: '45-90 min' }
+      : (tfUpper === 'M15' ? { tp1: '30-90 min', tp2: '2-4 jam' } : profile.expectedDurationHours);
 
     return {
       pair: profile.pair,
@@ -329,13 +343,13 @@ export class PairDailyRangeService {
       slPrice,
       tp1Price,
       tp2Price,
-      slPips: profile.slPips,
-      tp1Pips: profile.tp1Pips,
-      tp2Pips: profile.tp2Pips,
+      slPips: calibratedSlPips,
+      tp1Pips: calibratedTp1Pips,
+      tp2Pips: calibratedTp2Pips,
       riskRewardTp1: `1:${rrTp1}`,
       riskRewardTp2: `1:${rrTp2}`,
       isSameDayGuaranteed: true,
-      expectedDurationHours: profile.expectedDurationHours
+      expectedDurationHours: durationText
     };
   }
 

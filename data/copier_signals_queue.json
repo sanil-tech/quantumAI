@@ -1,5 +1,27 @@
 [
   {
+    "id": "sig_GBPAUD_M5_1790172176988",
+    "masterBrokerOrderId": "319609746",
+    "action": "NEW_ORDER",
+    "pair": "GBP/AUD",
+    "direction": "BUY",
+    "entryPrice": 1.8819,
+    "stopLoss": 1.8789,
+    "takeProfit1": 1.8879,
+    "takeProfit2": 1.8927,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: GBP/AUD BUY (Confidence: 92%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790258576987,
+    "timestamp": 1790172180329
+  },
+  {
     "id": "sig_AUDJPY_M5_1790171134644",
     "masterBrokerOrderId": "319599627",
     "action": "NEW_ORDER",

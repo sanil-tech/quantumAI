@@ -69,13 +69,14 @@ export const sharedAutoTraderState = {
 
 import { PairDailyRangeService } from '../services/pairDailyRangeService';
 
-export function resolveTradeSlTp(pos: { symbol?: string; direction?: string; entryPrice?: number; stopLoss?: number; takeProfit?: number; takeProfit1?: number; takeProfit2?: number; currentPrice?: number }) {
+export function resolveTradeSlTp(pos: { symbol?: string; direction?: string; entryPrice?: number; stopLoss?: number; takeProfit?: number; takeProfit1?: number; takeProfit2?: number; currentPrice?: number; timeframe?: string }) {
   const sym = pos.symbol || 'EUR/USD';
   const entry = Number(pos.entryPrice || pos.currentPrice || 1.0);
   const dir = (String(pos.direction || 'BUY').toUpperCase() as 'BUY' | 'SELL');
+  const tf = pos.timeframe || 'M5';
 
   const profile = PairDailyRangeService.getProfile(sym);
-  const intraday = PairDailyRangeService.calculateIntradayTargets(sym, dir, entry);
+  const intraday = PairDailyRangeService.calculateIntradayTargets(sym, dir, entry, tf);
 
   let sl = Number(pos.stopLoss || 0);
   let tp1 = Number(pos.takeProfit1 || pos.takeProfit || 0);
