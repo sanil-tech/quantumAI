@@ -214,6 +214,26 @@ export class AutonomousMarketScannerService extends EventEmitter {
   }
 
   /**
+   * Manually archives/purges a setup by ID and unfreezes the pair for immediate new signals
+   */
+  public archiveSetup(setupId: string): boolean {
+    const idx = this.discoveredSetups.findIndex(s => s.id === setupId || s.pair === setupId);
+    if (idx === -1) return false;
+
+    const setup = this.discoveredSetups[idx];
+    const pairKey = setup.pair.replace('/', '').toUpperCase();
+
+    console.log(`📦 [AutonomousMarketScanner] Archiving setup #${setup.id} for ${setup.pair}. Pair unfrozen for new signals.`);
+    this.discoveredSetups.splice(idx, 1);
+    this.cooldownLedger.delete(pairKey);
+    this.pushedSignalLedger.delete(pairKey);
+    this.waitingOpportunities.delete(setup.pair);
+
+    this.saveToDisk();
+    return true;
+  }
+
+  /**
    * Broadcast signal cancellation notification to Telegram subscribers
    */
   private notifySignalCancellation(setup: DiscoveredSetup, reason: string): void {
@@ -265,9 +285,42 @@ export class AutonomousMarketScannerService extends EventEmitter {
       openDb = [];
     }
 
+    const ctrader = new CTraderAdapter({ accountId: '48282756' });
+    let liveBrokerSymbols = new Set<string>();
+    let liveBrokerPendingSymbols = new Set<string>();
+    try {
+      const openPos = await ctrader.getOpenPositions();
+      for (const p of openPos) {
+        const sym = (p.symbol || '').replace('/', '').toUpperCase();
+        if (sym) liveBrokerSymbols.add(sym);
+      }
+      const pendingOrd = await ctrader.getPendingOrders(true);
+      for (const o of pendingOrd) {
+        const sym = (o.symbol || '').replace('/', '').toUpperCase();
+        if (sym) liveBrokerPendingSymbols.add(sym);
+      }
+    } catch (_) {}
+
     for (const setup of this.discoveredSetups) {
       const pairKey = setup.pair.replace('/', '').toUpperCase();
-      const isAlreadyOpen = openDb.some((p: any) => (p.symbol || '').replace('/', '').toUpperCase() === pairKey);
+      const isAlreadyOpen = openDb.some((p: any) => (p.symbol || '').replace('/', '').toUpperCase() === pairKey) || liveBrokerSymbols.has(pairKey);
+      const isPendingExisting = liveBrokerPendingSymbols.has(pairKey);
+
+      // Handle manually closed positions or cancelled pending orders on cTrader
+      if ((setup.status === 'SKIPPED_ALREADY_OPEN' && !isAlreadyOpen) || 
+          (setup.status === 'SKIPPED_PENDING_ORDER_EXISTS' && !isPendingExisting) ||
+          (setup.status === 'EXECUTED' && !isAlreadyOpen && !isPendingExisting)) {
+        
+        console.log(`✅ [AutonomousMarketScanner] cTrader position/order for ${setup.pair} was closed manually. Clearing setup from radar to make way for new signals.`);
+        setup.status = 'INVALID';
+        setup.isValid = false;
+        setup.invalidatedAt = now;
+        setup.invalidationReason = 'Posisi / Pesanan di cTrader telah selesai / ditutup secara manual';
+        
+        // Unfreeze pair cooldown so new signals can be generated immediately
+        this.cooldownLedger.delete(pairKey);
+        this.pushedSignalLedger.delete(pairKey);
+      }
 
       // Unfreeze economic veto status if economic context is now clear
       const econCheck = EconomicContextService.evaluateEconomicContext({ symbol: setup.pair });
@@ -287,15 +340,16 @@ export class AutonomousMarketScannerService extends EventEmitter {
         setup.status = 'SKIPPED_ALREADY_OPEN';
         validSetups.push(setup);
         continue;
-      } else if (setup.status === 'SKIPPED_ALREADY_OPEN') {
-        // Position was closed, unfreeze status to DISCOVERED
-        setup.status = 'DISCOVERED';
+      } else if (isPendingExisting) {
+        setup.status = 'SKIPPED_PENDING_ORDER_EXISTS';
+        validSetups.push(setup);
+        continue;
       }
 
       // Check TTL based on timeframe
-      const ttlMs = setup.timeframe === 'M15' 
-        ? 2 * 60 * 60 * 1000 
-        : (setup.timeframe === 'H1' ? 6 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000);
+      const ttlMs = setup.timeframe === 'M5'
+        ? 1 * 60 * 60 * 1000
+        : (setup.timeframe === 'M15' ? 2 * 60 * 60 * 1000 : (setup.timeframe === 'H1' ? 6 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000));
 
       const ctrader = new CTraderAdapter({ accountId: '48282756' });
       const INVALIDATION_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes cooling off period

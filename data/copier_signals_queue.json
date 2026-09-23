@@ -1,5 +1,49 @@
 [
   {
+    "id": "sig_USDJPY_M5_1790173485959",
+    "masterBrokerOrderId": "319614953",
+    "action": "NEW_ORDER",
+    "pair": "USD/JPY",
+    "direction": "BUY",
+    "entryPrice": 158.148,
+    "stopLoss": 157.798,
+    "takeProfit1": 158.848,
+    "takeProfit2": 159.408,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: USD/JPY BUY (Confidence: 89%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790259885959,
+    "timestamp": 1790173488735
+  },
+  {
+    "id": "sig_EURAUD_M5_1790173186054",
+    "masterBrokerOrderId": "319613832",
+    "action": "NEW_ORDER",
+    "pair": "EUR/AUD",
+    "direction": "BUY",
+    "entryPrice": 1.6174,
+    "stopLoss": 1.6144,
+    "takeProfit1": 1.6234,
+    "takeProfit2": 1.6282,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: EUR/AUD BUY (Confidence: 92%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790259586054,
+    "timestamp": 1790173194072
+  },
+  {
     "id": "sig_USDCAD_H4_1790173120384",
     "masterBrokerOrderId": "319613446",
     "action": "NEW_ORDER",

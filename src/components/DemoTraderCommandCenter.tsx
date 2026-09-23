@@ -1598,17 +1598,37 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
                                         : '🎯 RADAR SETUP'}
                             </span>
                           )}
-                          <button
-                            onClick={() => {
-                              setActivePair(setup.pair);
-                              if (setTimeframe && setup.timeframe) setTimeframe(setup.timeframe);
-                              setShowDiscoveredSetupsModal(false);
-                            }}
-                            className="px-3.5 py-1.5 bg-gradient-to-r from-cyan-600 via-indigo-600 to-blue-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-extrabold rounded-xl transition shadow-lg shadow-cyan-950/50 cursor-pointer text-xs flex items-center gap-1.5"
-                          >
-                            <Zap className="w-3.5 h-3.5 text-cyan-300" />
-                            <span>⚡ Muat Setup &amp; Carta</span>
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                  await fetch('/api/autotrader/scanner/archive-setup', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ setupId: setup.id })
+                                  });
+                                  if (onRefreshData) onRefreshData();
+                                } catch {}
+                              }}
+                              className="px-2.5 py-1.5 bg-slate-800 hover:bg-rose-900/60 text-slate-300 hover:text-rose-200 border border-slate-700 hover:border-rose-500/50 font-medium rounded-xl transition cursor-pointer text-xs flex items-center gap-1"
+                              title="Arkibkan setup ini dan bebaskan laluan untuk signal baru"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              <span>Arkib</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                setActivePair(setup.pair);
+                                if (setTimeframe && setup.timeframe) setTimeframe(setup.timeframe);
+                                setShowDiscoveredSetupsModal(false);
+                              }}
+                              className="px-3.5 py-1.5 bg-gradient-to-r from-cyan-600 via-indigo-600 to-blue-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-extrabold rounded-xl transition shadow-lg shadow-cyan-950/50 cursor-pointer text-xs flex items-center gap-1.5"
+                            >
+                              <Zap className="w-3.5 h-3.5 text-cyan-300" />
+                              <span>⚡ Muat Setup &amp; Carta</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );

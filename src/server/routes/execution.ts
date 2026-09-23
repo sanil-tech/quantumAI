@@ -1490,4 +1490,27 @@ executionRouter.post('/autotrader/auto-heal', async (req: Request, res: Response
   }
 });
 
+/**
+ * POST /api/autotrader/scanner/archive-setup
+ * Manually archives/purges a setup from radar and unfreezes the pair for immediate new signals
+ */
+executionRouter.post('/autotrader/scanner/archive-setup', async (req: Request, res: Response) => {
+  try {
+    const { setupId } = req.body || {};
+    if (!setupId) {
+      res.status(400).json({ error: 'setupId is required' });
+      return;
+    }
+    const { autonomousMarketScannerService } = await import('../services/autonomousMarketScannerService');
+    const success = autonomousMarketScannerService.archiveSetup(setupId);
+    if (success) {
+      res.json({ message: `Setup #${setupId} archived successfully and pair unfrozen for new signals` });
+    } else {
+      res.status(404).json({ error: `Setup #${setupId} not found` });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 

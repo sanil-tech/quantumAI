@@ -1,5 +1,248 @@
 [
   {
+    "id": "sig_USDJPY_M5_1790173485959",
+    "timestamp": 1790173486620,
+    "pair": "USD/JPY",
+    "timeframe": "M5",
+    "direction": "BUY",
+    "confidence": 89,
+    "entryPrice": 158.148,
+    "stopLoss": 157.798,
+    "takeProfit1": 158.848,
+    "takeProfit2": 159.408,
+    "breakEvenPrice": 158.148,
+    "reasons": [
+      "USD/JPY live price (158.298) is holding above 50 EMA trend filter.",
+      "ADX (20.0) mengukur kekuatan trend (moderate); hala tuju disahkan oleh penunjuk directional (+DI: 20.0 / -DI: 20.0).",
+      "SuperTrend filter is BULLISH and ATR volatility is 0.088.",
+      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
+      "[CANDLE CONFIRMATION] Bullish Pin Bar / Hammer confirmed on closed candle.",
+      "[BACKTEST WARNING] pm-1y-1790173479618-28: Historical 1-Year Backtest indicates caution on USD/JPY (ORDER_BLOCK_RETEST BUY, TRENDING_BEARISH). Root cause: \"1-Year Backtest Evaluation: BUY setup on USD/JPY stopped out at SL 158.421 during daily volatility expansion.\". Source: HISTORICAL_BACKTEST. Authority: BACKTEST_ENGINE. Execution Veto: NO.",
+      "[BACKTEST WARNING] pm-1y-1790173479617-26: Historical 1-Year Backtest indicates caution on USD/JPY (ORDER_BLOCK_RETEST BUY, TRENDING_BEARISH). Root cause: \"1-Year Backtest Evaluation: BUY setup on USD/JPY stopped out at SL 158.060 during daily volatility expansion.\". Source: HISTORICAL_BACKTEST. Authority: BACKTEST_ENGINE. Execution Veto: NO.",
+      "[BACKTEST WARNING] pm-1y-1790173479617-24: Historical 1-Year Backtest indicates caution on USD/JPY (ORDER_BLOCK_RETEST BUY, TRENDING_BEARISH). Root cause: \"1-Year Backtest Evaluation: BUY setup on USD/JPY stopped out at SL 158.420 during daily volatility expansion.\". Source: HISTORICAL_BACKTEST. Authority: BACKTEST_ENGINE. Execution Veto: NO."
+    ],
+    "status": "SKIPPED_PENDING_ORDER_EXISTS",
+    "isValid": true,
+    "entryMode": "BUY_PULLBACK",
+    "distancePips": 15,
+    "canonicalSignal": {
+      "signalId": "sig_USDJPY_M5_1790173485959",
+      "symbol": "USD/JPY",
+      "timeframe": "M5",
+      "generatedAt": 1790173485959,
+      "expiryTime": 1790259885959,
+      "marketDataTimestamp": 1790173485959,
+      "dataSource": "CTRADER_LIVE_FEED",
+      "currentPrice": 158.298,
+      "direction": "BUY",
+      "signalType": "ORDER_BLOCK_RETEST",
+      "entryPrice": 158.148,
+      "entryMode": "BUY_PULLBACK",
+      "distancePips": 15,
+      "stopLoss": 157.798,
+      "takeProfit1": 158.848,
+      "takeProfit2": 159.408,
+      "riskPips": 35,
+      "rewardPipsTP1": 70,
+      "rewardPipsTP2": 126,
+      "rrTP1": 2,
+      "rrTP2": 3.6,
+      "recommendedLot": 0.02,
+      "indicators": {
+        "ema50": 158.298,
+        "ema200": 158.298,
+        "rsi14": 68.01,
+        "adx": 20,
+        "plusDI": 20,
+        "minusDI": 20,
+        "superTrendDirection": "BULLISH",
+        "atr": 0.08793,
+        "macdHistogram": 158.14913,
+        "vwap": 158.0258
+      },
+      "marketRegime": "TRENDING_BULLISH",
+      "modelConfidence": 80,
+      "validationConfidence": 95,
+      "confidence": 89,
+      "reasoningEvidence": [
+        "USD/JPY live price (158.298) is holding above 50 EMA trend filter.",
+        "ADX (20.0) mengukur kekuatan trend (moderate); hala tuju disahkan oleh penunjuk directional (+DI: 20.0 / -DI: 20.0).",
+        "SuperTrend filter is BULLISH and ATR volatility is 0.088.",
+        "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
+        "[CANDLE CONFIRMATION] Bullish Pin Bar / Hammer confirmed on closed candle.",
+        "[BACKTEST WARNING] pm-1y-1790173479618-28: Historical 1-Year Backtest indicates caution on USD/JPY (ORDER_BLOCK_RETEST BUY, TRENDING_BEARISH). Root cause: \"1-Year Backtest Evaluation: BUY setup on USD/JPY stopped out at SL 158.421 during daily volatility expansion.\". Source: HISTORICAL_BACKTEST. Authority: BACKTEST_ENGINE. Execution Veto: NO.",
+        "[BACKTEST WARNING] pm-1y-1790173479617-26: Historical 1-Year Backtest indicates caution on USD/JPY (ORDER_BLOCK_RETEST BUY, TRENDING_BEARISH). Root cause: \"1-Year Backtest Evaluation: BUY setup on USD/JPY stopped out at SL 158.060 during daily volatility expansion.\". Source: HISTORICAL_BACKTEST. Authority: BACKTEST_ENGINE. Execution Veto: NO.",
+        "[BACKTEST WARNING] pm-1y-1790173479617-24: Historical 1-Year Backtest indicates caution on USD/JPY (ORDER_BLOCK_RETEST BUY, TRENDING_BEARISH). Root cause: \"1-Year Backtest Evaluation: BUY setup on USD/JPY stopped out at SL 158.420 during daily volatility expansion.\". Source: HISTORICAL_BACKTEST. Authority: BACKTEST_ENGINE. Execution Veto: NO."
+      ],
+      "bullishEvidence": [
+        "SuperTrend dalam zon Bullish",
+        "Histogram MACD positif (+158.1491)"
+      ],
+      "bearishEvidence": [],
+      "riskWarnings": [],
+      "validationStatus": "WARNING",
+      "validationErrors": [],
+      "validationWarnings": [
+        "Entri diklasifikasikan sebagai BUY_PULLBACK. Pesanan menunggu harga mencecah 158.148 (15 pip)."
+      ],
+      "executionStatus": "WAITING_FOR_ENTRY",
+      "executionEligibility": "WAITING_FOR_ENTRY",
+      "eligibilityReason": "Pullback entry not yet reached. Waiting for market price to retrace to 158.148 (15 pips away)."
+    },
+    "validationReport": {
+      "signalId": "sig_USDJPY_M5_1790173485959",
+      "symbol": "USD/JPY",
+      "timeframe": "M5",
+      "direction": "BUY",
+      "entryMode": "BUY_PULLBACK",
+      "currentPrice": 158.298,
+      "plannedEntry": 158.148,
+      "distancePips": 15,
+      "timestamp": 1790173485959,
+      "dataCheck": {
+        "checkName": "Data Integrity",
+        "passed": true,
+        "status": "PASS",
+        "message": "All price fields, timestamps, and indicators are populated and finite numbers."
+      },
+      "indicatorSemantics": {
+        "checkName": "Indicator Semantics",
+        "passed": true,
+        "status": "PASS",
+        "message": "Indicators adhere strictly to standard quantitative definitions (ADX=Strength, DI/EMA/SuperTrend=Direction)."
+      },
+      "directionConsistency": {
+        "checkName": "Direction Consistency",
+        "passed": true,
+        "status": "PASS",
+        "message": "Direction BUY matches technical evidence (Bull: 30 pts, Bear: 0 pts)."
+      },
+      "rsiInterpretation": {
+        "checkName": "RSI Interpretation",
+        "passed": true,
+        "status": "PASS",
+        "message": "RSI = 68.0 in normal momentum range."
+      },
+      "adxInterpretation": {
+        "checkName": "ADX Interpretation",
+        "passed": true,
+        "status": "PASS",
+        "message": "ADX = 20.0 indicates moderate trend strength. Directional component confirmed via +DI (20.0) vs -DI (20.0)."
+      },
+      "entryConsistency": {
+        "checkName": "Entry Consistency",
+        "passed": true,
+        "status": "WARNING",
+        "message": "Entry mode classified as BUY_PULLBACK. Current price: 158.298, Planned entry: 158.148 (15 pips distance). Lifecycle status: WAITING_FOR_ENTRY."
+      },
+      "riskRewardCheck": {
+        "checkName": "Risk / Reward & Geometry Check",
+        "passed": true,
+        "status": "PASS",
+        "message": "SL, TP1, and TP2 strictly adhere to directional geometry and positive R:R."
+      },
+      "confidenceCheck": {
+        "checkName": "Confidence Validation",
+        "passed": true,
+        "status": "PASS",
+        "message": "AI Model Confidence: 80% (Advisory). Deterministic Validation Confidence: 95% (Authoritative). Effective: 89%."
+      },
+      "explanationCheck": {
+        "checkName": "Explanation Consistency",
+        "passed": true,
+        "status": "PASS",
+        "message": "Explanations sanitized and verified to never contradict technical indicators or misinterpret ADX/RSI semantics."
+      },
+      "overallStatus": "WARNING",
+      "finalLifecycleStatus": "WAITING_FOR_ENTRY",
+      "executionEligibility": "WAITING_FOR_ENTRY",
+      "eligibilityReason": "Pullback entry not yet reached. Waiting for market price to retrace to 158.148 (15 pips away).",
+      "errors": [],
+      "warnings": [
+        "Entri diklasifikasikan sebagai BUY_PULLBACK. Pesanan menunggu harga mencecah 158.148 (15 pip)."
+      ],
+      "sanitizedReasons": [
+        "USD/JPY live price (158.298) is holding above 50 EMA trend filter.",
+        "ADX (20.0) mengukur kekuatan trend (moderate); hala tuju disahkan oleh penunjuk directional (+DI: 20.0 / -DI: 20.0).",
+        "SuperTrend filter is BULLISH and ATR volatility is 0.088.",
+        "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
+        "[CANDLE CONFIRMATION] Bullish Pin Bar / Hammer confirmed on closed candle.",
+        "[BACKTEST WARNING] pm-1y-1790173479618-28: Historical 1-Year Backtest indicates caution on USD/JPY (ORDER_BLOCK_RETEST BUY, TRENDING_BEARISH). Root cause: \"1-Year Backtest Evaluation: BUY setup on USD/JPY stopped out at SL 158.421 during daily volatility expansion.\". Source: HISTORICAL_BACKTEST. Authority: BACKTEST_ENGINE. Execution Veto: NO.",
+        "[BACKTEST WARNING] pm-1y-1790173479617-26: Historical 1-Year Backtest indicates caution on USD/JPY (ORDER_BLOCK_RETEST BUY, TRENDING_BEARISH). Root cause: \"1-Year Backtest Evaluation: BUY setup on USD/JPY stopped out at SL 158.060 during daily volatility expansion.\". Source: HISTORICAL_BACKTEST. Authority: BACKTEST_ENGINE. Execution Veto: NO.",
+        "[BACKTEST WARNING] pm-1y-1790173479617-24: Historical 1-Year Backtest indicates caution on USD/JPY (ORDER_BLOCK_RETEST BUY, TRENDING_BEARISH). Root cause: \"1-Year Backtest Evaluation: BUY setup on USD/JPY stopped out at SL 158.420 during daily volatility expansion.\". Source: HISTORICAL_BACKTEST. Authority: BACKTEST_ENGINE. Execution Veto: NO."
+      ],
+      "isExecutable": true
+    },
+    "executionDetails": {
+      "brokerOrderId": "319614953",
+      "dispatchedAt": 1790173488707,
+      "copyResults": [
+        {
+          "id": "copy-1790173489353-sub-5912914",
+          "masterTradeId": "319614953",
+          "subscriberId": "sub-5912914",
+          "subscriberName": "cTID Trader (5912914)",
+          "accountNumber": "5912914",
+          "pair": "USD/JPY",
+          "direction": "BUY",
+          "entryPrice": 158.148,
+          "stopLoss": 157.798,
+          "takeProfit": 158.848,
+          "takeProfit2": 159.408,
+          "isMultiTarget": true,
+          "lotSize": 0,
+          "riskPercent": 1,
+          "status": "FAILED",
+          "latencyMs": 604,
+          "executedAt": 1790173489353,
+          "error": "SUBSCRIBER_BALANCE_UNAVAILABLE"
+        },
+        {
+          "id": "copy-1790173489353-sub-5916063",
+          "masterTradeId": "319614953",
+          "subscriberId": "sub-5916063",
+          "subscriberName": "cTID Trader (5916063)",
+          "accountNumber": "5916063",
+          "pair": "USD/JPY",
+          "direction": "BUY",
+          "entryPrice": 158.148,
+          "stopLoss": 157.798,
+          "takeProfit": 158.848,
+          "takeProfit2": 159.408,
+          "isMultiTarget": true,
+          "lotSize": 0,
+          "riskPercent": 1,
+          "status": "FAILED",
+          "latencyMs": 610,
+          "executedAt": 1790173489353,
+          "error": "SUBSCRIBER_BALANCE_UNAVAILABLE"
+        },
+        {
+          "id": "copy-1790173490509-sub-5877246",
+          "masterTradeId": "319614953",
+          "subscriberId": "sub-5877246",
+          "subscriberName": "cTID Trader (5877246)",
+          "accountNumber": "5877246",
+          "pair": "USD/JPY",
+          "direction": "BUY",
+          "entryPrice": 158.298,
+          "stopLoss": 157.798,
+          "takeProfit": 158.848,
+          "takeProfit2": 159.408,
+          "isMultiTarget": true,
+          "lotSize": 0.04,
+          "riskPercent": 1,
+          "status": "SUCCESS",
+          "orderType": "LIMIT",
+          "latencyMs": 37,
+          "executedAt": 1790173490509,
+          "brokerTicket": "292035566"
+        }
+      ]
+    },
+    "telegramBroadcastSent": true
+  },
+  {
     "id": "sig_USDCHF_M5_1790172853844",
     "timestamp": 1790172854597,
     "pair": "USD/CHF",
@@ -18,7 +261,7 @@
       "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
       "[CANDLE CONFIRMATION] Bullish Engulfing confirmed on closed candle."
     ],
-    "status": "EXECUTED",
+    "status": "SKIPPED_PENDING_ORDER_EXISTS",
     "isValid": true,
     "entryMode": "BUY_PULLBACK",
     "distancePips": 10,
@@ -468,45 +711,45 @@
     "telegramBroadcastSent": true
   },
   {
-    "id": "sig_EURAUD_M5_1790171124238",
-    "timestamp": 1790171125519,
+    "id": "sig_EURAUD_M5_1790173186054",
+    "timestamp": 1790173186822,
     "pair": "EUR/AUD",
     "timeframe": "M5",
     "direction": "BUY",
     "confidence": 92,
-    "entryPrice": 1.61625,
-    "stopLoss": 1.61325,
-    "takeProfit1": 1.62225,
-    "takeProfit2": 1.62705,
-    "breakEvenPrice": 1.61625,
+    "entryPrice": 1.6174,
+    "stopLoss": 1.6144,
+    "takeProfit1": 1.6234,
+    "takeProfit2": 1.6282,
+    "breakEvenPrice": 1.6174,
     "reasons": [
-      "EUR/AUD live price (1.61725) is holding above 50 EMA trend filter.",
+      "EUR/AUD live price (1.61840) is holding above 50 EMA trend filter.",
       "ADX (20.0) mengukur kekuatan trend (moderate); hala tuju disahkan oleh penunjuk directional (+DI: 20.0 / -DI: 20.0).",
-      "SuperTrend filter is BULLISH and ATR volatility is 0.00095.",
+      "SuperTrend filter is BULLISH and ATR volatility is 0.00107.",
       "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
-      "[CANDLE CONFIRMATION] Bullish Pin Bar / Hammer confirmed on closed candle."
+      "[CANDLE CONFIRMATION] Bullish Engulfing confirmed on closed candle."
     ],
-    "status": "EXECUTED",
+    "status": "SKIPPED_ALREADY_OPEN",
     "isValid": true,
     "entryMode": "BUY_PULLBACK",
     "distancePips": 10,
     "canonicalSignal": {
-      "signalId": "sig_EURAUD_M5_1790171124238",
+      "signalId": "sig_EURAUD_M5_1790173186054",
       "symbol": "EUR/AUD",
       "timeframe": "M5",
-      "generatedAt": 1790171124238,
-      "expiryTime": 1790257524238,
-      "marketDataTimestamp": 1790171124238,
+      "generatedAt": 1790173186054,
+      "expiryTime": 1790259586054,
+      "marketDataTimestamp": 1790173186054,
       "dataSource": "CTRADER_LIVE_FEED",
-      "currentPrice": 1.61725,
+      "currentPrice": 1.6184,
       "direction": "BUY",
       "signalType": "ORDER_BLOCK_RETEST",
-      "entryPrice": 1.61625,
+      "entryPrice": 1.6174,
       "entryMode": "BUY_PULLBACK",
       "distancePips": 10,
-      "stopLoss": 1.61325,
-      "takeProfit1": 1.62225,
-      "takeProfit2": 1.62705,
+      "stopLoss": 1.6144,
+      "takeProfit1": 1.6234,
+      "takeProfit2": 1.6282,
       "riskPips": 30,
       "rewardPipsTP1": 60,
       "rewardPipsTP2": 108,
@@ -514,56 +757,56 @@
       "rrTP2": 3.6,
       "recommendedLot": 0.02,
       "indicators": {
-        "ema50": 1.61725,
-        "ema200": 1.61725,
-        "rsi14": 71.22,
+        "ema50": 1.6184,
+        "ema200": 1.6184,
+        "rsi14": 72.94,
         "adx": 20,
         "plusDI": 20,
         "minusDI": 20,
         "superTrendDirection": "BULLISH",
-        "atr": 0.00095,
-        "macdHistogram": 1.61594,
-        "vwap": 1.61485
+        "atr": 0.00107,
+        "macdHistogram": 1.61733,
+        "vwap": 1.61613
       },
       "marketRegime": "TRENDING_BULLISH",
       "modelConfidence": 88,
       "validationConfidence": 95,
       "confidence": 92,
       "reasoningEvidence": [
-        "EUR/AUD live price (1.61725) is holding above 50 EMA trend filter.",
+        "EUR/AUD live price (1.61840) is holding above 50 EMA trend filter.",
         "ADX (20.0) mengukur kekuatan trend (moderate); hala tuju disahkan oleh penunjuk directional (+DI: 20.0 / -DI: 20.0).",
-        "SuperTrend filter is BULLISH and ATR volatility is 0.00095.",
+        "SuperTrend filter is BULLISH and ATR volatility is 0.00107.",
         "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
-        "[CANDLE CONFIRMATION] Bullish Pin Bar / Hammer confirmed on closed candle."
+        "[CANDLE CONFIRMATION] Bullish Engulfing confirmed on closed candle."
       ],
       "bullishEvidence": [
         "SuperTrend dalam zon Bullish",
-        "Histogram MACD positif (+1.6159)"
+        "Histogram MACD positif (+1.6173)"
       ],
       "bearishEvidence": [],
       "riskWarnings": [
-        "RSI 71.2 — Momentum menaik kuat; pantau retracement."
+        "RSI 72.9 — Momentum menaik kuat; pantau retracement."
       ],
       "validationStatus": "WARNING",
       "validationErrors": [],
       "validationWarnings": [
-        "RSI 71.2 — Momentum menaik kuat; pantau retracement.",
-        "Entri diklasifikasikan sebagai BUY_PULLBACK. Pesanan menunggu harga mencecah 1.61625 (10 pip)."
+        "RSI 72.9 — Momentum menaik kuat; pantau retracement.",
+        "Entri diklasifikasikan sebagai BUY_PULLBACK. Pesanan menunggu harga mencecah 1.6174 (10 pip)."
       ],
       "executionStatus": "WAITING_FOR_ENTRY",
       "executionEligibility": "WAITING_FOR_ENTRY",
-      "eligibilityReason": "Pullback entry not yet reached. Waiting for market price to retrace to 1.61625 (10 pips away)."
+      "eligibilityReason": "Pullback entry not yet reached. Waiting for market price to retrace to 1.6174 (10 pips away)."
     },
     "validationReport": {
-      "signalId": "sig_EURAUD_M5_1790171124238",
+      "signalId": "sig_EURAUD_M5_1790173186054",
       "symbol": "EUR/AUD",
       "timeframe": "M5",
       "direction": "BUY",
       "entryMode": "BUY_PULLBACK",
-      "currentPrice": 1.61725,
-      "plannedEntry": 1.61625,
+      "currentPrice": 1.6184,
+      "plannedEntry": 1.6174,
       "distancePips": 10,
-      "timestamp": 1790171124238,
+      "timestamp": 1790173186054,
       "dataCheck": {
         "checkName": "Data Integrity",
         "passed": true,
@@ -586,7 +829,7 @@
         "checkName": "RSI Interpretation",
         "passed": true,
         "status": "WARNING",
-        "message": "RSI = 71.2 indicates strong upward momentum with moderate pullback risk."
+        "message": "RSI = 72.9 indicates strong upward momentum with moderate pullback risk."
       },
       "adxInterpretation": {
         "checkName": "ADX Interpretation",
@@ -598,7 +841,7 @@
         "checkName": "Entry Consistency",
         "passed": true,
         "status": "WARNING",
-        "message": "Entry mode classified as BUY_PULLBACK. Current price: 1.61725, Planned entry: 1.61625 (10 pips distance). Lifecycle status: WAITING_FOR_ENTRY."
+        "message": "Entry mode classified as BUY_PULLBACK. Current price: 1.6184, Planned entry: 1.6174 (10 pips distance). Lifecycle status: WAITING_FOR_ENTRY."
       },
       "riskRewardCheck": {
         "checkName": "Risk / Reward & Geometry Check",
@@ -621,84 +864,85 @@
       "overallStatus": "WARNING",
       "finalLifecycleStatus": "WAITING_FOR_ENTRY",
       "executionEligibility": "WAITING_FOR_ENTRY",
-      "eligibilityReason": "Pullback entry not yet reached. Waiting for market price to retrace to 1.61625 (10 pips away).",
+      "eligibilityReason": "Pullback entry not yet reached. Waiting for market price to retrace to 1.6174 (10 pips away).",
       "errors": [],
       "warnings": [
-        "RSI 71.2 — Momentum menaik kuat; pantau retracement.",
-        "Entri diklasifikasikan sebagai BUY_PULLBACK. Pesanan menunggu harga mencecah 1.61625 (10 pip)."
+        "RSI 72.9 — Momentum menaik kuat; pantau retracement.",
+        "Entri diklasifikasikan sebagai BUY_PULLBACK. Pesanan menunggu harga mencecah 1.6174 (10 pip)."
       ],
       "sanitizedReasons": [
-        "EUR/AUD live price (1.61725) is holding above 50 EMA trend filter.",
+        "EUR/AUD live price (1.61840) is holding above 50 EMA trend filter.",
         "ADX (20.0) mengukur kekuatan trend (moderate); hala tuju disahkan oleh penunjuk directional (+DI: 20.0 / -DI: 20.0).",
-        "SuperTrend filter is BULLISH and ATR volatility is 0.00095.",
+        "SuperTrend filter is BULLISH and ATR volatility is 0.00107.",
         "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
-        "[CANDLE CONFIRMATION] Bullish Pin Bar / Hammer confirmed on closed candle."
+        "[CANDLE CONFIRMATION] Bullish Engulfing confirmed on closed candle."
       ],
       "isExecutable": true
     },
     "executionDetails": {
-      "brokerOrderId": "319599502",
-      "dispatchedAt": 1790171127542,
+      "brokerOrderId": "319613832",
+      "dispatchedAt": 1790173194043,
       "copyResults": [
         {
-          "id": "copy-1790171128040-sub-5916063",
-          "masterTradeId": "319599502",
+          "id": "copy-1790173202093-sub-5916063",
+          "masterTradeId": "319613832",
           "subscriberId": "sub-5916063",
           "subscriberName": "cTID Trader (5916063)",
           "accountNumber": "5916063",
           "pair": "EUR/AUD",
           "direction": "BUY",
-          "entryPrice": 1.61625,
-          "stopLoss": 1.61325,
-          "takeProfit": 1.62225,
-          "takeProfit2": 1.62705,
+          "entryPrice": 1.6174,
+          "stopLoss": 1.6144,
+          "takeProfit": 1.6234,
+          "takeProfit2": 1.6282,
           "isMultiTarget": true,
           "lotSize": 0,
           "riskPercent": 1,
           "status": "FAILED",
-          "latencyMs": 477,
-          "executedAt": 1790171128040,
+          "latencyMs": 8012,
+          "executedAt": 1790173202093,
           "error": "SUBSCRIBER_BALANCE_UNAVAILABLE"
         },
         {
-          "id": "copy-1790171128050-sub-5877246",
-          "masterTradeId": "319599502",
-          "subscriberId": "sub-5877246",
-          "subscriberName": "cTID Trader (5877246)",
-          "accountNumber": "5877246",
-          "pair": "EUR/AUD",
-          "direction": "BUY",
-          "entryPrice": 1.61625,
-          "stopLoss": 1.61325,
-          "takeProfit": 1.62225,
-          "takeProfit2": 1.62705,
-          "isMultiTarget": true,
-          "lotSize": 0.04,
-          "riskPercent": 1,
-          "status": "FAILED",
-          "latencyMs": 485,
-          "executedAt": 1790171128050,
-          "error": "CTRADER_ORDER_ERROR: INVALID_REQUEST - Order price = 1.61625 has more digits than symbol allows. Allowed 4 digits"
-        },
-        {
-          "id": "copy-1790171128172-sub-5912914",
-          "masterTradeId": "319599502",
+          "id": "copy-1790173202096-sub-5912914",
+          "masterTradeId": "319613832",
           "subscriberId": "sub-5912914",
           "subscriberName": "cTID Trader (5912914)",
           "accountNumber": "5912914",
           "pair": "EUR/AUD",
           "direction": "BUY",
-          "entryPrice": 1.61625,
-          "stopLoss": 1.61325,
-          "takeProfit": 1.62225,
-          "takeProfit2": 1.62705,
+          "entryPrice": 1.6174,
+          "stopLoss": 1.6144,
+          "takeProfit": 1.6234,
+          "takeProfit2": 1.6282,
           "isMultiTarget": true,
           "lotSize": 0,
           "riskPercent": 1,
           "status": "FAILED",
-          "latencyMs": 605,
-          "executedAt": 1790171128172,
+          "latencyMs": 8011,
+          "executedAt": 1790173202096,
           "error": "SUBSCRIBER_BALANCE_UNAVAILABLE"
+        },
+        {
+          "id": "copy-1790173204303-sub-5877246",
+          "masterTradeId": "319613832",
+          "subscriberId": "sub-5877246",
+          "subscriberName": "cTID Trader (5877246)",
+          "accountNumber": "5877246",
+          "pair": "EUR/AUD",
+          "direction": "BUY",
+          "entryPrice": 1.6184,
+          "stopLoss": 1.6144,
+          "takeProfit": 1.6234,
+          "takeProfit2": 1.6282,
+          "isMultiTarget": true,
+          "lotSize": 0.04,
+          "riskPercent": 1,
+          "status": "SUCCESS",
+          "orderType": "LIMIT",
+          "latencyMs": 35,
+          "executedAt": 1790173204303,
+          "brokerTicket": "292033871"
         }
       ]
     },
@@ -723,7 +967,7 @@
       "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
       "[CANDLE CONFIRMATION] Bullish Pin Bar / Hammer confirmed on closed candle."
     ],
-    "status": "EXECUTED",
+    "status": "SKIPPED_PENDING_ORDER_EXISTS",
     "isValid": true,
     "entryMode": "BUY_PULLBACK",
     "distancePips": 10,
@@ -939,244 +1183,6 @@
     "telegramBroadcastSent": true
   },
   {
-    "id": "sig_GBPAUD_M5_1790172176988",
-    "timestamp": 1790172178139,
-    "pair": "GBP/AUD",
-    "timeframe": "M5",
-    "direction": "BUY",
-    "confidence": 92,
-    "entryPrice": 1.8819,
-    "stopLoss": 1.8789,
-    "takeProfit1": 1.8879,
-    "takeProfit2": 1.8927,
-    "breakEvenPrice": 1.8819,
-    "reasons": [
-      "GBP/AUD live price (1.88290) is holding above 50 EMA trend filter.",
-      "ADX (20.0) mengukur kekuatan trend (moderate); hala tuju disahkan oleh penunjuk directional (+DI: 20.0 / -DI: 20.0).",
-      "SuperTrend filter is BULLISH and ATR volatility is 0.00100.",
-      "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
-      "[CANDLE CONFIRMATION] Bullish Pin Bar / Hammer confirmed on closed candle."
-    ],
-    "status": "EXECUTED",
-    "isValid": true,
-    "entryMode": "BUY_PULLBACK",
-    "distancePips": 10,
-    "canonicalSignal": {
-      "signalId": "sig_GBPAUD_M5_1790172176988",
-      "symbol": "GBP/AUD",
-      "timeframe": "M5",
-      "generatedAt": 1790172176987,
-      "expiryTime": 1790258576987,
-      "marketDataTimestamp": 1790172176987,
-      "dataSource": "CTRADER_LIVE_FEED",
-      "currentPrice": 1.8829,
-      "direction": "BUY",
-      "signalType": "ORDER_BLOCK_RETEST",
-      "entryPrice": 1.8819,
-      "entryMode": "BUY_PULLBACK",
-      "distancePips": 10,
-      "stopLoss": 1.8789,
-      "takeProfit1": 1.8879,
-      "takeProfit2": 1.8927,
-      "riskPips": 30,
-      "rewardPipsTP1": 60,
-      "rewardPipsTP2": 108,
-      "rrTP1": 2,
-      "rrTP2": 3.6,
-      "recommendedLot": 0.02,
-      "indicators": {
-        "ema50": 1.8829,
-        "ema200": 1.8829,
-        "rsi14": 74.71,
-        "adx": 20,
-        "plusDI": 20,
-        "minusDI": 20,
-        "superTrendDirection": "BULLISH",
-        "atr": 0.001,
-        "macdHistogram": 1.88127,
-        "vwap": 1.87991
-      },
-      "marketRegime": "TRENDING_BULLISH",
-      "modelConfidence": 88,
-      "validationConfidence": 95,
-      "confidence": 92,
-      "reasoningEvidence": [
-        "GBP/AUD live price (1.88290) is holding above 50 EMA trend filter.",
-        "ADX (20.0) mengukur kekuatan trend (moderate); hala tuju disahkan oleh penunjuk directional (+DI: 20.0 / -DI: 20.0).",
-        "SuperTrend filter is BULLISH and ATR volatility is 0.00100.",
-        "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
-        "[CANDLE CONFIRMATION] Bullish Pin Bar / Hammer confirmed on closed candle."
-      ],
-      "bullishEvidence": [
-        "SuperTrend dalam zon Bullish",
-        "Histogram MACD positif (+1.8813)"
-      ],
-      "bearishEvidence": [],
-      "riskWarnings": [
-        "RSI 74.7 — Momentum menaik kuat; pantau retracement."
-      ],
-      "validationStatus": "WARNING",
-      "validationErrors": [],
-      "validationWarnings": [
-        "RSI 74.7 — Momentum menaik kuat; pantau retracement.",
-        "Entri diklasifikasikan sebagai BUY_PULLBACK. Pesanan menunggu harga mencecah 1.8819 (10 pip)."
-      ],
-      "executionStatus": "WAITING_FOR_ENTRY",
-      "executionEligibility": "WAITING_FOR_ENTRY",
-      "eligibilityReason": "Pullback entry not yet reached. Waiting for market price to retrace to 1.8819 (10 pips away)."
-    },
-    "validationReport": {
-      "signalId": "sig_GBPAUD_M5_1790172176988",
-      "symbol": "GBP/AUD",
-      "timeframe": "M5",
-      "direction": "BUY",
-      "entryMode": "BUY_PULLBACK",
-      "currentPrice": 1.8829,
-      "plannedEntry": 1.8819,
-      "distancePips": 10,
-      "timestamp": 1790172176987,
-      "dataCheck": {
-        "checkName": "Data Integrity",
-        "passed": true,
-        "status": "PASS",
-        "message": "All price fields, timestamps, and indicators are populated and finite numbers."
-      },
-      "indicatorSemantics": {
-        "checkName": "Indicator Semantics",
-        "passed": true,
-        "status": "PASS",
-        "message": "Indicators adhere strictly to standard quantitative definitions (ADX=Strength, DI/EMA/SuperTrend=Direction)."
-      },
-      "directionConsistency": {
-        "checkName": "Direction Consistency",
-        "passed": true,
-        "status": "PASS",
-        "message": "Direction BUY matches technical evidence (Bull: 30 pts, Bear: 0 pts)."
-      },
-      "rsiInterpretation": {
-        "checkName": "RSI Interpretation",
-        "passed": true,
-        "status": "WARNING",
-        "message": "RSI = 74.7 indicates strong upward momentum with moderate pullback risk."
-      },
-      "adxInterpretation": {
-        "checkName": "ADX Interpretation",
-        "passed": true,
-        "status": "PASS",
-        "message": "ADX = 20.0 indicates moderate trend strength. Directional component confirmed via +DI (20.0) vs -DI (20.0)."
-      },
-      "entryConsistency": {
-        "checkName": "Entry Consistency",
-        "passed": true,
-        "status": "WARNING",
-        "message": "Entry mode classified as BUY_PULLBACK. Current price: 1.8829, Planned entry: 1.8819 (10 pips distance). Lifecycle status: WAITING_FOR_ENTRY."
-      },
-      "riskRewardCheck": {
-        "checkName": "Risk / Reward & Geometry Check",
-        "passed": true,
-        "status": "PASS",
-        "message": "SL, TP1, and TP2 strictly adhere to directional geometry and positive R:R."
-      },
-      "confidenceCheck": {
-        "checkName": "Confidence Validation",
-        "passed": true,
-        "status": "PASS",
-        "message": "AI Model Confidence: 88% (Advisory). Deterministic Validation Confidence: 95% (Authoritative). Effective: 92%."
-      },
-      "explanationCheck": {
-        "checkName": "Explanation Consistency",
-        "passed": true,
-        "status": "PASS",
-        "message": "Explanations sanitized and verified to never contradict technical indicators or misinterpret ADX/RSI semantics."
-      },
-      "overallStatus": "WARNING",
-      "finalLifecycleStatus": "WAITING_FOR_ENTRY",
-      "executionEligibility": "WAITING_FOR_ENTRY",
-      "eligibilityReason": "Pullback entry not yet reached. Waiting for market price to retrace to 1.8819 (10 pips away).",
-      "errors": [],
-      "warnings": [
-        "RSI 74.7 — Momentum menaik kuat; pantau retracement.",
-        "Entri diklasifikasikan sebagai BUY_PULLBACK. Pesanan menunggu harga mencecah 1.8819 (10 pip)."
-      ],
-      "sanitizedReasons": [
-        "GBP/AUD live price (1.88290) is holding above 50 EMA trend filter.",
-        "ADX (20.0) mengukur kekuatan trend (moderate); hala tuju disahkan oleh penunjuk directional (+DI: 20.0 / -DI: 20.0).",
-        "SuperTrend filter is BULLISH and ATR volatility is 0.00100.",
-        "SMC Structure detected: ORDER BLOCK RETEST with PULLBACK LIMIT execution.",
-        "[CANDLE CONFIRMATION] Bullish Pin Bar / Hammer confirmed on closed candle."
-      ],
-      "isExecutable": true
-    },
-    "executionDetails": {
-      "brokerOrderId": "319609746",
-      "dispatchedAt": 1790172180308,
-      "copyResults": [
-        {
-          "id": "copy-1790172180823-sub-5916063",
-          "masterTradeId": "319609746",
-          "subscriberId": "sub-5916063",
-          "subscriberName": "cTID Trader (5916063)",
-          "accountNumber": "5916063",
-          "pair": "GBP/AUD",
-          "direction": "BUY",
-          "entryPrice": 1.8819,
-          "stopLoss": 1.8789,
-          "takeProfit": 1.8879,
-          "takeProfit2": 1.8927,
-          "isMultiTarget": true,
-          "lotSize": 0,
-          "riskPercent": 1,
-          "status": "FAILED",
-          "latencyMs": 480,
-          "executedAt": 1790172180823,
-          "error": "SUBSCRIBER_BALANCE_UNAVAILABLE"
-        },
-        {
-          "id": "copy-1790172180859-sub-5912914",
-          "masterTradeId": "319609746",
-          "subscriberId": "sub-5912914",
-          "subscriberName": "cTID Trader (5912914)",
-          "accountNumber": "5912914",
-          "pair": "GBP/AUD",
-          "direction": "BUY",
-          "entryPrice": 1.8819,
-          "stopLoss": 1.8789,
-          "takeProfit": 1.8879,
-          "takeProfit2": 1.8927,
-          "isMultiTarget": true,
-          "lotSize": 0,
-          "riskPercent": 1,
-          "status": "FAILED",
-          "latencyMs": 503,
-          "executedAt": 1790172180859,
-          "error": "SUBSCRIBER_BALANCE_UNAVAILABLE"
-        },
-        {
-          "id": "copy-1790172180874-sub-5877246",
-          "masterTradeId": "319609746",
-          "subscriberId": "sub-5877246",
-          "subscriberName": "cTID Trader (5877246)",
-          "accountNumber": "5877246",
-          "pair": "GBP/AUD",
-          "direction": "BUY",
-          "entryPrice": 1.88307,
-          "stopLoss": 1.8789,
-          "takeProfit": 1.8879,
-          "takeProfit2": 1.8927,
-          "isMultiTarget": true,
-          "lotSize": 0.04,
-          "riskPercent": 1,
-          "status": "SUCCESS",
-          "orderType": "LIMIT",
-          "latencyMs": 38,
-          "executedAt": 1790172180874,
-          "brokerTicket": "292027505"
-        }
-      ]
-    },
-    "telegramBroadcastSent": true
-  },
-  {
     "id": "sig_USDCAD_H4_1790173120384",
     "timestamp": 1790173120421,
     "pair": "USD/CAD",
@@ -1195,7 +1201,7 @@
       "SMC Structure detected: MOMENTUM CONTINUATION with MARKET ENTRY execution.",
       "[CANDLE CONFIRMATION] Bullish Pin Bar / Hammer confirmed on closed candle."
     ],
-    "status": "EXECUTED",
+    "status": "SKIPPED_PENDING_ORDER_EXISTS",
     "isValid": true,
     "entryMode": "BUY_PULLBACK",
     "distancePips": 10,
