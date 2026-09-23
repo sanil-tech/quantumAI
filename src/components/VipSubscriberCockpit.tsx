@@ -519,7 +519,9 @@ export const VipSubscriberCockpit: React.FC<VipSubscriberCockpitProps> = ({
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
                     {closedPositions.slice(0, 8).map((trade, idx) => {
-                      const isProfit = (trade.unrealizedProfit || 0) >= 0;
+                      const profitVal = trade.realizedProfit ?? trade.unrealizedProfit ?? 0;
+                      const isProfit = profitVal >= 0;
+                      const exitPrice = trade.closePrice || trade.currentPrice || trade.entryPrice;
                       return (
                         <tr key={idx} className="hover:bg-slate-800/30 transition-colors">
                           <td className="py-3 pl-2 font-bold text-white">{trade.symbol}</td>
@@ -532,9 +534,9 @@ export const VipSubscriberCockpit: React.FC<VipSubscriberCockpitProps> = ({
                           </td>
                           <td className="py-3 text-slate-300">{trade.quantity}</td>
                           <td className="py-3 text-slate-400">{trade.entryPrice}</td>
-                          <td className="py-3 text-slate-400">{trade.currentPrice || trade.entryPrice}</td>
+                          <td className="py-3 text-slate-400">{exitPrice}</td>
                           <td className={`py-3 text-right pr-2 font-bold ${isProfit ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            {isProfit ? `+$${trade.unrealizedProfit || '0.00'}` : `-$${Math.abs(trade.unrealizedProfit || 0)}`}
+                            {isProfit ? `+$${Number(profitVal).toFixed(2)}` : `-$${Math.abs(Number(profitVal)).toFixed(2)}`}
                           </td>
                         </tr>
                       );
