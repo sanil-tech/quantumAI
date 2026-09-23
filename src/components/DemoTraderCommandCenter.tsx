@@ -1,3 +1,4 @@
+import { masterPositionSnapshot } from '../lib/masterPositionSnapshot';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   DollarSign, Activity, TrendingUp, TrendingDown, ShieldCheck, Zap, Bot,
@@ -40,7 +41,7 @@ interface DemoTraderCommandCenterProps {
 
 const WATCHLIST_PAIRS: CurrencyPair[] = [
   'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CHF',
-  'NZD/USD', 'USD/CAD', 'EUR/JPY', 'GBP/JPY', 'XAU/USD', 'NASDAQ', 'BTC/USD'
+  'EUR/GBP', 'AUD/JPY', 'EUR/CHF', 'EUR/AUD', 'GBP/AUD', 'NZD/USD', 'USD/CAD', 'EUR/JPY', 'GBP/JPY', 'XAU/USD', 'NASDAQ', 'BTC/USD'
 ];
 
 export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = ({
@@ -96,6 +97,7 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
   const [reconciliationReport, setReconciliationReport] = useState<any>(null);
   const [isReconciling, setIsReconciling] = useState<boolean>(false);
   const [scannerStatus, setScannerStatus] = useState<any>(null);
+  const [scannerConnectionError, setScannerConnectionError] = useState(false);
   const [showDiscoveredSetupsModal, setShowDiscoveredSetupsModal] = useState<boolean>(false);
   const [subscriberRiskMode, setSubscriberRiskMode] = useState<SubscriberRiskMode>('BALANCED');
   const [watchlistSearchQuery, setWatchlistSearchQuery] = useState<string>('');
@@ -189,9 +191,10 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
         if (res.ok) {
           const data = await res.json();
           if (data) setScannerStatus(data);
-        }
+          setScannerConnectionError(false);
+        } else { setScannerConnectionError(true); }
       } catch (e) {
-        // quiet
+        setScannerConnectionError(true);
       }
     };
     fetchScanner();
@@ -244,37 +247,7 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
         ? stateObj.closedTrades 
         : (Array.isArray(autotraderRes?.closedTrades) ? autotraderRes.closedTrades : []);
 
-      // Authoritative Direct Broker Open Positions Fallback
-      if (rawOpen.length === 0 && Array.isArray(brokerPosRes?.positions) && brokerPosRes.positions.length > 0) {
-        rawOpen = brokerPosRes.positions.map((p: any) => {
-          const symId = Number(p.tradeData?.symbolId ?? p.symbolId ?? 1);
-          const rawName = (symId === 3 ? 'EUR/JPY' : (symId === 1 ? 'EUR/USD' : (p.symbol || 'EUR/USD')));
-          const dir = (p.tradeData?.tradeSide === 2 || p.tradeSide === 'SELL' || p.tradeSide === 2) ? 'SELL' : 'BUY';
-          const rawVol = Number(p.tradeData?.volume ?? p.volume ?? 100000);
-          const volLots = Number((rawVol / 10000000).toFixed(2));
-          const entry = Number(p.price ?? p.entryPrice ?? 1.0);
-          const sl = Number(p.stopLoss ?? 0);
-          const tp = Number(p.takeProfit ?? 0);
-
-          return {
-            id: String(p.positionId),
-            positionId: String(p.positionId),
-            pair: rawName,
-            symbol: rawName,
-            direction: dir,
-            lotSize: volLots > 0 ? volLots : 0.01,
-            entryPrice: entry,
-            currentPrice: entry,
-            stopLoss: sl,
-            takeProfit1: tp,
-            takeProfit: tp,
-            openTime: p.tradeData?.openTimestamp || Date.now(),
-            status: 'OPEN',
-            environment: 'DEMO',
-            setupId: p.tradeData?.comment || `cTrader_live_${rawName}_${dir}`
-          };
-        });
-      }
+      rawOpen = masterPositionSnapshot(rawOpen, brokerPosRes);
 
       setAccountState(prev => ({
         ...prev,
@@ -687,11 +660,11 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
               </span>
               <span className="px-2 py-0.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[10px] font-mono font-bold rounded-full flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                ACTIVE (12 PAIRS • M15 / H1 / H4)
+                {scannerConnectionError ? 'SAMBUNGAN TERPUTUS' : !scannerStatus ? 'MENGAMBIL STATUS' : scannerStatus.isScanning ? 'ACTIVE' : 'TIDAK AKTIF'} ({scannerStatus?.watchlist?.length ?? '—'} PAIRS • M15 / H1 / H4)
               </span>
             </div>
             <p className="text-[11px] text-slate-400 font-mono mt-0.5">
-              AI sentiasa mengimbas pasaran di latar belakang pelayan tanpa perlu anda membuka carta. Signal A-Grade (&ge;70% SMC) terus dieksekusi secara automatik.
+              AI sentiasa mengimbas pasaran di latar belakang pelayan tanpa perlu anda membuka carta. Signal Gred A (&ge;75%) hanya diteruskan selepas pengesahan dan semakan kelayakan entry.
             </p>
           </div>
         </div>
@@ -707,7 +680,7 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
             ) : (
               <span className="text-emerald-400 font-bold flex items-center gap-1">
                 <CheckCircle className="w-3 h-3 text-emerald-400" />
-                Semua 12 Pair Selesai
+                {scannerStatus?.isScanning ? `Memantau ${scannerStatus?.watchlist?.length ?? 0} pasangan` : 'Scanner tidak aktif'}
               </span>
             )}
           </div>
@@ -719,7 +692,7 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
           >
             <span className="text-slate-400 text-[10px] uppercase font-bold">SETUP DIJUMPAI:</span>
             <span className="text-indigo-400 font-black text-xs group-hover:scale-110 transition">
-              {scannerStatus?.discoveredSetupsCount || 10}
+              {scannerStatus?.discoveredSetupsCount ?? 0}
             </span>
             <span className="text-[10px] text-cyan-400 font-bold underline ml-1">
               Lihat Radar →
@@ -785,7 +758,7 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
           {(() => {
             const filtered = WATCHLIST_PAIRS.filter(pair => {
               if (watchlistCategory === 'MAJOR' && !['EUR/USD', 'GBP/USD', 'AUD/USD', 'USD/CHF', 'NZD/USD', 'USD/CAD'].includes(pair)) return false;
-              if (watchlistCategory === 'JPY' && !['USD/JPY', 'EUR/JPY', 'GBP/JPY'].includes(pair)) return false;
+              if (watchlistCategory === 'JPY' && !['USD/JPY', 'EUR/JPY', 'GBP/JPY', 'AUD/JPY'].includes(pair)) return false;
               if (watchlistCategory === 'COMMODITIES' && !['XAU/USD'].includes(pair)) return false;
               if (watchlistCategory === 'CRYPTO_INDEX' && !['NASDAQ', 'BTC/USD'].includes(pair)) return false;
 
@@ -1394,10 +1367,10 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-base font-black text-white uppercase tracking-wider">
-                      📡 Radar Imbasan Autonomi AI (12 Pairs • M15/H1/H4)
+                      📡 Radar Imbasan Autonomi AI ({scannerStatus?.watchlist?.length ?? '—'} Pairs • M15/H1/H4)
                     </h3>
                     <span className="px-2 py-0.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[10px] font-mono font-bold rounded-full">
-                      LIVE 24/7 SCANNER
+                      {scannerConnectionError ? 'SAMBUNGAN PELAYAN TERPUTUS' : !scannerStatus ? 'MENGAMBIL STATUS PELAYAN' : scannerStatus.isScanning ? 'SCANNER AKTIF' : 'SCANNER TIDAK AKTIF'}
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 font-mono mt-0.5">
@@ -1413,7 +1386,7 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
                     if (res) setScannerStatus(res);
                   }}
                   className="px-3 py-1.5 bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/40 text-indigo-200 text-xs font-mono font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-sm"
-                  title="Picu imbasan penuh segera ke atas semua 12 pair"
+                  title="Picu imbasan penuh bagi senarai pasangan aktif"
                 >
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                   Imbas Semula Sekarang
@@ -1455,8 +1428,29 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
                 return (
                   <div className="p-8 text-center bg-slate-950/60 border border-slate-800/80 rounded-xl text-slate-400 font-sans text-xs">
                     <Sparkles className="w-6 h-6 text-indigo-400 mx-auto mb-2 opacity-60 animate-pulse" />
-                    <p className="font-semibold text-slate-200">Tiada setup aktif dijumpai pada imbasan pasaran terkini</p>
-                    <p className="text-[11px] text-slate-500 mt-1">Sistem imbasan autonomous AI sentiasa memantau instrumen pasaran secara langsung.</p>
+                    <p className="font-semibold text-slate-200">{scannerConnectionError || !scannerStatus ? 'Status imbasan belum dapat disahkan' : 'Tiada setup aktif dijumpai pada imbasan pasaran terkini'}</p>
+                    <p className="text-[11px] text-slate-400 mt-1">{scannerConnectionError ? 'Tidak dapat menghubungi pelayan. Keputusan lama bukan status langsung.' : !scannerStatus ? 'Status scanner belum diterima. Menunggu sambungan pelayan; ini bukan keputusan imbasan.' : scannerStatus.isScanning ? 'Scanner aktif. Sebab belum ada signal layak ditunjukkan di bawah.' : 'Scanner tidak aktif. Semak sambungan pelayan.'}</p>
+                    {Array.isArray(scannerStatus?.scanDiagnostics) && scannerStatus.scanDiagnostics.length > 0 ? (
+                      <div className="mt-5 text-left overflow-x-auto">
+                        <p className="text-slate-400 mb-2">Pemerhatian terakhir: {new Date(Math.max(...scannerStatus.scanDiagnostics.map((d: any) => d.observedAt))).toLocaleTimeString()}</p>
+                        <table className="w-full text-xs">
+                          <thead><tr className="border-b border-slate-700 text-slate-400"><th className="py-2 pr-3">Pasangan</th><th className="py-2 pr-3">Keyakinan</th><th className="py-2">Sebab menunggu</th></tr></thead>
+                          <tbody>{scannerStatus.scanDiagnostics.map((d: any) => {
+                            const detail = d.details || {};
+                            const reason = d.stage === 'EXISTING_OPEN_POSITION' ? 'Posisi masih terbuka; entry baharu dilangkau'
+                              : detail.action === 'VETO' ? 'Ditahan oleh peraturan pembelajaran / risiko'
+                              : detail.action === 'WAIT_FOR_CONFIRMATION' ? 'Menunggu pengesahan candle / struktur'
+                              : d.stage === 'ANALYSIS_ERROR' ? 'Ralat analisis — perlu disemak'
+                              : d.stage === 'INSUFFICIENT_CANDLES' ? 'Data candle belum mencukupi'
+                              : d.stage === 'SECOND_OPINION_VETO' ? 'Ditolak oleh semakan kedua'
+                              : d.stage === 'FINAL_VALIDATION' ? 'Semakan akhir: ' + (detail.validationStatus || 'belum selesai')
+                              : d.stage === 'FINAL_APPROVAL_BLOCKED' ? 'Belum layak untuk entry'
+                              : 'Belum memenuhi syarat gred A';
+                            return <tr key={d.pair + ':' + (d.timeframe || 'ALL')} className="border-b border-slate-800"><td className="py-2 pr-3 text-slate-200 whitespace-nowrap">{d.pair} {d.timeframe || ''}</td><td className="py-2 pr-3">{typeof detail.confidence === 'number' ? detail.confidence + '%' : typeof detail.finalConfidence === 'number' ? detail.finalConfidence + '%' : '—'}</td><td className="py-2 text-slate-300">{reason}</td></tr>;
+                          })}</tbody>
+                        </table>
+                      </div>
+                    ) : <p className="mt-3 text-slate-500">Menunggu keputusan pusingan imbasan.</p>}
                   </div>
                 );
               }
@@ -1586,12 +1580,12 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
                                         ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                                         : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
                             }`}>
-                              {setup.status === 'EXECUTED' 
+                              {setup.status === 'SKIPPED_PENDING_ORDER_EXISTS' ? '⏳ MENUNGGU — PENDING ORDER SEDIA ADA' : setup.status === 'SKIPPED_ECONOMIC_EVENT' ? '🛡️ DISEKAT — BERITA / KALENDAR' : setup.status === 'SKIPPED_MARKET_CLOSED' ? '⏸️ PASARAN DITUTUP' : setup.status === 'EXECUTED' 
                                 ? '✅ ORDER CTRADER AKTIF' 
                                 : setup.status === 'SKIPPED_ALREADY_OPEN' 
-                                  ? 'ℹ️ POSISI AKTIF' 
+                                  ? '⏳ MENUNGGU — POSISI SEDIA ADA' 
                                   : setup.status === 'DISCOVERED_CAPACITY_REACHED'
-                                    ? '📡 COPIER AKTIF (HAD MASTER 2/2)'
+                                    ? '⏳ MENUNGGU — HAD KAPASITI MASTER'
                                     : setup.status === 'SKIPPED_RISK' 
                                       ? '🛡️ RISK LIMIT' 
                                       : setup.status === 'SKIPPED_COOLDOWN' 
@@ -1621,7 +1615,7 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
             {/* Footer */}
             <div className="flex items-center justify-between border-t border-slate-800 pt-4">
               <span className="text-[11px] text-slate-500 font-mono">
-                Pusingan imbasan seterusnya: setiap 20 saat
+                Pusingan imbasan seterusnya: setiap 1 minit (Candle Close Aligned)
               </span>
               <button
                 onClick={() => setShowDiscoveredSetupsModal(false)}
