@@ -163,8 +163,10 @@ brokerRouter.get('/broker/open-positions', async (req: Request, res: Response) =
   try {
     const rawBrokerPos = await ctraderMarketDataFeedService.fetchRawOpenPositions(true);
     const normalizedPositions = (rawBrokerPos || []).map((p: any) => {
-      const spec = CTraderSymbolRegistry.getSymbolById(Number(p.tradeData?.symbolId ?? p.symbolId));
-      const name = spec?.symbolName || p.symbol || ('SYMBOL_' + (p.tradeData?.symbolId ?? p.symbolId));
+      const symId = Number(p.tradeData?.symbolId ?? p.symbolId);
+      const liveName = ctraderMarketDataFeedService.getSymbolName(symId);
+      const spec = CTraderSymbolRegistry.getSymbolById(symId);
+      const name = liveName || spec?.symbolName || p.symbol || ('SYMBOL_' + symId);
       const pair = /^[A-Z]{6}$/.test(name) ? name.slice(0,3) + '/' + name.slice(3) : name;
       const id = String(p.positionId);
       return { id, positionId: id, brokerTicket: id, pair, symbol: pair,

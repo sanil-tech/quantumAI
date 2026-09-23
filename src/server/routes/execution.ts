@@ -383,13 +383,15 @@ executionRouter.get('/autotrader/state', async (req: Request, res: Response) => 
     let pendingCommands: any[] = [];
 
 
-    // 1. Authoritative cTrader Open API Sync & Reconciliation
+    // 1. Authoritative cTrader Open API Sync & Reconciliation & Auto-repair corrupted DB rows
     try {
+      // Auto-repair any historical database rows with mis-mapped symbols
+      await tradingRepo.query(`UPDATE positions SET symbol = 'EUR/AUD' WHERE symbol = 'GBP/AUD' AND entry_price < 1.70 AND status = 'OPEN'`).catch(() => {});
+      await tradingRepo.query(`UPDATE positions SET symbol = 'EUR/CHF' WHERE symbol = 'EUR/AUD' AND entry_price < 1.10 AND status = 'OPEN'`).catch(() => {});
+
       const { ctraderMarketDataFeedService } = await import('../services/ctraderMarketDataFeedService');
       const { brokerReconciliationService } = await import('../../../apps/execution-router/src/services/brokerReconciliationService');
-      if (ctraderMarketDataFeedService.isConnected()) {
-        await brokerReconciliationService.reconcile(accountId);
-      }
+      await brokerReconciliationService.reconcile(accountId).catch(() => {});
     } catch (err: any) {
       console.warn('[AutoTraderStateReconcile] Error:', err.message);
     }
@@ -406,8 +408,9 @@ executionRouter.get('/autotrader/state', async (req: Request, res: Response) => 
           const { CTraderSymbolRegistry } = await import('../../integrations/ctrader/ctraderSymbolService');
           openPositions = rawBrokerPos.map((p: any) => {
             const symId = Number(p.tradeData?.symbolId ?? p.symbolId ?? 1);
+            const liveName = ctraderMarketDataFeedService.getSymbolName(symId);
             const symSpec = CTraderSymbolRegistry.getSymbolById(symId);
-            const rawName = symSpec ? symSpec.symbolName : (symId === 1 ? 'EURUSD' : symId === 3 ? 'EURJPY' : 'EURUSD');
+            const rawName = liveName || (symSpec ? symSpec.symbolName : (symId === 1 ? 'EURUSD' : symId === 3 ? 'EURJPY' : 'EURUSD'));
             const formattedSym = rawName.includes('/') ? rawName : (rawName.length === 6 ? `${rawName.slice(0, 3)}/${rawName.slice(3)}` : rawName);
             const dir = (p.tradeData?.tradeSide === 2 || p.tradeSide === 'SELL' || p.tradeSide === 2) ? 'SELL' : 'BUY';
             const rawVol = Number(p.tradeData?.volume ?? p.volume ?? 100000);
