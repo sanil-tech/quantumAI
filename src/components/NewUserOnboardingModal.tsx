@@ -353,7 +353,7 @@ export const NewUserOnboardingModal: React.FC<NewUserOnboardingModalProps> = ({
                     {riskMode === 'PRO' && <CheckCircle className="w-4 h-4 text-purple-400" />}
                   </div>
                   <p className="text-[11px] text-slate-400">
-                    Akses penuh imbasan 12 aset termasuk Emas (XAU/USD) &amp; NASDAQ dengan SMC order block.
+                    Akses penuh imbasan 28 pasangan Forex &amp; aset termasuk Emas (XAU/USD) &amp; NASDAQ dengan SMC order block.
                   </p>
                 </div>
               </div>

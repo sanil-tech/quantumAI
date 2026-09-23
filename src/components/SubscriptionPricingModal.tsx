@@ -243,7 +243,7 @@ export const SubscriptionPricingModal: React.FC<SubscriptionPricingModalProps> =
                 <ul className="space-y-2 text-xs text-slate-200 pt-2 border-t border-cyan-900/50">
                   <li className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-cyan-400 shrink-0" />
-                    <span><strong>Semua 12 Pasangan Aset</strong> (Termasuk Emas &amp; NASDAQ)</span>
+                    <span><strong>Semua 28 Pasangan Forex &amp; Aset</strong> (Termasuk Emas &amp; NASDAQ)</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-cyan-400 shrink-0" />

@@ -64,8 +64,13 @@ export class AutonomousMarketScannerService extends EventEmitter {
   private cacheFilePath: string = path.resolve(process.cwd(), 'data', 'scanner_discovered_setups.json');
 
   private watchlist: CurrencyPair[] = [
-    'EUR/USD', 'GBP/USD', 'EUR/JPY', 'GBP/JPY', 'USD/CHF',
-    'NZD/USD', 'USD/CAD', 'AUD/USD', 'USD/JPY', 'EUR/GBP', 'AUD/JPY', 'EUR/CHF', 'EUR/AUD', 'GBP/AUD'
+    'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CHF', 'NZD/USD', 'USD/CAD',
+    'EUR/GBP', 'EUR/JPY', 'EUR/AUD', 'EUR/CAD', 'EUR/CHF', 'EUR/NZD',
+    'GBP/JPY', 'GBP/AUD', 'GBP/CAD', 'GBP/CHF', 'GBP/NZD',
+    'AUD/JPY', 'AUD/CAD', 'AUD/CHF', 'AUD/NZD',
+    'NZD/JPY', 'NZD/CAD', 'NZD/CHF',
+    'CAD/JPY', 'CAD/CHF',
+    'CHF/JPY'
   ];
 
   private timeframes: Timeframe[] = ['M15', 'H1', 'H4'];

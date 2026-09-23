@@ -604,8 +604,8 @@ export const VipSubscriberCockpit: React.FC<VipSubscriberCockpitProps> = ({
 
             <p className="text-xs text-slate-400 leading-relaxed mb-4">
               {isMalay
-                ? 'AI memproses 7 pasangan mata wang utama setiap minit menggunakan Smart Money Concepts (SMC) & zon Order Block institusi.'
-                : 'AI scans 7 major currency pairs every minute utilizing Smart Money Concepts (SMC) & Institutional Order Blocks.'}
+                ? 'AI memproses 28 pasangan Forex & aset setiap minit menggunakan Smart Money Concepts (SMC) & zon Order Block institusi.'
+                : 'AI scans 28 Forex pairs & assets every minute utilizing Smart Money Concepts (SMC) & Institutional Order Blocks.'}
             </p>
 
             <div className="space-y-2.5">

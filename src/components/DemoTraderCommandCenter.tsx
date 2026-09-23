@@ -40,8 +40,13 @@ interface DemoTraderCommandCenterProps {
 }
 
 const WATCHLIST_PAIRS: CurrencyPair[] = [
-  'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CHF',
-  'EUR/GBP', 'AUD/JPY', 'EUR/CHF', 'EUR/AUD', 'GBP/AUD', 'NZD/USD', 'USD/CAD', 'EUR/JPY', 'GBP/JPY', 'XAU/USD', 'NASDAQ', 'BTC/USD'
+  'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CHF', 'NZD/USD', 'USD/CAD',
+  'EUR/GBP', 'EUR/JPY', 'EUR/AUD', 'EUR/CAD', 'EUR/CHF', 'EUR/NZD',
+  'GBP/JPY', 'GBP/AUD', 'GBP/CAD', 'GBP/CHF', 'GBP/NZD',
+  'AUD/JPY', 'AUD/CAD', 'AUD/CHF', 'AUD/NZD',
+  'NZD/JPY', 'NZD/CAD', 'NZD/CHF',
+  'CAD/JPY', 'CAD/CHF', 'CHF/JPY',
+  'XAU/USD', 'NASDAQ', 'BTC/USD'
 ];
 
 export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = ({
@@ -660,11 +665,11 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
               </span>
               <span className="px-2 py-0.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[10px] font-mono font-bold rounded-full flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                {scannerConnectionError ? 'SAMBUNGAN TERPUTUS' : !scannerStatus ? 'MENGAMBIL STATUS' : scannerStatus.isScanning ? 'ACTIVE' : 'TIDAK AKTIF'} ({scannerStatus?.watchlist?.length ?? '—'} PAIRS • M15 / H1 / H4)
+                {scannerConnectionError ? 'SAMBUNGAN TERPUTUS' : !scannerStatus ? 'MENGAMBIL STATUS' : scannerStatus.isScanning ? 'ACTIVE' : 'TIDAK AKTIF'} ({scannerStatus?.watchlist?.length ?? WATCHLIST_PAIRS.length} PAIRS • 1-MIN LOOP / M15 / H1 / H4)
               </span>
             </div>
             <p className="text-[11px] text-slate-400 font-mono mt-0.5">
-              AI sentiasa mengimbas pasaran di latar belakang pelayan tanpa perlu anda membuka carta. Signal Gred A (&ge;75%) hanya diteruskan selepas pengesahan dan semakan kelayakan entry.
+              AI sentiasa mengimbas pasaran di latar belakang pelayan setiap 1 minit tanpa perlu anda membuka carta. Signal Gred A (&ge;75%) hanya diteruskan selepas pengesahan dan semakan kelayakan entry.
             </p>
           </div>
         </div>
@@ -680,7 +685,7 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
             ) : (
               <span className="text-emerald-400 font-bold flex items-center gap-1">
                 <CheckCircle className="w-3 h-3 text-emerald-400" />
-                {scannerStatus?.isScanning ? `Memantau ${scannerStatus?.watchlist?.length ?? 0} pasangan` : 'Scanner tidak aktif'}
+                {scannerStatus?.isScanning ? `Memantau ${scannerStatus?.watchlist?.length ?? WATCHLIST_PAIRS.length} pasangan` : 'Scanner tidak aktif'}
               </span>
             )}
           </div>
@@ -712,7 +717,7 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
               Pasaran:
             </span>
             {[
-              { id: 'ALL', label: 'Semua (12)' },
+              { id: 'ALL', label: isMalay ? `Semua (${WATCHLIST_PAIRS.length})` : `All (${WATCHLIST_PAIRS.length})` },
               { id: 'MAJOR', label: 'Forex Utama' },
               { id: 'JPY', label: 'Forex JPY' },
               { id: 'COMMODITIES', label: 'Komoditi (Emas)' },
@@ -757,8 +762,8 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
         <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 min-w-max">
           {(() => {
             const filtered = WATCHLIST_PAIRS.filter(pair => {
-              if (watchlistCategory === 'MAJOR' && !['EUR/USD', 'GBP/USD', 'AUD/USD', 'USD/CHF', 'NZD/USD', 'USD/CAD'].includes(pair)) return false;
-              if (watchlistCategory === 'JPY' && !['USD/JPY', 'EUR/JPY', 'GBP/JPY', 'AUD/JPY'].includes(pair)) return false;
+              if (watchlistCategory === 'MAJOR' && !['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CHF', 'NZD/USD', 'USD/CAD'].includes(pair)) return false;
+              if (watchlistCategory === 'JPY' && !pair.includes('JPY')) return false;
               if (watchlistCategory === 'COMMODITIES' && !['XAU/USD'].includes(pair)) return false;
               if (watchlistCategory === 'CRYPTO_INDEX' && !['NASDAQ', 'BTC/USD'].includes(pair)) return false;
 

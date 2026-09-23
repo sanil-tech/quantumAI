@@ -464,7 +464,14 @@ export class CTraderMarketDataFeedService extends EventEmitter {
   private async resolveSpotSymbols(accountId:number):Promise<number[]> {
     const response=await this.transport.sendRequest(2114,{ctidTraderAccountId:accountId,includeArchivedSymbols:false},10000);
     if(response.payloadType!==2115||!Array.isArray(response.decodedPayload?.symbol))throw Error('BROKER_SYMBOL_LIST_UNAVAILABLE');
-    const wanted=['EUR/USD','GBP/USD','USD/JPY','AUD/USD','USD/CHF','NZD/USD','USD/CAD','EUR/JPY','GBP/JPY','XAU/USD','EUR/GBP','AUD/JPY','EUR/CHF','EUR/AUD','GBP/AUD'];
+    const wanted=[
+      'EUR/USD','GBP/USD','USD/JPY','AUD/USD','USD/CHF','NZD/USD','USD/CAD',
+      'EUR/GBP','EUR/JPY','EUR/AUD','EUR/CAD','EUR/CHF','EUR/NZD',
+      'GBP/JPY','GBP/AUD','GBP/CAD','GBP/CHF','GBP/NZD',
+      'AUD/JPY','AUD/CAD','AUD/CHF','AUD/NZD',
+      'NZD/JPY','NZD/CAD','NZD/CHF',
+      'CAD/JPY','CAD/CHF','CHF/JPY','XAU/USD'
+    ];
     this.symbolMap.clear();this.pairToSymbolId.clear();
     for(const pair of wanted){const matches=response.decodedPayload.symbol.filter((x:any)=>String(x.symbolName).replace('/','').toUpperCase()===pair.replace('/',''));if(matches.length!==1)continue;const id=Number(matches[0].symbolId);if(!(id>0))continue;this.symbolMap.set(id,pair as CurrencyPair);this.pairToSymbolId.set(pair as CurrencyPair,id);}
     if(!this.symbolMap.size)throw Error('NO_SUPPORTED_BROKER_SYMBOLS');
