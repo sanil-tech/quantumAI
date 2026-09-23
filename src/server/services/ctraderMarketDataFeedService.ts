@@ -1533,6 +1533,94 @@ export class CTraderMarketDataFeedService extends EventEmitter {
       return { success: false, error: err.message };
     }
   }
+
+  /**
+   * Auto-Healing Watchdog for Open Broker Positions:
+   * Scans active open positions on cTrader. If any position has missing/invalid SL or wild TP (> 100 pips),
+   * it calculates dynamic M5 scalping targets and sends a ProtoOAAmendPositionSLTPReq (2110) to repair it immediately.
+   */
+  public async healOpenPositions(targetCtidAccountId?: number): Promise<{ healedCount: number; positions: any[] }> {
+    if (!this.transport || !this.transport.isConnected()) {
+      return { healedCount: 0, positions: [] };
+    }
+
+    const ctidAccountId = targetCtidAccountId || Number(process.env.CTRADER_ACCOUNT_ID) || 48282756;
+    let openPositions: any[] = [];
+    try {
+      const reconcileRes = await this.transport.sendRequest(2124, { ctidTraderAccountId: ctidAccountId }, 5000);
+      if (reconcileRes.payloadType === 2125) {
+        const rawList = reconcileRes.decodedPayload?.position || reconcileRes.payload?.position || [];
+        openPositions = Array.isArray(rawList) ? rawList : [rawList];
+      }
+    } catch (err: any) {
+      console.warn(`[Auto-Healing] Failed to fetch open positions for CTID #${ctidAccountId}:`, err.message);
+      return { healedCount: 0, positions: [] };
+    }
+
+    const healedPositions: any[] = [];
+    const { PairDailyRangeService } = await import('./pairDailyRangeService');
+
+    for (const pos of openPositions) {
+      if (!pos || !pos.positionId) continue;
+
+      const posId = Number(pos.positionId);
+      const symbolId = Number(pos.symbolId);
+      const symbol = this.symbolMap.get(symbolId) || 'EUR/USD';
+      const tradeSide = pos.tradeSide === 1 || pos.tradeSide === 'BUY' ? 'BUY' : 'SELL';
+      const entryPrice = pos.price || pos.entryPrice;
+      const currentSl = pos.stopLoss;
+      const currentTp = pos.takeProfit;
+
+      if (!entryPrice || entryPrice <= 0) continue;
+
+      const profile = PairDailyRangeService.getProfile(symbol);
+      const targets = PairDailyRangeService.calculateIntradayTargets(symbol, tradeSide, entryPrice, 'M5');
+
+      const isSlMissing = !currentSl || currentSl <= 0;
+      
+      const tpDiffPips = currentTp && currentTp > 0
+        ? Math.abs(currentTp - entryPrice) / profile.pipMultiplier
+        : 0;
+
+      const isTpWild = !currentTp || currentTp <= 0 || tpDiffPips > 100;
+
+      if (isSlMissing || isTpWild) {
+        const newSl = isSlMissing ? targets.slPrice : currentSl;
+        const newTp = isTpWild ? targets.tp1Price : currentTp;
+
+        console.log(`🛡️ [Auto-Healing Watchdog] Repairing Position #${posId} (${symbol} ${tradeSide} @ ${entryPrice}): setting SL=${newSl}, TP=${newTp} (was SL=${currentSl || 'MISSING'}, TP=${currentTp || 'MISSING'})`);
+
+        try {
+          const amendPayload: any = {
+            ctidTraderAccountId: ctidAccountId,
+            positionId: posId
+          };
+          if (newSl && newSl > 0) amendPayload.stopLoss = newSl;
+          if (newTp && newTp > 0) amendPayload.takeProfit = newTp;
+
+          await this.transport.sendRequest(2110, amendPayload, 5000);
+          healedPositions.push({
+            positionId: posId,
+            symbol,
+            direction: tradeSide,
+            entryPrice,
+            repairedSl: newSl,
+            repairedTp: newTp,
+            previousSl: currentSl || 'MISSING',
+            previousTp: currentTp || 'MISSING'
+          });
+        } catch (amendErr: any) {
+          console.warn(`[Auto-Healing Watchdog] Position #${posId} repair warning:`, amendErr.message);
+        }
+      }
+    }
+
+    if (healedPositions.length > 0) {
+      console.log(`✅ [Auto-Healing Watchdog] Successfully healed ${healedPositions.length} open position(s) on cTrader.`);
+    }
+
+    return { healedCount: healedPositions.length, positions: healedPositions };
+  }
 }
 
 export const ctraderMarketDataFeedService = CTraderMarketDataFeedService.getInstance();

@@ -483,6 +483,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
     try {
       this.lastScannedAt = Date.now();
       await this.pruneInvalidAndExpiredSetups();
+      ctraderMarketDataFeedService.healOpenPositions().catch(() => {});
 
       // Query live broker state (both active positions and pending limit orders)
       const ctrader = new CTraderAdapter({ accountId: '48282756' });

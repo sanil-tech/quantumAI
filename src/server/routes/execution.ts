@@ -1472,4 +1472,22 @@ executionRouter.post('/autotrader/scanner/trigger', async (req: Request, res: Re
   }
 });
 
+/**
+ * POST /api/autotrader/auto-heal
+ * Triggers immediate Auto-Healing scan across open cTrader positions to repair missing SL or wild TP
+ */
+executionRouter.post('/autotrader/auto-heal', async (req: Request, res: Response) => {
+  try {
+    const { ctraderMarketDataFeedService } = await import('../services/ctraderMarketDataFeedService');
+    const result = await ctraderMarketDataFeedService.healOpenPositions();
+    res.json({
+      message: 'Auto-healing watchdog completed',
+      healed_count: result.healedCount,
+      repaired_positions: result.positions
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
