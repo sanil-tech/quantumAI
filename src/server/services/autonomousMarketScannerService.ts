@@ -288,38 +288,73 @@ export class AutonomousMarketScannerService extends EventEmitter {
     const ctrader = new CTraderAdapter({ accountId: '48282756' });
     let liveBrokerSymbols = new Set<string>();
     let liveBrokerPendingSymbols = new Set<string>();
+    let brokerFetchSuccess = false;
+
     try {
-      const openPos = await ctrader.getOpenPositions();
-      for (const p of openPos) {
-        const sym = (p.symbol || '').replace('/', '').toUpperCase();
-        if (sym) liveBrokerSymbols.add(sym);
+      if (!ctrader.isConnected()) {
+        await ctrader.connect().catch(() => {});
       }
-      const pendingOrd = await ctrader.getPendingOrders(true);
-      for (const o of pendingOrd) {
-        const sym = (o.symbol || '').replace('/', '').toUpperCase();
-        if (sym) liveBrokerPendingSymbols.add(sym);
+      if (ctrader.isConnected()) {
+        const openPos = await ctrader.getOpenPositions();
+        for (const p of openPos) {
+          const sym = (p.symbol || '').replace('/', '').toUpperCase();
+          if (sym) liveBrokerSymbols.add(sym);
+        }
+        const pendingOrd = await ctrader.getPendingOrders(true);
+        for (const o of pendingOrd) {
+          const sym = (o.symbol || '').replace('/', '').toUpperCase();
+          if (sym) liveBrokerPendingSymbols.add(sym);
+        }
+        brokerFetchSuccess = true;
       }
-    } catch (_) {}
+    } catch (err: any) {
+      console.warn(`[AutonomousMarketScanner] Warning: Could not query cTrader broker state during setup pruning: ${err.message}`);
+    }
 
     for (const setup of this.discoveredSetups) {
       const pairKey = setup.pair.replace('/', '').toUpperCase();
       const isAlreadyOpen = openDb.some((p: any) => (p.symbol || '').replace('/', '').toUpperCase() === pairKey) || liveBrokerSymbols.has(pairKey);
       const isPendingExisting = liveBrokerPendingSymbols.has(pairKey);
 
-      // Handle manually closed positions or cancelled pending orders on cTrader
-      if ((setup.status === 'SKIPPED_ALREADY_OPEN' && !isAlreadyOpen) || 
-          (setup.status === 'SKIPPED_PENDING_ORDER_EXISTS' && !isPendingExisting) ||
-          (setup.status === 'EXECUTED' && !isAlreadyOpen && !isPendingExisting)) {
-        
-        console.log(`✅ [AutonomousMarketScanner] cTrader position/order for ${setup.pair} was closed manually. Clearing setup from radar to make way for new signals.`);
-        setup.status = 'INVALID';
-        setup.isValid = false;
-        setup.invalidatedAt = now;
-        setup.invalidationReason = 'Posisi / Pesanan di cTrader telah selesai / ditutup secara manual';
-        
-        // Unfreeze pair cooldown so new signals can be generated immediately
-        this.cooldownLedger.delete(pairKey);
-        this.pushedSignalLedger.delete(pairKey);
+      // Auto-heal falsely invalidated setups if position/order is actually active on broker/DB
+      if (isAlreadyOpen) {
+        if (setup.status === 'INVALID' && (setup.invalidationReason?.includes('selesai') || setup.invalidationReason?.includes('manual') || setup.invalidationReason?.includes('ditiada'))) {
+          console.log(`🛡️ [Self-Healing] Restoring setup for ${setup.pair} to ACTIVE because position is OPEN on cTrader.`);
+        }
+        setup.status = 'SKIPPED_ALREADY_OPEN';
+        setup.isValid = true;
+        delete setup.invalidationReason;
+        delete setup.invalidatedAt;
+        validSetups.push(setup);
+        continue;
+      } else if (isPendingExisting) {
+        if (setup.status === 'INVALID' && (setup.invalidationReason?.includes('selesai') || setup.invalidationReason?.includes('manual') || setup.invalidationReason?.includes('ditiada'))) {
+          console.log(`🛡️ [Self-Healing] Restoring setup for ${setup.pair} to PENDING because order is ACTIVE on cTrader.`);
+        }
+        setup.status = 'SKIPPED_PENDING_ORDER_EXISTS';
+        setup.isValid = true;
+        delete setup.invalidationReason;
+        delete setup.invalidatedAt;
+        validSetups.push(setup);
+        continue;
+      }
+
+      // Handle manually closed positions or cancelled pending orders on cTrader ONLY if broker fetch succeeded
+      if (brokerFetchSuccess) {
+        if ((setup.status === 'SKIPPED_ALREADY_OPEN' && !isAlreadyOpen) || 
+            (setup.status === 'SKIPPED_PENDING_ORDER_EXISTS' && !isPendingExisting) ||
+            (setup.status === 'EXECUTED' && !isAlreadyOpen && !isPendingExisting)) {
+          
+          console.log(`✅ [AutonomousMarketScanner] cTrader position/order for ${setup.pair} was closed manually. Clearing setup from radar to make way for new signals.`);
+          setup.status = 'INVALID';
+          setup.isValid = false;
+          setup.invalidatedAt = now;
+          setup.invalidationReason = 'Posisi / Pesanan di cTrader telah selesai / ditutup secara manual';
+          
+          // Unfreeze pair cooldown so new signals can be generated immediately
+          this.cooldownLedger.delete(pairKey);
+          this.pushedSignalLedger.delete(pairKey);
+        }
       }
 
       // Unfreeze economic veto status if economic context is now clear
