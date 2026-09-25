@@ -5,7 +5,7 @@ import {
   Bot, RefreshCw, BarChart3, Activity, DollarSign,
   Lock, Power, Sliders, Shield, Terminal,
   Radio, History, User, Calendar, Cpu, Sparkles, AlertTriangle,
-  Download, Search, FileText, Filter, X
+  Download, Search, FileText, Filter, X, Brain
 } from 'lucide-react';
 import { DemoTraderCommandCenter } from './DemoTraderCommandCenter';
 import { EconomicCalendarWidget } from './EconomicCalendarWidget';
@@ -217,57 +217,61 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
       {/* ========================================================================= */}
       {/* 1. UNIFIED EXECUTIVE AI TERMINAL HUD (ZERO REDUNDANCY / HIGH CONVERSION)   */}
       {/* ========================================================================= */}
-      <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-900 via-[#0c1222] to-slate-900 border border-white/[0.08] rounded-2xl shadow-2xl relative overflow-hidden backdrop-blur-2xl">
+      {/* ========================================================================= */}
+      {/* 1. UNIFIED EXECUTIVE AI TERMINAL HUD (ZERO REDUNDANCY / HIGH CONVERSION)   */}
+      {/* ========================================================================= */}
+      <div className="p-4 sm:p-6 bg-gradient-to-br from-slate-900 via-[#0c1322] to-slate-950 border border-white/[0.08] rounded-2xl sm:rounded-3xl shadow-2xl relative overflow-hidden backdrop-blur-2xl">
+        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-5 relative z-10">
           
           {/* Brand & Market Feed Status */}
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 bg-gradient-to-br from-cyan-500 via-indigo-600 to-purple-600 rounded-xl flex items-center justify-center font-black text-white text-base shadow-lg shadow-cyan-500/20 border border-white/20 shrink-0">
-              <Zap className="w-6 h-6 text-cyan-200" />
+            <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 via-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center font-black text-white text-lg shadow-lg shadow-cyan-500/25 border border-white/20 shrink-0 ring-1 ring-cyan-400/40">
+              <Zap className="w-6 h-6 text-cyan-200 animate-pulse" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-base sm:text-lg font-black text-white tracking-tight">
-                  QuantumAI <span className="text-cyan-400">Trading Terminal</span>
+                <h1 className="text-lg sm:text-xl font-black text-white tracking-tight">
+                  QuantumAI <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400">VIP Portal</span>
                 </h1>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5 shadow-sm">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  100% BROKER VERIFIED
+                  OPEN API VERIFIED
                 </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
-                  cTrader Open API #{brokerConn.accountNumber || '5916063'}
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
+                  cTrader #{brokerConn.accountNumber || '5916063'}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 font-mono mt-0.5 flex items-center gap-2 flex-wrap">
-                <span>Enjin: <strong className="text-cyan-300">SMC + Gemini Deep Reinforcement</strong></span>
+              <p className="text-xs text-slate-400 font-mono mt-1 flex items-center gap-2 flex-wrap">
+                <span>Enjin: <strong className="text-cyan-300">SMC + Base44 AI Intelligence</strong></span>
                 <span className="text-slate-600">•</span>
-                <span>Latency: <strong className="text-emerald-400">{brokerConn.latencyMs || 38}ms</strong></span>
+                <span>Latensi: <strong className="text-emerald-400">{brokerConn.latencyMs || 38}ms</strong></span>
                 <span className="text-slate-600">•</span>
-                <span>Mod: <strong className="text-purple-300">NON-CUSTODIAL LIVE FEED</strong></span>
+                <span>Mod: <strong className="text-purple-300">NON-CUSTODIAL</strong></span>
               </p>
             </div>
           </div>
 
           {/* Quick HUD Metrics & Global Emergency Safety Switch */}
-          <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto font-mono text-xs">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2.5 sm:gap-3 w-full xl:w-auto font-mono text-xs">
             {/* Live Balance Card */}
             <div 
               onClick={onOpenBrokerModal}
-              className="p-2.5 sm:px-3.5 sm:py-2 bg-slate-950/80 border border-emerald-500/30 hover:border-emerald-400 rounded-xl cursor-pointer transition shadow-sm"
+              className="p-3 sm:px-4 sm:py-2.5 bg-slate-950/80 hover:bg-slate-900 border border-emerald-500/40 hover:border-emerald-400 rounded-xl cursor-pointer transition-all shadow-md shadow-emerald-950/30 group"
               title="Klik untuk konfigurasi akaun cTrader"
             >
-              <span className="text-[9px] text-slate-400 uppercase font-bold block flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+              <span className="text-[10px] text-slate-400 uppercase font-bold flex items-center gap-1.5 mb-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                 Baki cTrader
               </span>
-              <span className="text-sm sm:text-base font-black text-emerald-400">
+              <span className="text-sm sm:text-base font-black text-emerald-400 group-hover:text-emerald-300 transition">
                 ${Number(brokerConn.liveBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
 
             {/* Live Equity Card */}
-            <div className="p-2.5 sm:px-3.5 sm:py-2 bg-slate-950/80 border border-cyan-500/30 rounded-xl shadow-sm">
-              <span className="text-[9px] text-slate-400 uppercase font-bold block">
+            <div className="p-3 sm:px-4 sm:py-2.5 bg-slate-950/80 border border-cyan-500/40 rounded-xl shadow-md shadow-cyan-950/30">
+              <span className="text-[10px] text-slate-400 uppercase font-bold block mb-0.5">
                 Ekuiti Semasa
               </span>
               <span className="text-sm sm:text-base font-black text-cyan-300">
@@ -276,57 +280,57 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
             </div>
 
             {/* Customer Protection Shield Badge */}
-            <div className="p-2.5 sm:px-3.5 sm:py-2 rounded-xl border border-emerald-500/40 bg-emerald-950/40 font-bold flex items-center gap-2 shadow-sm">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <div className="col-span-2 sm:col-span-1 p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl border border-emerald-500/40 bg-emerald-950/50 font-bold flex items-center gap-2.5 shadow-sm">
+              <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0" />
               <div className="flex flex-col">
-                <span className="text-[9px] text-slate-400 uppercase font-bold">PERLINDUNGAN AI</span>
-                <span className="text-[11px] font-black text-emerald-300">100% SECURE NON-CUSTODIAL</span>
+                <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">KESELAMATAN AI</span>
+                <span className="text-[11px] font-black text-emerald-300">100% NON-CUSTODIAL</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* ========================================================================= */}
-        {/* 2. MODERN 4-TAB MARKETING NAVIGATION BAR                                 */}
+        {/* 2. MODERN 5-TAB HORIZONTALLY SCROLLABLE NAVIGATION BAR                    */}
         {/* ========================================================================= */}
-        <div className="mt-4 pt-3.5 border-t border-white/[0.06] flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-1.5 bg-slate-950/90 p-1 rounded-xl border border-white/[0.08] shadow-inner">
+        <div className="mt-5 pt-4 border-t border-white/[0.08] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 bg-slate-950/90 p-1.5 rounded-2xl border border-white/[0.08] shadow-inner overflow-x-auto no-scrollbar scroll-smooth">
             <button
               onClick={() => setActiveTab('VIP_COCKPIT')}
-              className={`px-4 py-2 rounded-lg text-xs font-black transition flex items-center gap-2 cursor-pointer ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all duration-200 flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
                 activeTab === 'VIP_COCKPIT'
-                  ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white shadow-lg shadow-emerald-950/50'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white shadow-lg shadow-emerald-950/60 ring-1 ring-emerald-400/40'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
               }`}
             >
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
-              <span>1. Portal VIP Saya (Personal Cockpit)</span>
+              <ShieldCheck className="w-4 h-4 text-emerald-300" />
+              <span>1. Portal VIP Saya</span>
             </button>
 
             <button
               onClick={() => setActiveTab('TERMINAL')}
-              className={`px-4 py-2 rounded-lg text-xs font-black transition flex items-center gap-2 cursor-pointer ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all duration-200 flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
                 activeTab === 'TERMINAL'
-                  ? 'bg-gradient-to-r from-cyan-600 via-indigo-600 to-blue-600 text-white shadow-lg shadow-cyan-950/50'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-gradient-to-r from-cyan-600 via-indigo-600 to-blue-600 text-white shadow-lg shadow-cyan-950/60 ring-1 ring-cyan-400/40'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
               }`}
             >
-              <Zap className="w-3.5 h-3.5 text-cyan-300" />
+              <Zap className="w-4 h-4 text-cyan-300" />
               <span>2. Terminal Analisis AI</span>
             </button>
 
             <button
               onClick={() => setActiveTab('STATISTICS')}
-              className={`px-4 py-2 rounded-lg text-xs font-black transition flex items-center gap-2 cursor-pointer ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all duration-200 flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
                 activeTab === 'STATISTICS'
-                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-950/50'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-950/60 ring-1 ring-emerald-400/40'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
               }`}
             >
-              <History className="w-3.5 h-3.5 text-emerald-300" />
-              <span>3. Rekod &amp; Prestasi Disahkan</span>
+              <History className="w-4 h-4 text-emerald-300" />
+              <span>3. Rekod & Prestasi</span>
               {closedTrades.length > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full text-[9px] font-mono font-black bg-emerald-400 text-slate-950">
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-mono font-black bg-emerald-400 text-slate-950">
                   {closedTrades.length}
                 </span>
               )}
@@ -334,16 +338,16 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
 
             <button
               onClick={() => setActiveTab('ECONOMIC_CALENDAR')}
-              className={`px-4 py-2 rounded-lg text-xs font-black transition flex items-center gap-2 cursor-pointer ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all duration-200 flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
                 activeTab === 'ECONOMIC_CALENDAR'
-                  ? 'bg-gradient-to-r from-amber-600 via-orange-600 to-rose-600 text-white shadow-lg shadow-amber-950/50'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-gradient-to-r from-amber-600 via-orange-600 to-rose-600 text-white shadow-lg shadow-amber-950/60 ring-1 ring-amber-400/40'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
               }`}
             >
-              <Calendar className="w-3.5 h-3.5 text-amber-300" />
-              <span>4. Kalendar Berita &amp; Makro</span>
+              <Calendar className="w-4 h-4 text-amber-300" />
+              <span>4. Berita Makro</span>
               {economicEvents.filter(e => e.impact === 'HIGH').length > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full text-[9px] font-mono font-black bg-rose-500 text-white">
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-mono font-black bg-rose-500 text-white">
                   {economicEvents.filter(e => e.impact === 'HIGH').length}
                 </span>
               )}
@@ -351,42 +355,51 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
 
             <button
               onClick={() => setActiveTab('BROKER_CONNECT')}
-                className={`px-4 py-2 rounded-lg text-xs font-black transition flex items-center gap-2 cursor-pointer ${
-                  activeTab === 'BROKER_CONNECT'
-                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-950/50'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Cpu className="w-3.5 h-3.5 text-purple-300" />
-                <span>5. Pautan Broker &amp; Profil</span>
-              </button>
-            </div>
+              className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all duration-200 flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
+                activeTab === 'BROKER_CONNECT'
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-950/60 ring-1 ring-purple-400/40'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+              }`}
+            >
+              <Cpu className="w-4 h-4 text-purple-300" />
+              <span>5. Pautan Broker</span>
+            </button>
+          </div>
 
-            <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+            {onOpenAdaptiveLearning && (
               <button
                 type="button"
-                onClick={() => setIsOnboardingOpen(true)}
-                className="px-3 py-1.5 rounded-lg text-xs font-black bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white shadow-md shadow-emerald-950/50 transition flex items-center gap-1.5 cursor-pointer"
+                id="dashboard-open-adaptive-btn"
+                onClick={onOpenAdaptiveLearning}
+                className="px-3.5 py-2 rounded-xl text-xs font-black bg-gradient-to-r from-cyan-600 via-indigo-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-md shadow-cyan-950/60 transition flex items-center gap-1.5 cursor-pointer border border-cyan-400/40 ring-1 ring-cyan-500/30 whitespace-nowrap shrink-0 active:scale-95"
+                title="Buka Enjin Pembelajaran Adaptif AI & Jalankan Ulangkaji Mingguan Base44"
               >
-                <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-                <span>🚀 Panduan Pengguna Baharu</span>
+                <Brain className="w-3.5 h-3.5 text-cyan-300 animate-pulse" />
+                <span>📚 Ulangkaji Base44</span>
               </button>
+            )}
 
-              <div className="hidden sm:flex items-center gap-2 font-mono text-[11px] text-slate-400">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>Kesesuaian: <strong className="text-emerald-400">100% Non-Custodial</strong></span>
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={() => setIsOnboardingOpen(true)}
+              className="px-3.5 py-2 rounded-xl text-xs font-black bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white shadow-md shadow-emerald-950/50 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 active:scale-95"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+              <span>🚀 Panduan Pantas</span>
+            </button>
           </div>
         </div>
+      </div>
 
-        {/* ========================================================================= */}
-        {/* 3. TAB 1: VIP SUBSCRIBER PERSONAL COCKPIT                                  */}
-        {/* ========================================================================= */}
+      {/* ========================================================================= */}
+      {/* 3. TAB 1: VIP SUBSCRIBER PERSONAL COCKPIT                                  */}
+      {/* ========================================================================= */}
         {activeTab === 'VIP_COCKPIT' && (
           <VipSubscriberCockpit
             isMalay={isMalay}
             onOpenBrokerConnect={onOpenBrokerModal}
+            onOpenAdaptiveLearning={onOpenAdaptiveLearning}
           />
         )}
 
@@ -407,6 +420,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
             aiLoading={aiLoading}
             onRefreshData={onRefreshData}
             onOpenBrokerModal={onOpenBrokerModal}
+            onOpenAdaptiveLearning={onOpenAdaptiveLearning}
             timeframe={timeframe}
             setTimeframe={setTimeframe}
             language={isMalay ? 'ms' : 'en'}

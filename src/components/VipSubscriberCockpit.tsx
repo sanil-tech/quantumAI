@@ -4,7 +4,7 @@ import {
   Activity, DollarSign, Lock, Power, Sliders, RefreshCw,
   AlertCircle, CheckCircle2, ChevronRight, BarChart3, Radio,
   Clock, Award, ArrowUpRight, ArrowDownRight, ExternalLink,
-  SlidersHorizontal, Check, AlertTriangle, Play, Pause, XOctagon
+  SlidersHorizontal, Check, AlertTriangle, Play, Pause, XOctagon, Brain
 } from 'lucide-react';
 import { CurrencyPair } from '../types';
 
@@ -12,6 +12,7 @@ interface VipSubscriberCockpitProps {
   initialAccountId?: string;
   isMalay?: boolean;
   onOpenBrokerConnect?: () => void;
+  onOpenAdaptiveLearning?: () => void;
 }
 
 interface SubscriberData {
@@ -63,7 +64,8 @@ interface PositionData {
 export const VipSubscriberCockpit: React.FC<VipSubscriberCockpitProps> = ({
   initialAccountId = '5916063',
   isMalay = true,
-  onOpenBrokerConnect
+  onOpenBrokerConnect,
+  onOpenAdaptiveLearning
 }) => {
   const [accountId, setAccountId] = useState<string>(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -211,11 +213,11 @@ export const VipSubscriberCockpit: React.FC<VipSubscriberCockpitProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 lg:p-8 space-y-6">
+    <div className="min-h-screen bg-[#0B0F19] text-slate-100 p-3 sm:p-6 lg:p-8 space-y-6">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className={`fixed top-5 right-5 z-50 px-5 py-3.5 rounded-xl border flex items-center gap-3 shadow-2xl backdrop-blur-md animate-fade-in ${
-          toastMessage.type === 'success' ? 'bg-emerald-950/90 border-emerald-500 text-emerald-200' : 'bg-red-950/90 border-red-500 text-red-200'
+        <div className={`fixed top-5 right-5 z-50 px-5 py-3.5 rounded-2xl border flex items-center gap-3 shadow-2xl backdrop-blur-xl animate-fade-in ${
+          toastMessage.type === 'success' ? 'bg-emerald-950/90 border-emerald-500/60 text-emerald-200' : 'bg-red-950/90 border-red-500/60 text-red-200'
         }`}>
           {toastMessage.type === 'success' ? <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" /> : <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />}
           <span className="text-sm font-semibold">{toastMessage.text}</span>
@@ -223,17 +225,18 @@ export const VipSubscriberCockpit: React.FC<VipSubscriberCockpitProps> = ({
       )}
 
       {/* Header VIP Hero Cockpit */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900/90 to-emerald-950/40 border border-emerald-500/20 p-6 lg:p-8 shadow-2xl">
+      <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-slate-900 via-[#0e1628] to-emerald-950/40 border border-emerald-500/25 p-5 sm:p-7 lg:p-8 shadow-2xl backdrop-blur-2xl">
         <div className="absolute top-0 right-0 -mt-12 -mr-12 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 -mb-12 -ml-12 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
         
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative z-10">
           <div>
-            <div className="flex items-center gap-3 mb-2 flex-wrap">
-              <span className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold uppercase tracking-wider rounded-full flex items-center gap-1.5">
+            <div className="flex items-center gap-2.5 mb-2.5 flex-wrap">
+              <span className="px-3 py-1 bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 text-xs font-black uppercase tracking-wider rounded-full flex items-center gap-1.5 shadow-sm">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 VIP CLIENT PORTAL
               </span>
-              <span className="text-xs font-mono text-slate-400">
+              <span className="text-xs font-mono text-slate-300 bg-slate-800/80 px-2.5 py-0.5 rounded-full border border-white/[0.08]">
                 Akaun: #{accountId}
               </span>
               <button
@@ -246,16 +249,16 @@ export const VipSubscriberCockpit: React.FC<VipSubscriberCockpitProps> = ({
                     window.history.replaceState(null, '', `/?account=${clean}`);
                   }
                 }}
-                className="text-[11px] font-mono text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
+                className="text-xs font-mono text-cyan-400 hover:text-cyan-300 underline cursor-pointer font-bold"
               >
                 [{isMalay ? 'Tukar Akaun' : 'Switch Account'}]
               </button>
             </div>
-            <h1 className="text-2xl lg:text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-3">
               {subscriber?.name || `VIP Trader #${accountId}`}
-              <ShieldCheck className="w-6 h-6 text-emerald-400" />
+              <ShieldCheck className="w-7 h-7 text-emerald-400" />
             </h1>
-            <p className="text-sm text-slate-400 mt-1 max-w-2xl">
+            <p className="text-xs sm:text-sm text-slate-400 mt-1.5 max-w-2xl leading-relaxed">
               {isMalay 
                 ? 'Portal pelaksanaan peribadi. Semua data posisi dan ekuiti adalah terasing secara khusus bagi akaun cTrader anda.'
                 : 'Isolated client execution portal. All positions and equity data are strictly scoped to your cTrader account.'}
@@ -263,61 +266,72 @@ export const VipSubscriberCockpit: React.FC<VipSubscriberCockpitProps> = ({
           </div>
 
           {/* Quick Action Controls */}
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
             {onOpenBrokerConnect && (
               <button
                 onClick={onOpenBrokerConnect}
-                className="px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 flex items-center gap-2 transition-all"
+                className="px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 flex items-center gap-2 transition-all shadow-sm active:scale-95 cursor-pointer"
               >
                 <Zap className="w-4 h-4 text-indigo-400" />
-                {isMalay ? 'Sambung cTrader (OAuth)' : 'Connect cTrader'}
+                <span>{isMalay ? 'Sambung cTrader' : 'Connect cTrader'}</span>
               </button>
             )}
             <button
               onClick={handleToggleCopy}
               disabled={actionLoading === 'toggle'}
-              className={`px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all shadow-lg ${
+              className={`px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider flex items-center gap-2 transition-all shadow-lg active:scale-95 cursor-pointer ${
                 subscriber?.status === 'ACTIVE'
                   ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40'
-                  : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/25'
+                  : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/30'
               }`}
             >
               {subscriber?.status === 'ACTIVE' ? (
                 <>
                   <Pause className="w-4 h-4" />
-                  {isMalay ? 'Jeda Salinan (Pause)' : 'Pause Copying'}
+                  <span>{isMalay ? 'Jeda Salinan' : 'Pause Copying'}</span>
                 </>
               ) : (
                 <>
                   <Play className="w-4 h-4" />
-                  {isMalay ? 'Aktifkan Salinan (Resume)' : 'Resume Copying'}
+                  <span>{isMalay ? 'Aktifkan Salinan' : 'Resume Copying'}</span>
                 </>
               )}
             </button>
 
+            {onOpenAdaptiveLearning && (
+              <button
+                onClick={onOpenAdaptiveLearning}
+                className="px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider bg-gradient-to-r from-cyan-600 via-indigo-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white border border-cyan-400/40 flex items-center gap-2 transition-all shadow-lg shadow-cyan-950/60 cursor-pointer active:scale-95"
+                title="Buka Enjin Pembelajaran Adaptif AI & Jalankan Ulangkaji Mingguan Base44"
+              >
+                <Brain className="w-4 h-4 text-cyan-300 animate-pulse" />
+                <span>{isMalay ? '📚 Ulangkaji AI' : '📚 AI Review'}</span>
+              </button>
+            )}
+
             <button
               onClick={() => setIsRiskModalOpen(true)}
-              className="px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-2 transition-all"
+              className="px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-2 transition-all cursor-pointer active:scale-95"
             >
               <SlidersHorizontal className="w-4 h-4 text-cyan-400" />
-              {isMalay ? 'Tetapan Risiko' : 'Risk Settings'}
+              <span>{isMalay ? 'Risiko' : 'Risk'}</span>
             </button>
 
             {openPositions.length > 0 && (
               <button
                 onClick={handleEmergencyClose}
                 disabled={actionLoading === 'closeAll'}
-                className="px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 flex items-center gap-2 transition-all"
+                className="px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 flex items-center gap-2 transition-all cursor-pointer active:scale-95"
               >
                 <XOctagon className="w-4 h-4 text-rose-400" />
-                {isMalay ? 'Tutup Semua Posisi' : 'Emergency Close All'}
+                <span>{isMalay ? 'Tutup Semua' : 'Close All'}</span>
               </button>
             )}
 
             <button
               onClick={fetchCockpitData}
               disabled={refreshing}
-              className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 transition-all"
+              className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 transition-all cursor-pointer"
               title="Segarkan Data"
             >
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-emerald-400' : ''}`} />
@@ -326,56 +340,56 @@ export const VipSubscriberCockpit: React.FC<VipSubscriberCockpitProps> = ({
         </div>
 
         {/* Live Account Metrics Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-6 border-t border-slate-800/80">
-          <div className="bg-slate-950/60 rounded-2xl p-4 border border-slate-800">
-            <span className="text-xs text-slate-400 uppercase font-semibold block mb-1">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-7 pt-6 border-t border-slate-800/80">
+          <div className="bg-slate-950/70 rounded-2xl p-4 border border-white/[0.08] shadow-inner">
+            <span className="text-[10px] text-slate-400 uppercase font-black block mb-1">
               {isMalay ? 'Baki Akaun (Balance)' : 'Live Balance'}
             </span>
-            <div className="text-xl lg:text-2xl font-black text-white font-mono">
+            <div className="text-xl sm:text-2xl font-black text-white font-mono tracking-tight">
               ${accountSummary?.balance?.toLocaleString('en-US', { minimumFractionDigits: 2 }) || '0.00'}
             </div>
-            <span className="text-[11px] text-emerald-400 flex items-center gap-1 mt-1 font-medium">
-              <CheckCircle2 className="w-3 h-3" /> Disahkan cTrader
+            <span className="text-[11px] text-emerald-400 flex items-center gap-1 mt-1.5 font-bold">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Disahkan cTrader
             </span>
           </div>
 
-          <div className="bg-slate-950/60 rounded-2xl p-4 border border-slate-800">
-            <span className="text-xs text-slate-400 uppercase font-semibold block mb-1">
+          <div className="bg-slate-950/70 rounded-2xl p-4 border border-white/[0.08] shadow-inner">
+            <span className="text-[10px] text-slate-400 uppercase font-black block mb-1">
               {isMalay ? 'Ekuiti Semasa (Equity)' : 'Live Equity'}
             </span>
-            <div className="text-xl lg:text-2xl font-black text-emerald-400 font-mono">
+            <div className="text-xl sm:text-2xl font-black text-emerald-400 font-mono tracking-tight">
               ${accountSummary?.equity?.toLocaleString('en-US', { minimumFractionDigits: 2 }) || '0.00'}
             </div>
-            <span className="text-[11px] text-slate-400 mt-1 block">
-              Floating: {accountSummary?.floatingPnl >= 0 ? `+$${accountSummary?.floatingPnl}` : `-$${Math.abs(accountSummary?.floatingPnl)}`}
+            <span className="text-[11px] text-slate-400 mt-1.5 block font-mono">
+              Floating: <strong className={accountSummary?.floatingPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}>{accountSummary?.floatingPnl >= 0 ? `+$${accountSummary?.floatingPnl}` : `-$${Math.abs(accountSummary?.floatingPnl || 0)}`}</strong>
             </span>
           </div>
 
-          <div className="bg-slate-950/60 rounded-2xl p-4 border border-slate-800">
-            <span className="text-xs text-slate-400 uppercase font-semibold block mb-1">
+          <div className="bg-slate-950/70 rounded-2xl p-4 border border-white/[0.08] shadow-inner">
+            <span className="text-[10px] text-slate-400 uppercase font-black block mb-1">
               {isMalay ? 'Status Salinan AI' : 'AI Copier Status'}
             </span>
             <div className="flex items-center gap-2 mt-1">
               <span className={`w-2.5 h-2.5 rounded-full ${subscriber?.status === 'ACTIVE' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-              <span className="text-lg font-bold text-white uppercase">
+              <span className="text-base sm:text-lg font-black text-white uppercase">
                 {subscriber?.status || 'ACTIVE'}
               </span>
             </div>
-            <span className="text-[11px] text-cyan-400 mt-1 block font-mono">
+            <span className="text-[11px] text-cyan-400 mt-1.5 block font-mono font-bold">
               Mod: {subscriber?.riskMode || 'BALANCED'} ({subscriber?.riskPercent || 1.0}%)
             </span>
           </div>
 
-          <div className="bg-slate-950/60 rounded-2xl p-4 border border-slate-800">
-            <span className="text-xs text-slate-400 uppercase font-semibold block mb-1">
+          <div className="bg-slate-950/70 rounded-2xl p-4 border border-white/[0.08] shadow-inner">
+            <span className="text-[10px] text-slate-400 uppercase font-black block mb-1">
               {isMalay ? 'Sambungan Open API' : 'Open API 2.0'}
             </span>
             <div className="flex items-center gap-2 mt-1">
               <ShieldCheck className="w-5 h-5 text-emerald-400" />
-              <span className="text-lg font-bold text-white">TERHUBUNG</span>
+              <span className="text-base sm:text-lg font-black text-white">TERHUBUNG</span>
             </div>
-            <span className="text-[11px] text-slate-400 mt-1 block font-mono">
-              Latensi: {subscriber?.latencyMs || 35}ms
+            <span className="text-[11px] text-slate-400 mt-1.5 block font-mono">
+              Latensi: <strong className="text-emerald-400">{subscriber?.latencyMs || 35}ms</strong>
             </span>
           </div>
         </div>
@@ -386,14 +400,14 @@ export const VipSubscriberCockpit: React.FC<VipSubscriberCockpitProps> = ({
         
         {/* Left 2 Cols: My Active Live Positions */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-xl">
+          <div className="bg-slate-900/80 border border-white/[0.08] rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-xl backdrop-blur-xl">
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-sm">
                   <Activity className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-white">
+                  <h2 className="text-base sm:text-lg font-black text-white">
                     {isMalay ? 'Posisi Terbuka Akaun Saya' : 'My Live Open Positions'}
                   </h2>
                   <p className="text-xs text-slate-400">
@@ -401,20 +415,20 @@ export const VipSubscriberCockpit: React.FC<VipSubscriberCockpitProps> = ({
                   </p>
                 </div>
               </div>
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700">
+              <span className="px-3 py-1 rounded-full text-xs font-black bg-slate-800 text-slate-200 border border-white/[0.08]">
                 {openPositions.length} {isMalay ? 'Aktif' : 'Active'}
               </span>
             </div>
 
             {openPositions.length === 0 ? (
-              <div className="py-12 px-4 text-center rounded-2xl bg-slate-950/40 border border-dashed border-slate-800">
+              <div className="py-12 px-4 text-center rounded-2xl bg-slate-950/50 border border-dashed border-slate-800">
                 <CheckCircle2 className="w-10 h-10 text-emerald-500/40 mx-auto mb-3" />
-                <h3 className="text-base font-semibold text-slate-200">
+                <h3 className="text-base font-bold text-slate-200">
                   {isMalay ? 'Tiada Posisi Terbuka Pada Akaun Anda' : 'No Open Positions On Your Account'}
                 </h3>
-                <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+                <p className="text-xs text-slate-400 max-w-md mx-auto mt-1.5 leading-relaxed">
                   {isMalay 
-                    ? 'Sistem AI Scanner sedang memantau pasaran 24/7. Apabila setup berkualiti tinggi dikesan, posisi akan disalin secara automatik.'
+                    ? 'Sistem AI Scanner sedang memantau pasaran 24/7. Apabila setup berkualiti tinggi (CONFIRM ≥75% atau ADJUST ≥64%) dikesan, posisi akan disalin secara automatik.'
                     : 'The AI Scanner is observing the market 24/7. High probability setups will be automatically copied here.'}
                 </p>
               </div>
@@ -425,30 +439,30 @@ export const VipSubscriberCockpit: React.FC<VipSubscriberCockpitProps> = ({
                   return (
                     <div
                       key={pos.positionId}
-                      className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800/80 hover:border-slate-700 transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+                      className="p-4 rounded-2xl bg-slate-950/80 border border-white/[0.08] hover:border-cyan-500/40 transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm"
                     >
                       <div className="flex items-center gap-3.5">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs ${
-                          isBuy ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                        <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-black text-xs shadow-sm ${
+                          isBuy ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
                         }`}>
                           {pos.direction}
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-extrabold text-base text-white">{pos.symbol}</span>
-                            <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
+                            <span className="font-black text-base text-white">{pos.symbol}</span>
+                            <span className="text-xs px-2 py-0.5 rounded-md bg-slate-800 text-cyan-300 font-mono font-bold">
                               {pos.quantity} Lots
                             </span>
                           </div>
                           <div className="text-xs text-slate-400 font-mono mt-0.5">
-                            Entri: <span className="text-slate-200">{pos.entryPrice}</span> | SL: <span className="text-rose-400">{pos.stopLoss}</span> | TP: <span className="text-emerald-400">{pos.takeProfit}</span>
+                            Entri: <span className="text-slate-200 font-bold">{pos.entryPrice}</span> | SL: <span className="text-rose-400 font-bold">{pos.stopLoss}</span> | TP: <span className="text-emerald-400 font-bold">{pos.takeProfit}</span>
                           </div>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
                         <div className="text-right">
-                          <div className={`text-base font-bold font-mono ${(pos.unrealizedProfit || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          <div className={`text-base font-black font-mono ${(pos.unrealizedProfit || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                             {(pos.unrealizedProfit || 0) >= 0 ? '+' : ''}${pos.unrealizedProfit || '0.00'}
                           </div>
                           <div className="text-xs text-slate-400 font-mono">
@@ -456,7 +470,7 @@ export const VipSubscriberCockpit: React.FC<VipSubscriberCockpitProps> = ({
                           </div>
                         </div>
 
-                        <span className="px-2.5 py-1 rounded-lg text-xs font-bold uppercase bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                        <span className="px-2.5 py-1 rounded-xl text-xs font-black uppercase bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
                           COPIED
                         </span>
 
@@ -464,15 +478,15 @@ export const VipSubscriberCockpit: React.FC<VipSubscriberCockpitProps> = ({
                           type="button"
                           onClick={() => handleCloseSinglePosition(pos.positionId, pos.symbol)}
                           disabled={actionLoading === `close_${pos.positionId}`}
-                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 hover:border-rose-400 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                          title={isMalay ? "Tutup posisi ini awal mengikut harga spot pasaran sebenar" : "Close this position early at real live market spot price"}
+                          className="px-3 py-1.5 rounded-xl text-xs font-black bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 hover:border-rose-400 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
+                          title={isMalay ? "Tutup posisi ini awal mengikut harga pasaran sebenar" : "Close this position early at market price"}
                         >
                           {actionLoading === `close_${pos.positionId}` ? (
                             <RefreshCw className="w-3.5 h-3.5 animate-spin text-rose-300" />
                           ) : (
                             <XOctagon className="w-3.5 h-3.5 text-rose-400" />
                           )}
-                          <span>{isMalay ? 'Tutup Awal' : 'Close Early'}</span>
+                          <span>{isMalay ? 'Tutup' : 'Close'}</span>
                         </button>
                       </div>
                     </div>
@@ -483,14 +497,14 @@ export const VipSubscriberCockpit: React.FC<VipSubscriberCockpitProps> = ({
           </div>
 
           {/* Personal Performance History Ledger */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-xl">
+          <div className="bg-slate-900/80 border border-white/[0.08] rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-xl backdrop-blur-xl">
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+                <div className="w-10 h-10 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-sm">
                   <BarChart3 className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-white">
+                  <h2 className="text-base sm:text-lg font-black text-white">
                     {isMalay ? 'Sejarah Prestasi Akaun Saya' : 'My Account Trade History'}
                   </h2>
                   <p className="text-xs text-slate-400">
@@ -505,10 +519,10 @@ export const VipSubscriberCockpit: React.FC<VipSubscriberCockpitProps> = ({
                 {isMalay ? 'Tiada sejarah trade tertutup ditemui untuk akaun ini.' : 'No closed trades recorded yet for this account.'}
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto no-scrollbar">
                 <table className="w-full text-left text-xs font-mono">
                   <thead>
-                    <tr className="border-b border-slate-800 text-slate-400 uppercase">
+                    <tr className="border-b border-slate-800 text-slate-400 uppercase font-black">
                       <th className="pb-3 pl-2">Pair</th>
                       <th className="pb-3">Side</th>
                       <th className="pb-3">Lot</th>
@@ -523,19 +537,19 @@ export const VipSubscriberCockpit: React.FC<VipSubscriberCockpitProps> = ({
                       const isProfit = profitVal >= 0;
                       const exitPrice = trade.closePrice || trade.currentPrice || trade.entryPrice;
                       return (
-                        <tr key={idx} className="hover:bg-slate-800/30 transition-colors">
+                        <tr key={idx} className="hover:bg-slate-800/40 transition-colors">
                           <td className="py-3 pl-2 font-bold text-white">{trade.symbol}</td>
                           <td className="py-3">
-                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-black ${
                               trade.direction === 'BUY' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
                             }`}>
                               {trade.direction}
                             </span>
                           </td>
-                          <td className="py-3 text-slate-300">{trade.quantity}</td>
+                          <td className="py-3 text-slate-300 font-bold">{trade.quantity}</td>
                           <td className="py-3 text-slate-400">{trade.entryPrice}</td>
                           <td className="py-3 text-slate-400">{exitPrice}</td>
-                          <td className={`py-3 text-right pr-2 font-bold ${isProfit ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          <td className={`py-3 text-right pr-2 font-black ${isProfit ? 'text-emerald-400' : 'text-rose-400'}`}>
                             {isProfit ? `+$${Number(profitVal).toFixed(2)}` : `-$${Math.abs(Number(profitVal)).toFixed(2)}`}
                           </td>
                         </tr>
@@ -551,39 +565,39 @@ export const VipSubscriberCockpit: React.FC<VipSubscriberCockpitProps> = ({
         {/* Right 1 Col: Performance Metrics & AI Confluence Feed */}
         <div className="space-y-6">
           {/* Performance Card */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-xl">
-            <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
+          <div className="bg-slate-900/80 border border-white/[0.08] rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-xl backdrop-blur-xl">
+            <h3 className="text-base font-black text-white mb-4 flex items-center gap-2">
               <Award className="w-5 h-5 text-amber-400" />
-              {isMalay ? 'Metrik Prestasi Peribadi' : 'Personal Performance Metrics'}
+              <span>{isMalay ? 'Metrik Prestasi Peribadi' : 'Personal Performance Metrics'}</span>
             </h3>
 
-            <div className="space-y-4">
-              <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800">
-                <div className="text-xs text-slate-400 mb-1">{isMalay ? 'Kadar Kemenangan (Win Rate)' : 'Personal Win Rate'}</div>
-                <div className="text-2xl font-black text-emerald-400 font-mono">
+            <div className="space-y-3.5">
+              <div className="p-4 rounded-2xl bg-slate-950/70 border border-white/[0.08]">
+                <div className="text-[10px] text-slate-400 font-black uppercase mb-1">{isMalay ? 'Kadar Kemenangan (Win Rate)' : 'Personal Win Rate'}</div>
+                <div className="text-2xl sm:text-3xl font-black text-emerald-400 font-mono">
                   {performance?.winRatePercent || 0}%
                 </div>
-                <div className="text-[11px] text-slate-400 mt-1">
+                <div className="text-[11px] text-slate-400 mt-1 font-mono">
                   {performance?.winCount || 0} Win · {performance?.lossCount || 0} Loss
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800">
-                <div className="text-xs text-slate-400 mb-1">{isMalay ? 'Jumlah Keuntungan Bersih' : 'Net Realized Profit'}</div>
-                <div className={`text-2xl font-black font-mono ${(performance?.totalPnlDollars || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              <div className="p-4 rounded-2xl bg-slate-950/70 border border-white/[0.08]">
+                <div className="text-[10px] text-slate-400 font-black uppercase mb-1">{isMalay ? 'Jumlah Keuntungan Bersih' : 'Net Realized Profit'}</div>
+                <div className={`text-2xl sm:text-3xl font-black font-mono ${(performance?.totalPnlDollars || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                   {(performance?.totalPnlDollars || 0) >= 0 ? `+$${performance?.totalPnlDollars}` : `-$${Math.abs(performance?.totalPnlDollars || 0)}`}
                 </div>
-                <div className="text-[11px] text-slate-400 mt-1">
+                <div className="text-[11px] text-slate-400 mt-1 font-mono">
                   Pips: {performance?.totalPnlPips || 0} pips
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800">
-                <div className="text-xs text-slate-400 mb-1">{isMalay ? 'Faktor Keuntungan (Profit Factor)' : 'Profit Factor'}</div>
-                <div className="text-2xl font-black text-cyan-400 font-mono">
+              <div className="p-4 rounded-2xl bg-slate-950/70 border border-white/[0.08]">
+                <div className="text-[10px] text-slate-400 font-black uppercase mb-1">{isMalay ? 'Faktor Keuntungan (Profit Factor)' : 'Profit Factor'}</div>
+                <div className="text-2xl sm:text-3xl font-black text-cyan-400 font-mono">
                   {performance?.profitFactor || 0}
                 </div>
-                <div className="text-[11px] text-slate-400 mt-1">
+                <div className="text-[11px] text-slate-400 mt-1 font-mono">
                   Jumlah Trade: {performance?.totalTrades || 0}
                 </div>
               </div>
@@ -591,33 +605,33 @@ export const VipSubscriberCockpit: React.FC<VipSubscriberCockpitProps> = ({
           </div>
 
           {/* AI Scanner Radar Context (Read-Only) */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-xl">
+          <div className="bg-slate-900/80 border border-white/[0.08] rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-xl backdrop-blur-xl">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <h3 className="text-base font-black text-white flex items-center gap-2">
                 <Radio className="w-5 h-5 text-emerald-400 animate-pulse" />
-                {isMalay ? 'Radar Analisis AI (SMC)' : 'AI Market Intelligence'}
+                <span>{isMalay ? 'Radar Analisis AI' : 'AI Market Intelligence'}</span>
               </h3>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
+              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-black border border-emerald-500/30">
                 24/7 ACTIVE
               </span>
             </div>
 
             <p className="text-xs text-slate-400 leading-relaxed mb-4">
               {isMalay
-                ? 'AI memproses 28 pasangan Forex & aset setiap minit menggunakan Smart Money Concepts (SMC) & zon Order Block institusi.'
-                : 'AI scans 28 Forex pairs & assets every minute utilizing Smart Money Concepts (SMC) & Institutional Order Blocks.'}
+                ? 'AI memproses pasangan Forex & aset setiap minit menggunakan Smart Money Concepts (SMC) & zon Order Block institusi.'
+                : 'AI scans Forex pairs & assets every minute utilizing Smart Money Concepts (SMC) & Institutional Order Blocks.'}
             </p>
 
             <div className="space-y-2.5">
               {(marketRadar?.recentSetups || []).slice(0, 3).map((s: any, idx: number) => (
-                <div key={idx} className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-xs">
-                  <div className="flex items-center justify-between font-bold">
-                    <span className="text-white">{s.pair}</span>
-                    <span className={s.direction === 'BUY' ? 'text-emerald-400' : 'text-rose-400'}>
+                <div key={idx} className="p-3.5 rounded-2xl bg-slate-950/70 border border-white/[0.08] text-xs">
+                  <div className="flex items-center justify-between font-black">
+                    <span className="text-white text-sm">{s.pair}</span>
+                    <span className={`px-2 py-0.5 rounded-md font-mono ${s.direction === 'BUY' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
                       {s.direction} ({s.confidence}%)
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">
+                  <p className="text-[11px] text-slate-400 mt-1.5 line-clamp-2 leading-relaxed">
                     {s.reasoning || s.educationalLesson || 'Confluence pengesahan volum institusi dan zon mitigasi SMC.'}
                   </p>
                 </div>
