@@ -18,9 +18,11 @@ import { EconomicContextService } from './economicContextService';
 import { economicCalendarProvider } from './economicCalendarProvider';
 import { telegramNotificationService } from './telegramNotificationService';
 import { getMarketStatus, isCryptoPair } from '../../lib/marketHours';
+import { PairDailyRangeService } from './pairDailyRangeService';
 import { signalValidationGate } from './validation/signalValidationGate';
 import { executionEligibilityGate } from './validation/executionEligibilityGate';
 import { CanonicalSignal, ValidationReport } from './validation/signalValidationTypes';
+import { signalLoggingService } from './signalLoggingService';
 
 export interface DiscoveredSetup {
   id: string;
@@ -78,7 +80,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
   private pushedSignalLedger: Map<string, number> = new Map(); // pairKey -> last pushed signal timestamp
   private discoveredSetups: DiscoveredSetup[] = [];
   private activeEvaluatingSymbols: Set<string> = new Set(); // Symbol-level mutex
-  private maxAccountConcurrentOrders: number = Number(process.env.MAX_CONCURRENT_ORDERS) || 8; // Raised concurrent active + pending orders cap to 8
+  private maxAccountConcurrentOrders: number = Number(process.env.MAX_CONCURRENT_ORDERS) || 20; // Raised concurrent active + pending orders cap to 20 for DEMO forward validation
   private totalScanEvaluations: number = 0;
   private gradeACandidatesFound: number = 0;
   private secondOpinionsRequested: number = 0;
@@ -857,6 +859,8 @@ export class AutonomousMarketScannerService extends EventEmitter {
         isValid: true,
         entryMode: best.entryMode,
         distancePips: best.distancePips,
+        strategyVersion: best.timeframe === 'M5' ? 'QAI_M5_SCALP_BASELINE_V1' : 'QAI_BASELINE_V1',
+        strategy_version: best.timeframe === 'M5' ? 'QAI_M5_SCALP_BASELINE_V1' : 'QAI_BASELINE_V1',
         canonicalSignal: best.canonicalSignal,
         validationReport: best.validationReport
       };
@@ -875,6 +879,22 @@ export class AutonomousMarketScannerService extends EventEmitter {
       // Master-first: no subscriber publication when capacity blocks the master.
       if (isMasterAccountFull) {
         discovered.status = 'DISCOVERED_CAPACITY_REACHED';
+        discovered.invalidationReason = 'REJECTED_MAX_CONCURRENT_TRADES';
+        (discovered as any).capacityTracking = {
+          market_opportunity_id: setupId,
+          signal_id: setupId,
+          strategy_version: best.timeframe === 'M5' ? 'QAI_M5_SCALP_BASELINE_V1' : 'QAI_BASELINE_V1',
+          symbol: pair,
+          direction: best.direction,
+          timestamp: new Date().toISOString(),
+          active_positions_at_signal: openDbPositions.length,
+          pending_orders_at_signal: brokerPendingOrders.length,
+          concurrent_trade_count: totalActiveAndPending,
+          capacity_limit_at_time: this.maxAccountConcurrentOrders,
+          capacity_rejection: true,
+          lot_size: best.lotSize
+        };
+        console.log(`⚠️ [AutonomousMarketScanner] Signal for ${pair} rejected due to capacity limit (${totalActiveAndPending}/${this.maxAccountConcurrentOrders}). Tagged REJECTED_MAX_CONCURRENT_TRADES.`);
         this.saveToDisk();
         return;
       }
@@ -939,8 +959,11 @@ export class AutonomousMarketScannerService extends EventEmitter {
           take_profit: best.takeProfit1,
           time_in_force: 'GTC',
           broker_id: 'ctrader-broker-01',
-          timestamp: new Date()
-        });
+          timestamp: new Date(),
+          timeframe: best.timeframe,
+          strategy_version: best.timeframe === 'M5' ? 'QAI_M5_SCALP_BASELINE_V1' : 'QAI_BASELINE_V1',
+          execution_mode: 'DEMO_FORWARD'
+        } as any);
 
         const rawBrokerOrderId = orderResult.broker_order_id || orderResult.brokerOrderId;
         const isConfirmed = orderResult && ['FILLED','ACCEPTED','PENDING','PARTIALLY_FILLED'].includes(orderResult.status) && /^[1-9]\d*$/.test(String(rawBrokerOrderId || ''));
@@ -1171,15 +1194,24 @@ export class AutonomousMarketScannerService extends EventEmitter {
         });
       }
 
-      // If Gemini AI Risk Controller vetoed this Grade A candidate, respect the veto!
-      if (!secondOpinion.confirmed || secondOpinion.decision === 'VETO') {
+      // Gate: Block if AI explicitly VETO'd, OR if AI confidence < 64% (absolute safety floor).
+      // CONFIRM or ADJUST with >= 64% confidence -> proceed. ADJUST will use AI-suggested SL/TP.
+      const isSecondOpinionApproved = secondOpinion.confirmed && secondOpinion.decision !== 'VETO' && (secondOpinion.confidence || 0) >= 64;
+      if (!isSecondOpinionApproved) {
         this.secondOpinionsVetoed++;
-        this.recordScanDiagnostic(pair, tf, 'SECOND_OPINION_VETO', {reason: secondOpinion.vetoReason, reasons: secondOpinion.reasons});
-        console.log(`🛑 [AutonomousMarketScanner] Grade A candidate for ${pair} (${tf} ${direction}) VETOED by Gemini Second Opinion: ${secondOpinion.vetoReason || 'Risk boundary conflict'}`);
+        this.recordScanDiagnostic(pair, tf, 'SECOND_OPINION_VETO', {
+          reason: secondOpinion.vetoReason || secondOpinion.reasons?.[0],
+          decision: secondOpinion.decision,
+          confidence: secondOpinion.confidence,
+          source: secondOpinion.source
+        });
+        const providerName = secondOpinion.source === 'BASE44_AI_LIVE' ? 'Base44' : (secondOpinion.source === 'GEMINI_AI_LIVE' ? 'Gemini' : 'Local Risk');
+        console.log(`🛑 [AutonomousMarketScanner] Grade A candidate for ${pair} (${tf} ${direction}) VETOED by ${providerName} Second Opinion (Decision: ${secondOpinion.decision}, Conf: ${secondOpinion.confidence}%): ${secondOpinion.vetoReason || secondOpinion.reasons?.[0] || 'Risk boundary conflict'}`);
         return null;
       }
 
       this.secondOpinionsConfirmed++;
+      const isAdjustedByAI = secondOpinion.decision === 'ADJUST' && !!secondOpinion.adjustedLevels;
 
       // Chart Patterns Detection
       const detectedPatterns = detectChartPatterns(candles, tf);
@@ -1187,12 +1219,23 @@ export class AutonomousMarketScannerService extends EventEmitter {
 
       let finalConfidence = secondOpinion.confidence || confidence;
       const combinedReasons = [...(secondOpinion.reasons || candidateSetup.reasons || [])];
-      if (secondOpinion.source === 'GEMINI_AI_LIVE') {
-        combinedReasons.unshift(`🤖 Gemini Second Opinion: Disahkan (Keyakinan ${finalConfidence}%) - ${secondOpinion.decision}`);
+      const statusLabel = secondOpinion.decision === 'CONFIRM'
+        ? 'Disahkan'
+        : secondOpinion.decision === 'ADJUST'
+          ? (isAdjustedByAI ? 'Disesuaikan AI (paras baru dipakai)' : 'Disesuaikan AI')
+          : secondOpinion.decision;
+      if (secondOpinion.source === 'BASE44_AI_LIVE') {
+        combinedReasons.unshift(`🤖 Base44 AI Second Opinion: ${statusLabel} (Keyakinan ${finalConfidence}%) - ${secondOpinion.decision}`);
+      } else if (secondOpinion.source === 'GEMINI_AI_LIVE') {
+        combinedReasons.unshift(`🤖 Gemini Second Opinion: ${statusLabel} (Keyakinan ${finalConfidence}%) - ${secondOpinion.decision}`);
+      }
+      if (isAdjustedByAI) {
+        const adj = secondOpinion.adjustedLevels!;
+        combinedReasons.unshift(`⚙️ AI Adjust: SL → ${adj.stopLoss?.toFixed(3) ?? 'N/A'} | TP1 → ${adj.takeProfit1?.toFixed(3) ?? 'N/A'} (cadangan lebih selamat dipakai)`);
       }
       if (primaryPattern) {
         if ((direction === 'BUY' && primaryPattern.direction === 'UP') || (direction === 'SELL' && primaryPattern.direction === 'DOWN')) {
-          finalConfidence = Math.min(96, confidence + 4);
+          finalConfidence = Math.min(96, finalConfidence + 2);
           combinedReasons.unshift(`📐 Autochartist: Corak ${primaryPattern.name} disahkan (Kualiti ${primaryPattern.quality}/10) menyokong ${direction}.`);
         } else {
           combinedReasons.push(`⚠️ Autochartist: Amaran corak ${primaryPattern.name} (${primaryPattern.direction}).`);
@@ -1206,30 +1249,43 @@ export class AutonomousMarketScannerService extends EventEmitter {
 
       const pipMultiplier = isJpy ? 0.01 : (isGold || isBtc || isNas) ? 1 : 0.0001;
       const pullbackPips = isJpy ? 15.0 : (isGold ?  8.0 : (isNas ? 40.0 : (isBtc ? 200.0 : 10.0)));
-      const slPips = isJpy ? 35.0 : (isGold ?  45.0 : (isNas ? 100.0 : (isBtc ? 500.0 : 30.0)));
-      const tpPips = isJpy ? 70.0 : (isGold ?  90.0 : (isNas ? 200.0 : (isBtc ? 1000.0 : 60.0)));
 
-      const retracementEntryPrice = direction === 'BUY' 
+      // Pinpoint SMC Entry Alignment (Order Block / Fair Value Gap / Structural Discount)
+      let retracementEntryPrice = direction === 'BUY' 
         ? currentPrice - (pullbackPips * pipMultiplier) 
         : currentPrice + (pullbackPips * pipMultiplier);
 
-      const calculatedSl = direction === 'BUY' 
-        ? retracementEntryPrice - (slPips * pipMultiplier) 
-        : retracementEntryPrice + (slPips * pipMultiplier);
-
-      const calculatedTp = direction === 'BUY' 
-        ? retracementEntryPrice + (tpPips * pipMultiplier) 
-        : retracementEntryPrice - (tpPips * pipMultiplier);
+      if (smcData) {
+        if (direction === 'BUY') {
+          const ob = smcData.orderBlocks?.find((b: any) => (b.type === 'BULLISH' || b.bias === 'BULLISH') && b.top < currentPrice && (currentPrice - b.top) <= (pullbackPips * 2.5 * pipMultiplier));
+          const fvg = smcData.fairValueGaps?.find((f: any) => (f.type === 'BULLISH' || f.bias === 'BULLISH') && f.top < currentPrice && (currentPrice - f.top) <= (pullbackPips * 2.5 * pipMultiplier));
+          if (ob && ob.top > 0) {
+            retracementEntryPrice = ob.top;
+          } else if (fvg && fvg.top > 0) {
+            retracementEntryPrice = (fvg.top + fvg.bottom) / 2;
+          }
+        } else if (direction === 'SELL') {
+          const ob = smcData.orderBlocks?.find((b: any) => (b.type === 'BEARISH' || b.bias === 'BEARISH') && b.bottom > currentPrice && (b.bottom - currentPrice) <= (pullbackPips * 2.5 * pipMultiplier));
+          const fvg = smcData.fairValueGaps?.find((f: any) => (f.type === 'BEARISH' || f.bias === 'BEARISH') && f.bottom > currentPrice && (f.bottom - currentPrice) <= (pullbackPips * 2.5 * pipMultiplier));
+          if (ob && ob.bottom > 0) {
+            retracementEntryPrice = ob.bottom;
+          } else if (fvg && fvg.bottom > 0) {
+            retracementEntryPrice = (fvg.top + fvg.bottom) / 2;
+          }
+        }
+      }
 
       const decimals = isJpy ? 3 : (isGold || isBtc || isNas) ? 2 : 5;
       const finalEntryPrice = Number(retracementEntryPrice.toFixed(decimals));
-      const slVal = Number(calculatedSl.toFixed(decimals));
-      const tpVal = Number(calculatedTp.toFixed(decimals));
-      const tp2Val = direction === 'BUY'
-        ? Number((finalEntryPrice + (tpVal - finalEntryPrice) * 1.8).toFixed(decimals))
-        : Number((finalEntryPrice - (finalEntryPrice - tpVal) * 1.8).toFixed(decimals));
 
-      const lotSize = isNas ? 1.0 : (isBtc ? 0.01 : (finalConfidence >= 80 ? 0.02 : 0.01));
+      // Calculate Dynamic Timeframe & ADR Calibrated Targets (Intraday Single-Day Completion Guarantee)
+      const intradayTargets = PairDailyRangeService.calculateIntradayTargets(pair, direction, finalEntryPrice, tf);
+      const slVal = secondOpinion.adjustedLevels?.stopLoss || intradayTargets.slPrice;
+      const tpVal = secondOpinion.adjustedLevels?.takeProfit1 || intradayTargets.tp1Price;
+      const tp2Val = secondOpinion.adjustedLevels?.takeProfit2 || intradayTargets.tp2Price;
+
+      const minForexLot = 0.02;
+      const lotSize = isNas ? 1.0 : (isBtc ? 0.01 : Math.max(minForexLot, finalConfidence >= 85 ? 0.03 : 0.02));
 
       // ── PRODUCTION SIGNAL VALIDATION GATE (FAIL-CLOSED) ──────────────────────
       const validationResult = signalValidationGate.validateSignal({
@@ -1330,6 +1386,28 @@ export class AutonomousMarketScannerService extends EventEmitter {
       this.discoveredSetups.pop();
     }
     this.saveToDisk();
+
+    // Persist every natural signal to PostgreSQL with QAI_BASELINE_V1 version & NATURAL_RUNTIME provenance
+    try {
+      const mappedStatus = setup.status === 'EXECUTED' ? 'EXECUTED' : setup.status.startsWith('SKIPPED') ? 'SKIPPED' : (setup.status as any);
+      signalLoggingService.logSignal(
+        setup.pair,
+        setup.direction,
+        setup.confidence,
+        { pattern: setup.pattern, entryMode: setup.entryMode, status: setup.status },
+        setup.reasons,
+        setup.entryPrice,
+        setup.stopLoss,
+        setup.takeProfit1,
+        setup.timeframe,
+        setup.id
+      );
+      if (setup.status !== 'DISCOVERED' && setup.status !== 'EXECUTED') {
+        signalLoggingService.updateSignalStatus(setup.id, mappedStatus, setup.invalidationReason || setup.status);
+      }
+    } catch (err: any) {
+      console.warn(`[AutonomousMarketScanner] DB signal logging notice: ${err.message}`);
+    }
   }
 }
 

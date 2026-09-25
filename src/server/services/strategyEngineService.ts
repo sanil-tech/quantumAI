@@ -180,7 +180,7 @@ export class StrategyEngineService {
     const slPrice = Number((direction === 'BUY' ? currentPrice - slPips * pipOffset : currentPrice + slPips * pipOffset).toFixed(5));
     const tpPrice = Number((direction === 'BUY' ? currentPrice + tpPips * pipOffset : currentPrice - tpPips * pipOffset).toFixed(5));
 
-    const lotSize = 0.01;
+    const lotSize = 0.02;
     const riskDollars = Number(((slPips * (lotSize / 0.01) * 0.10)).toFixed(2));
     const riskPercent = Number(((riskDollars / equity) * 100).toFixed(2));
 

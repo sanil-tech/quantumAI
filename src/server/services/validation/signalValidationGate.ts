@@ -556,7 +556,7 @@ export class SignalValidationGate {
       rewardPipsTP2,
       rrTP1,
       rrTP2,
-      recommendedLot: input.recommendedLot || (effectiveConfidence >= 80 ? 0.02 : 0.01),
+      recommendedLot: input.recommendedLot ? Math.max(0.02, input.recommendedLot) : 0.02,
       indicators,
       marketRegime: input.marketRegime || (direction === 'BUY' ? 'TRENDING_BULLISH' : 'TRENDING_BEARISH'),
       modelConfidence: rawModelConfidence,
