@@ -1194,19 +1194,33 @@ export class AutonomousMarketScannerService extends EventEmitter {
         });
       }
 
-      // Gate: Block if AI explicitly VETO'd, OR if AI confidence < 64% (absolute safety floor).
-      // CONFIRM or ADJUST with >= 64% confidence -> proceed. ADJUST will use AI-suggested SL/TP.
-      const isSecondOpinionApproved = secondOpinion.confirmed && secondOpinion.decision !== 'VETO' && (secondOpinion.confidence || 0) >= 64;
+      // ── MANDATORY AI SECOND OPINION GATE ────────────────────────────────────────────
+      // Keyakinan scanner >= 75% TIDAK MENCUKUPI pada dirinya sendiri.
+      // AI mesti bersetuju secara eksplisit melalui satu daripada dua laluan:
+      //   (A) AI berkata CONFIRM dan keyakinan AI >= 75% -> execute dengan paras asal
+      //   (B) AI berkata ADJUST dan keyakinan AI >= 64% -> execute dengan paras cadangan AI
+      // Segala keadaan lain (VETO, CONFIRM<75%, ADJUST<64%) -> blok terus.
+      const aiConfidence = secondOpinion.confidence || 0;
+      const isAIConfirm = secondOpinion.decision === 'CONFIRM' && aiConfidence >= 75;
+      const isAIAdjust  = secondOpinion.decision === 'ADJUST'  && aiConfidence >= 64;
+      const isSecondOpinionApproved = isAIConfirm || isAIAdjust;
       if (!isSecondOpinionApproved) {
         this.secondOpinionsVetoed++;
+        const blockReason = secondOpinion.decision === 'VETO'
+          ? `VETO oleh AI: ${secondOpinion.vetoReason || secondOpinion.reasons?.[0]}`
+          : secondOpinion.decision === 'CONFIRM'
+            ? `CONFIRM ditolak — keyakinan AI ${aiConfidence}% < 75% (Gred A perlu >=75%)`
+            : secondOpinion.decision === 'ADJUST'
+              ? `ADJUST ditolak — keyakinan AI ${aiConfidence}% < 64% (perlu >=64%)`
+              : `Keputusan AI tidak diiktiraf: ${secondOpinion.decision}`;
         this.recordScanDiagnostic(pair, tf, 'SECOND_OPINION_VETO', {
-          reason: secondOpinion.vetoReason || secondOpinion.reasons?.[0],
+          reason: blockReason,
           decision: secondOpinion.decision,
-          confidence: secondOpinion.confidence,
+          confidence: aiConfidence,
           source: secondOpinion.source
         });
         const providerName = secondOpinion.source === 'BASE44_AI_LIVE' ? 'Base44' : (secondOpinion.source === 'GEMINI_AI_LIVE' ? 'Gemini' : 'Local Risk');
-        console.log(`🛑 [AutonomousMarketScanner] Grade A candidate for ${pair} (${tf} ${direction}) VETOED by ${providerName} Second Opinion (Decision: ${secondOpinion.decision}, Conf: ${secondOpinion.confidence}%): ${secondOpinion.vetoReason || secondOpinion.reasons?.[0] || 'Risk boundary conflict'}`);
+        console.log(`🛑 [AutonomousMarketScanner] ${pair} (${tf} ${direction}) DITOLAK oleh ${providerName} → ${blockReason}`);
         return null;
       }
 

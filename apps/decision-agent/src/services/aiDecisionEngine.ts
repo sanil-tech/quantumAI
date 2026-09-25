@@ -163,18 +163,23 @@ export class AiDecisionEngine {
             }
           });
 
-          // New Policy: ADJUST with confidence >= 64% is APPROVED — execute with AI-suggested levels.
-          // Only block if AI explicitly says VETO, OR confidence is below the 64% safety floor.
+          // Policy:
+          // - CONFIRM requires Grade A (>= 75%) to execute with original levels
+          // - ADJUST requires >= 64% to execute with AI-suggested safer levels
+          // - VETO or below threshold -> hard block
           const b44Confidence = Number(b44Res.confidenceScore) || confidence;
+          const isConfirmApproved = b44Res.decision === 'CONFIRM' && b44Confidence >= 75;
           const isAdjustApproved = b44Res.decision === 'ADJUST' && b44Confidence >= 64;
-          const isConfirmed = b44Res.decision === 'CONFIRM' || isAdjustApproved;
+          const isConfirmed = isConfirmApproved || isAdjustApproved;
 
           const result: SecondOpinionResult = {
             confirmed: isConfirmed,
             decision: b44Res.decision as 'CONFIRM' | 'ADJUST' | 'VETO',
             confidence: b44Confidence,
             reasons: [b44Res.reasoning],
-            vetoReason: !isConfirmed ? `[${b44Res.decision} ${b44Confidence}%] ${b44Res.reasoning}` : undefined,
+            vetoReason: !isConfirmed
+              ? `[${b44Res.decision} ${b44Confidence}% — perlu CONFIRM≥75% atau ADJUST≥64%] ${b44Res.reasoning}`
+              : undefined,
             adjustedLevels: (b44Res.adjustedSL || b44Res.adjustedTP) ? {
               entryZone: b44Res.adjustedEntry ? { min: b44Res.adjustedEntry, max: b44Res.adjustedEntry } : undefined,
               stopLoss: b44Res.adjustedSL,
@@ -280,9 +285,12 @@ As Chief Risk Controller, evaluate this Grade A trade setup. Do you CONFIRM, VET
         const parsed = JSON.parse(response.text || "{}");
         const decision = (parsed.decision || 'CONFIRM').toUpperCase() as 'CONFIRM' | 'VETO' | 'ADJUST';
         const geminiConfidence = Number(parsed.confidence) || confidence;
-        // New Policy: ADJUST with confidence >= 64% is APPROVED — execute with AI-suggested levels.
+        // Policy:
+        // - CONFIRM requires Grade A (>= 75%) to execute with original levels
+        // - ADJUST requires >= 64% to execute with AI-suggested safer levels
+        const isGeminiConfirmApproved = decision === 'CONFIRM' && geminiConfidence >= 75;
         const isGeminiAdjustApproved = decision === 'ADJUST' && geminiConfidence >= 64;
-        const isConfirmed = decision === 'CONFIRM' || (isGeminiAdjustApproved && parsed.confirmed !== false);
+        const isConfirmed = isGeminiConfirmApproved || (isGeminiAdjustApproved && parsed.confirmed !== false);
 
         // Sanitize raw reasons from Gemini
         const rawGeminiReasons: string[] = Array.isArray(parsed.reasons) && parsed.reasons.length > 0 ? parsed.reasons : reasons;
@@ -298,7 +306,9 @@ As Chief Risk Controller, evaluate this Grade A trade setup. Do you CONFIRM, VET
           decision: decision,
           confidence: geminiConfidence,
           reasons: sanitizedGeminiReasons,
-          vetoReason: !isConfirmed ? (parsed.vetoReason || `[${decision} ${geminiConfidence}%] Gemini AI Risk Controller`) : undefined,
+          vetoReason: !isConfirmed
+            ? (parsed.vetoReason || `[${decision} ${geminiConfidence}% — perlu CONFIRM≥75% atau ADJUST≥64%] Gemini AI Risk Controller`)
+            : undefined,
           adjustedLevels: parsed.adjustedLevels ? {
             entryZone: parsed.adjustedLevels.entryMin !== undefined ? { min: parsed.adjustedLevels.entryMin, max: parsed.adjustedLevels.entryMax } : undefined,
             stopLoss: parsed.adjustedLevels.stopLoss,
