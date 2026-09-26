@@ -518,8 +518,9 @@ export class SignalIntelligenceService {
         entryZone = { min: entryMin, max: entryMax };
 
         const adrTargets = PairDailyRangeService.calculateIntradayTargets(pair, 'BUY', priceNum, timeframe, slMultiplier);
-        // Adaptive Stop Loss: use atr * slMultiplier when atr > 0, ensuring full harmony with adaptive learning
-        const slDistance = atr > 0 ? (atr * slMultiplier) : (adrTargets.slPips * PairDailyRangeService.getProfile(pair).pipMultiplier);
+        const minSlDistance = adrTargets.slPips * PairDailyRangeService.getProfile(pair).pipMultiplier;
+        // Adaptive Stop Loss: use maximum of ATR-derived distance and ADR minimum floor to prevent thin SL sweeps
+        const slDistance = Math.max(atr > 0 ? (atr * slMultiplier) : minSlDistance, minSlDistance * 0.85);
         sl = Number((priceNum - slDistance).toFixed(decimals));
 
         // Ensure TP1 & TP2 preserve minimum 1:1.5 Risk:Reward with the adaptive SL
@@ -533,7 +534,7 @@ export class SignalIntelligenceService {
         if (hasBullishRejection && matchedBullishPattern) {
           technicalEvidence.push(`[CANDLE CONFIRMATION] ${matchedBullishPattern} confirmed on closed candle.`);
         }
-        technicalEvidence.push(`[ADAPTIVE SL BUFFER] Protected with ${slMultiplier.toFixed(1)}x ATR buffer to absorb liquidity sweeps.`);
+        technicalEvidence.push(`[ADAPTIVE SL BUFFER] Protected with ${slMultiplier.toFixed(1)}x ATR/ADR buffer to absorb liquidity sweeps.`);
       }
     } else if (isBearishCandidate && finalConfidence >= 45) {
       if (inputCandles.length >= 3 && !hasBearishRejection) {
@@ -553,8 +554,9 @@ export class SignalIntelligenceService {
         entryZone = { min: entryMin, max: entryMax };
 
         const adrTargets = PairDailyRangeService.calculateIntradayTargets(pair, 'SELL', priceNum, timeframe, slMultiplier);
-        // Adaptive Stop Loss: use atr * slMultiplier when atr > 0, ensuring full harmony with adaptive learning
-        const slDistance = atr > 0 ? (atr * slMultiplier) : (adrTargets.slPips * PairDailyRangeService.getProfile(pair).pipMultiplier);
+        const minSlDistance = adrTargets.slPips * PairDailyRangeService.getProfile(pair).pipMultiplier;
+        // Adaptive Stop Loss: use maximum of ATR-derived distance and ADR minimum floor to prevent thin SL sweeps
+        const slDistance = Math.max(atr > 0 ? (atr * slMultiplier) : minSlDistance, minSlDistance * 0.85);
         sl = Number((priceNum + slDistance).toFixed(decimals));
 
         // Ensure TP1 & TP2 preserve minimum 1:1.5 Risk:Reward with the adaptive SL
@@ -568,7 +570,7 @@ export class SignalIntelligenceService {
         if (hasBearishRejection && matchedBearishPattern) {
           technicalEvidence.push(`[CANDLE CONFIRMATION] ${matchedBearishPattern} confirmed on closed candle.`);
         }
-        technicalEvidence.push(`[ADAPTIVE SL BUFFER] Protected with ${slMultiplier.toFixed(1)}x ATR buffer to absorb liquidity sweeps.`);
+        technicalEvidence.push(`[ADAPTIVE SL BUFFER] Protected with ${slMultiplier.toFixed(1)}x ATR/ADR buffer to absorb liquidity sweeps.`);
       }
     } else {
       action = 'NO_SETUP';

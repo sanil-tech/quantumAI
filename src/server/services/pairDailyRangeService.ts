@@ -219,6 +219,46 @@ const ADR_PROFILES: Record<string, PairAdrProfile> = {
     decimals: 3,
     expectedDurationHours: { tp1: '1-3 jam', tp2: '4-8 jam (selesai hari sama)' }
   },
+  'GBP/NZD': {
+    pair: 'GBP/NZD',
+    adrPips: 160,
+    slPips: 38,
+    tp1Pips: 65,
+    tp2Pips: 115,
+    pipMultiplier: 0.0001,
+    decimals: 5,
+    expectedDurationHours: { tp1: '1-4 jam', tp2: '5-9 jam (selesai hari sama)' }
+  },
+  'EUR/NZD': {
+    pair: 'EUR/NZD',
+    adrPips: 120,
+    slPips: 30,
+    tp1Pips: 48,
+    tp2Pips: 85,
+    pipMultiplier: 0.0001,
+    decimals: 5,
+    expectedDurationHours: { tp1: '1-3 jam', tp2: '4-8 jam (selesai hari sama)' }
+  },
+  'GBP/CHF': {
+    pair: 'GBP/CHF',
+    adrPips: 95,
+    slPips: 24,
+    tp1Pips: 38,
+    tp2Pips: 68,
+    pipMultiplier: 0.0001,
+    decimals: 5,
+    expectedDurationHours: { tp1: '1-3 jam', tp2: '4-8 jam (selesai hari sama)' }
+  },
+  'EUR/CHF': {
+    pair: 'EUR/CHF',
+    adrPips: 50,
+    slPips: 14,
+    tp1Pips: 22,
+    tp2Pips: 38,
+    pipMultiplier: 0.0001,
+    decimals: 5,
+    expectedDurationHours: { tp1: '1-3 jam', tp2: '4-7 jam (selesai hari sama)' }
+  },
   'GBP/CAD': {
     pair: 'GBP/CAD',
     adrPips: 110,
