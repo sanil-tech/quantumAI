@@ -1565,6 +1565,9 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
                       const isM5Scalp = checkIsM5Scalp(setup);
 
                       const statusText = (() => {
+                        if (setup.status === 'EXPIRED') {
+                          return '⏹️ TAMAT TEMPOH (EXPIRED)';
+                        }
                         if (setup.status === 'SKIPPED_PENDING_ORDER_EXISTS') {
                           return isM5Scalp ? '⚡ M5 SCALP | ⌛ PENDING ORDER' : '⏳ MENUNGGU — PENDING ORDER SEDIA ADA';
                         }
