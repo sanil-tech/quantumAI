@@ -1439,6 +1439,18 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
               <div className="flex items-center gap-2">
                 <button
                   onClick={async () => {
+                    await fetch('/api/autotrader/scanner/purge-expired', { method: 'POST' }).catch(() => {});
+                    const res = await fetch('/api/autotrader/scanner/status').then(r => r.json()).catch(() => null);
+                    if (res) setScannerStatus(res);
+                  }}
+                  className="px-3 py-1.5 bg-rose-900/30 hover:bg-rose-900/50 border border-rose-500/40 text-rose-300 text-xs font-mono font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  title="Padam semua signal lama/lapuk dan mulakan dengan senarai bersih"
+                >
+                  <Filter className="w-3.5 h-3.5" />
+                  Padam Setup Lapuk (Bersihkan)
+                </button>
+                <button
+                  onClick={async () => {
                     await fetch('/api/autotrader/scanner/trigger', { method: 'POST' }).catch(() => {});
                     const res = await fetch('/api/autotrader/scanner/status').then(r => r.json()).catch(() => null);
                     if (res) setScannerStatus(res);

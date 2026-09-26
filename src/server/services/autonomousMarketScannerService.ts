@@ -181,7 +181,38 @@ export class AutonomousMarketScannerService extends EventEmitter {
     this.scanDiagnostics.set(pair + ':' + (timeframe || 'ALL'), {pair, timeframe, stage, observedAt: Date.now(), details});
   }
 
+  public cleanExpiredSetups(): void {
+    const now = Date.now();
+    let changed = false;
+    for (const setup of this.discoveredSetups) {
+      if (setup.status === 'DISCOVERED' || setup.status.startsWith('SKIPPED')) {
+        const ageHours = (now - (setup.timestamp || 0)) / (1000 * 60 * 60);
+        const isWeekend = !isCryptoPair(setup.pair) && getMarketStatus(setup.pair).status === 'WEEKEND_CLOSED';
+        if (ageHours >= 8 || isWeekend) {
+          setup.status = 'EXPIRED';
+          setup.invalidationReason = isWeekend
+            ? 'Tamat tempoh automatik: Pasaran Forex ditutup pada hujung minggu (Weekend Flush)'
+            : 'Tamat tempoh automatik: Signal melebihi had masa (TTL 8 Jam)';
+          setup.isValid = false;
+          changed = true;
+        }
+      }
+    }
+    if (changed) {
+      this.saveToDisk();
+    }
+  }
+
+  public purgeExpiredSetups(): number {
+    this.cleanExpiredSetups();
+    const initialCount = this.discoveredSetups.length;
+    this.discoveredSetups = this.discoveredSetups.filter(s => s.status !== 'EXPIRED' && s.status !== 'INVALID');
+    this.saveToDisk();
+    return initialCount - this.discoveredSetups.length;
+  }
+
   public getStatus() {
+    this.cleanExpiredSetups();
     const callsSaved = Math.max(0, this.totalScanEvaluations - this.secondOpinionsRequested);
     const savingsPercent = this.totalScanEvaluations > 0
       ? Number(((callsSaved / this.totalScanEvaluations) * 100).toFixed(1))
@@ -212,26 +243,7 @@ export class AutonomousMarketScannerService extends EventEmitter {
   }
 
   public getDiscoveredSetups(): DiscoveredSetup[] {
-    const now = Date.now();
-    let changed = false;
-    for (const setup of this.discoveredSetups) {
-      if (setup.status === 'DISCOVERED' || setup.status.startsWith('SKIPPED')) {
-        const ageHours = (now - (setup.timestamp || 0)) / (1000 * 60 * 60);
-        const isWeekend = !isCryptoPair(setup.pair) && getMarketStatus(setup.pair).status === 'WEEKEND_CLOSED';
-        // Auto-expire if setup is older than 8 hours or created before market close over the weekend
-        if (ageHours >= 8 || (isWeekend && ageHours >= 3)) {
-          setup.status = 'EXPIRED';
-          setup.invalidationReason = isWeekend
-            ? 'Tamat tempoh automatik: Pasaran Forex ditutup pada hujung minggu (Weekend Auto-Flush)'
-            : 'Tamat tempoh automatik: Signal melebihi had masa (TTL 8 Jam)';
-          setup.isValid = false;
-          changed = true;
-        }
-      }
-    }
-    if (changed) {
-      this.saveToDisk();
-    }
+    this.cleanExpiredSetups();
     return this.discoveredSetups;
   }
 

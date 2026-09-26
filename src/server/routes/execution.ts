@@ -1466,6 +1466,20 @@ executionRouter.post('/autotrader/scanner/trigger', async (req: Request, res: Re
 });
 
 /**
+ * POST /api/autotrader/scanner/purge-expired
+ * Manually purge all expired and invalidated setups from memory and disk
+ */
+executionRouter.post('/autotrader/scanner/purge-expired', async (req: Request, res: Response) => {
+  try {
+    const { autonomousMarketScannerService } = await import('../services/autonomousMarketScannerService');
+    const purgedCount = autonomousMarketScannerService.purgeExpiredSetups();
+    res.json({ message: `Purged ${purgedCount} expired setups`, status: autonomousMarketScannerService.getStatus() });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
  * POST /api/autotrader/auto-heal
  * Triggers immediate Auto-Healing scan across open cTrader positions to repair missing SL or wild TP
  */
