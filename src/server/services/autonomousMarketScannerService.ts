@@ -308,6 +308,30 @@ export class AutonomousMarketScannerService extends EventEmitter {
           if (sym) liveBrokerPendingSymbols.add(sym);
         }
         brokerFetchSuccess = true;
+
+        // ----------------------------------------------------
+        // PROTOCOL 1: WEEKEND PENDING ORDER AUTO-FLUSH
+        // Automatically cancel any unfilled pending orders when the weekend market closes
+        // (Friday 21:00 UTC through Sunday 21:00 UTC) to prevent Monday price gaps & extreme spreads.
+        // ----------------------------------------------------
+        const nowUtc = new Date();
+        const utcDay = nowUtc.getUTCDay(); // 0 = Sun, 5 = Fri, 6 = Sat
+        const utcHour = nowUtc.getUTCHours();
+        const isWeekendClosed = (utcDay === 5 && utcHour >= 21) || utcDay === 6 || (utcDay === 0 && utcHour < 21);
+
+        if (isWeekendClosed && pendingOrd.length > 0) {
+          console.log(`🛡️ [WEEKEND AUTO-FLUSH] Weekend market close detected. Auto-cancelling ${pendingOrd.length} pending orders to eliminate Monday gap risk...`);
+          for (const ord of pendingOrd) {
+            if (!ord.orderId) continue;
+            if (ord.symbol && (ord.symbol.includes('BTC') || ord.symbol.includes('CRYPTO'))) continue; // Preserve crypto
+            try {
+              await ctrader.cancelOrder(ord.orderId);
+              console.log(`   ✓ Cancelled pending order #${ord.orderId} (${ord.symbol} ${ord.tradeSide}) for weekend protection.`);
+            } catch (cancelErr: any) {
+              console.warn(`   ⚠️ Warning cancelling #${ord.orderId}:`, cancelErr.message);
+            }
+          }
+        }
       }
     } catch (err: any) {
       console.warn(`[AutonomousMarketScanner] Warning: Could not query cTrader broker state during setup pruning: ${err.message}`);
