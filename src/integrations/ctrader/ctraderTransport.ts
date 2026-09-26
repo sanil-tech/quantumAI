@@ -353,6 +353,15 @@ export class CTraderTransport extends EventEmitter {
     }
 
     this.emit('execution', eventRecord);
+    this.emit('executionEvent', eventRecord);
+
+    if (execType === 3) {
+      this.emit('orderFilled', eventRecord);
+    }
+
+    if (decodedPayload.deal?.closePositionDetail || decodedPayload.position?.positionStatus === 2) {
+      this.emit('positionClosed', eventRecord);
+    }
 
     if (!correlation.correlated) {
       this.emit('uncorrelatedExecution', eventRecord);

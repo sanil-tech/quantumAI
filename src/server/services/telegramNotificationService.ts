@@ -1,4 +1,4 @@
-import { claimEntryAlert } from './tradeAlertDedup';
+import { claimEntryAlert, claimOrderFilledAlert } from './tradeAlertDedup';
 import * as fs from 'fs';
 import * as path from 'path';
 import { getMarketStatus, isCryptoPair } from '../../lib/marketHours';
@@ -51,6 +51,7 @@ export interface TradeBroadcastPayload {
   isDemo?: boolean;
   isTest?: boolean;
   proposalId?: string;
+  timestamp?: number | string;
 }
 
 export interface TradingTipPayload {
@@ -305,7 +306,8 @@ export class TelegramNotificationService {
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(8000)
       });
 
       const data = await res.json();
@@ -316,7 +318,8 @@ export class TelegramNotificationService {
           const fallbackRes = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(8000)
           });
           const fallbackData = await fallbackRes.json();
           if (fallbackData.ok) {
@@ -431,6 +434,17 @@ export class TelegramNotificationService {
     let isBetter: boolean | null = null;
     let isNeutral: boolean = false;
 
+    const titleLower = (payload.title || '').toLowerCase();
+    let lowerIsBetter = payload.betterIfHigher === false;
+    if (
+      titleLower.includes('unemployment') ||
+      titleLower.includes('jobless') ||
+      titleLower.includes('claimant count') ||
+      titleLower.includes('claims')
+    ) {
+      lowerIsBetter = true;
+    }
+
     if (forecast && actual) {
       const fNum = parseFloat(String(forecast).replace(/[^0-9.-]/g, ''));
       const aNum = parseFloat(String(actual).replace(/[^0-9.-]/g, ''));
@@ -438,13 +452,21 @@ export class TelegramNotificationService {
         if (Math.abs(aNum - fNum) < 0.0001) {
           isNeutral = true;
         } else {
-          isBetter = payload.betterIfHigher !== false ? (aNum > fNum) : (aNum < fNum);
+          isBetter = lowerIsBetter ? (aNum < fNum) : (aNum > fNum);
         }
       }
     }
 
-    const counterPairs = pairs.filter(p => p.endsWith(curr) || p.startsWith('EUR/') || p.startsWith('GBP/'));
-    const directPairs = pairs.filter(p => p.startsWith(curr));
+    let directPairs: string[] = [];
+    let counterPairs: string[] = [];
+
+    if (curr === 'USD') {
+      directPairs = pairs.filter(p => p.startsWith('USD/'));
+      counterPairs = pairs.filter(p => p.endsWith('/USD') || p.startsWith('XAU/') || p.startsWith('BTC/'));
+    } else {
+      directPairs = pairs.filter(p => p.startsWith(curr + '/'));
+      counterPairs = pairs.filter(p => p.endsWith('/' + curr));
+    }
 
     if (isNeutral || isBetter === null) {
       if (lang === 'en') {
@@ -739,6 +761,20 @@ export class TelegramNotificationService {
       }
     }
 
+    // Compute formatted timestamps for transparency and auditability
+    const eventTime = payload.timestamp ? new Date(payload.timestamp) : new Date();
+    const timeMYT = eventTime.toLocaleString('en-GB', {
+      timeZone: 'Asia/Kuala_Lumpur',
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+    const timeUTC = eventTime.toISOString().replace('T', ' ').substring(0, 19);
+
     if (lang === 'en') {
       if (payload.status === 'SIGNAL_CANCELLED') {
         return [
@@ -749,6 +785,8 @@ export class TelegramNotificationService {
           `🧭 *Direction:* *${payload.direction}* | *AI Confidence:* \`${payload.confidence}%\``,
           `💵 *Planned Entry:* \`${payload.entryPrice}\``,
           `🛑 *Original SL:* \`${payload.stopLoss}\``,
+          payload.brokerOrderId ? `🔗 *Broker Order ID:* \`#${payload.brokerOrderId}\`` : '',
+          `⏱️ *Cancelled Time:* \`${timeMYT} MYT\` (\`${timeUTC} UTC\`)`,
           ``,
           `🔴 *Cancellation Rationale:*`,
           `  • *${payload.cancellationReason || 'Market structure or price invalidated setup before entry fill.'}*`,
@@ -758,7 +796,7 @@ export class TelegramNotificationService {
           `  • Do NOT chase current market price (No FOMO). Preserving capital is paramount.`,
           ``,
           `⏰ _${new Date().toUTCString()}_ | _Quantum AI Risk Governance_`
-        ].join('\n');
+        ].filter(Boolean).join('\n');
       }
 
       if (payload.status === 'ORDER_FILLED') {
@@ -775,6 +813,7 @@ export class TelegramNotificationService {
           rrText ? `⚖️ *Risk-to-Reward Ratio:* \`${rrText}\`` : '',
           payload.lotSize ? `📊 *Position Sizing:* \`${payload.lotSize} Lots\`` : '',
           payload.brokerOrderId ? `🔗 *Broker Order ID:* \`#${payload.brokerOrderId}\`` : '',
+          `⏱️ *Execution Time:* \`${timeMYT} MYT\` (\`${timeUTC} UTC\`)`,
           ``,
           `🛡️ *Active Trade Management Protocol (Method 2):*`,
           `  • Ticket A: Target TP1 (50% Volume).`,
@@ -797,6 +836,8 @@ export class TelegramNotificationService {
           payload.takeProfit2 ? `🎯 *Running to TP2:* \`${payload.takeProfit2}\`` : '',
           `🛑 *New Stop Loss:* \`${payload.entryPrice}\` *(BREAKEVEN — ZERO RISK)*`,
           payload.pnlDollars !== undefined ? `💰 *Realized Profit:* \`+$${payload.pnlDollars.toFixed(2)}\`` : '',
+          payload.brokerOrderId ? `🔗 *Broker Order ID:* \`#${payload.brokerOrderId}\`` : '',
+          `⏱️ *Event Time:* \`${timeMYT} MYT\` (\`${timeUTC} UTC\`)`,
           ``,
           `🧠 *Method 2 Execution Status:*`,
           `  • Ticket A closed with profit at TP1 (50% lot).`,
@@ -818,6 +859,7 @@ export class TelegramNotificationService {
           `🎯 *Exit Price:* \`${payload.takeProfit2 || payload.takeProfit1}\``,
           payload.pnlDollars !== undefined ? `💰 *Net Profit:* \`+$${payload.pnlDollars.toFixed(2)}\` (\`${payload.pnlPips ? payload.pnlPips.toFixed(1) : (tp2Pips || tp1Pips || 0)} pips\`)` : '',
           payload.brokerOrderId ? `🔗 *Broker Order ID:* \`#${payload.brokerOrderId}\`` : '',
+          `⏱️ *Exit Time:* \`${timeMYT} MYT\` (\`${timeUTC} UTC\`)`,
           ``,
           `🧠 *AI Technical Analysis:*`,
           `  • ${payload.analysisNotes || 'Price expanded into planned liquidity target with precision institutional volume.'}`,
@@ -837,6 +879,7 @@ export class TelegramNotificationService {
           `🛑 *Exit Price:* \`${payload.stopLoss}\``,
           payload.pnlDollars !== undefined ? `📉 *Realized Loss:* \`-$${Math.abs(payload.pnlDollars).toFixed(2)}\` (\`-${payload.pnlPips ? Math.abs(payload.pnlPips).toFixed(1) : (slPips || 0)} pips\`)` : '',
           payload.brokerOrderId ? `🔗 *Broker Order ID:* \`#${payload.brokerOrderId}\`` : '',
+          `⏱️ *Exit Time:* \`${timeMYT} MYT\` (\`${timeUTC} UTC\`)`,
           ``,
           `🧠 *AI Post-Mortem & Risk Rule:*`,
           `  • ${payload.analysisNotes || 'Market structure shifted. Loss strictly capped to planned risk budget (Method 2 Capital Shield). Capital preserved.'}`,
@@ -874,6 +917,8 @@ export class TelegramNotificationService {
         `💵 *Planned Entry:* \`${payload.entryPrice}\``,
         payload.distancePips !== undefined ? `📏 *Distance to Entry:* \`${payload.distancePips} pips\`` : '',
         `⚡ *Setup Status:* *${setupStatusLabel}*`,
+        payload.brokerOrderId ? `🔗 *Broker Order ID:* \`#${payload.brokerOrderId}\`` : '',
+        `⏱️ *Signal Time:* \`${timeMYT} MYT\` (\`${timeUTC} UTC\`)`,
         ``,
         payload.direction === 'BUY' && bullishList ? `🟢 *Key Bullish Evidence:*\n${bullishList}\n` : '',
         payload.direction === 'SELL' && bearishList ? `🔴 *Key Bearish Evidence:*\n${bearishList}\n` : '',
@@ -903,32 +948,34 @@ export class TelegramNotificationService {
       ].filter(Boolean).join('\n');
 
     } else {
-      // Bahasa Melayu template
+      // Bahasa Melayu template (Diubah suai agar mudah difahami oleh subscriber)
       if (payload.status === 'SIGNAL_CANCELLED') {
         return [
-          `🚫 *[QUANTUM AI - ISYARAT DIBATALKAN]* 🚫`,
-          `📌 *SETUP TIDAK LAGI SAH — BATALKAN PENDING ORDER*`,
+          `🚫 *[QUANTUM AI - SIGNAL DIBATALKAN]* 🚫`,
+          `❌ *SETUP TIDAK LAGI SAH — BATALKAN PENDING ORDER*`,
           ``,
           `💱 *Pasangan:* \`${payload.pair}\` (${payload.timeframe})`,
           `🧭 *Arah Asal:* *${payload.direction}* | *Skor AI:* \`${payload.confidence}%\``,
           `💵 *Harga Rancang Entri:* \`${payload.entryPrice}\``,
           `🛑 *Stop Loss Asal:* \`${payload.stopLoss}\``,
+          payload.brokerOrderId ? `🔗 *ID Pesanan cTrader:* \`#${payload.brokerOrderId}\`` : '',
+          `⏱️ *Waktu Isyarat Dibatalkan:* \`${timeMYT} MYT\` (\`${timeUTC} UTC\`)`,
           ``,
           `🔴 *Sebab Pembatalan:*`,
-          `  • *${payload.cancellationReason || 'Struktur pasaran atau harga terbatal sebelum sempat disambar.'}*`,
+          `  • *${payload.cancellationReason || 'Struktur pasaran terbatal atau harga melepasi SL sebelum sempat disambar.'}*`,
           ``,
-          `⚠️ *Tindakan Wajib Subscriber:*`,
-          `  • Sila batalkan / padam sebarang pending limit/stop order pada platform anda serta-merta.`,
+          `⚠️ *TINDAKAN SUBSCRIBER:*`,
+          `  • Sila *BATALKAN / PADAM* pesanan pending limit order pada cTrader anda serta-merta.`,
           `  • Jangan kejar harga pasaran (No FOMO). Disiplin pemuliharaan modal adalah kunci utama.`,
           ``,
           `⏰ _${new Date().toUTCString()}_ | _Quantum AI Risk Governance_`
-        ].join('\n');
+        ].filter(Boolean).join('\n');
       }
 
       if (payload.status === 'ORDER_FILLED') {
         return [
-          `⚡ *[QUANTUM AI - PESANAN DISAMBAR & KINI AKTIF]* ⚡`,
-          `📌 *HARGA SENTUH ENTRI — POSISI KINI LIVE DI PASARAN*`,
+          `🟢 *[QUANTUM AI - TRADE TELAH DIBUKA]* ⚡`,
+          `📌 *HARGA SENTUH ENTRI — POSISI KINI AKTIF DI PASARAN*`,
           ``,
           `💱 *Pasangan:* \`${payload.pair}\` (${payload.timeframe})`,
           `🧭 *Arah:* *${payload.direction}* | *Keyakinan AI:* \`${payload.confidence}%\``,
@@ -939,11 +986,12 @@ export class TelegramNotificationService {
           rrText ? `⚖️ *Nisbah Risk-to-Reward:* \`${rrText}\`` : '',
           payload.lotSize ? `📊 *Saiz Volum:* \`${payload.lotSize} Lots\`` : '',
           payload.brokerOrderId ? `🔗 *ID Pesanan cTrader:* \`#${payload.brokerOrderId}\`` : '',
+          `⏱️ *Waktu Pelaksanaan:* \`${timeMYT} MYT\` (\`${timeUTC} UTC\`)`,
           ``,
-          `🛡️ *Protokol Pengurusan Risiko Method 2:*`,
-          `  • Tiket A: Sasaran TP1 (50% Lot).`,
-          `  • Tiket B: Sasaran TP2 (Runner).`,
-          `  • Auto-Breakeven akan diaktifkan secara automatik sebaik sahaja TP1 dicapai.`,
+          `💡 *STATUS TRADE:*`,
+          `  • Pesanan pending limit telah disambar di pasaran. Trade kini beroperasi secara LIVE.`,
+          `  • Tiket A: Sasaran TP1 (50% Volum).`,
+          `  • Tiket B: Sasaran TP2 (Runner). Auto-Breakeven akan diaktifkan secara automatik sebaik sahaja TP1 dicapai.`,
           ``,
           `⏰ _${new Date().toUTCString()}_ | _Quantum AI Institutional Copier_`
         ].filter(Boolean).join('\n');
@@ -951,21 +999,23 @@ export class TelegramNotificationService {
 
       if (payload.status === 'PROFIT_LOCKED') {
         return [
-          `🔒 *[QUANTUM AI - TP1 DICAPAI & PROFIT DIKUNCI]* 🎯`,
-          `📌 *50% KEUNTUNGAN DIAMBIL & SL DIALIHKAN KE BREAKEVEN*`,
+          `🎯 *[QUANTUM AI - TP1 DICAPAI & PROFIT DIKUNCI]* 🔒`,
+          `📌 *50% KEUNTUNGAN DIBANKKAN & SL DIALIHKAN KE BREAKEVEN (BE)*`,
           ``,
           `💱 *Pasangan:* \`${payload.pair}\` (${payload.timeframe})`,
           `🧭 *Arah:* *${payload.direction}*`,
           `💵 *Harga Entri:* \`${payload.entryPrice}\``,
           `🎯 *TP1 Diambil:* \`${payload.takeProfit1}\`${tp1Pips ? ` (+${tp1Pips} pips dikunci)` : ''}`,
           payload.takeProfit2 ? `🎯 *Baki Volum ke TP2:* \`${payload.takeProfit2}\`` : '',
-          `🛑 *Stop Loss Baharu:* \`${payload.entryPrice}\` *(BREAKEVEN — BEBAS RISIKO)*`,
-          payload.pnlDollars !== undefined ? `💰 *Keuntungan Realized:* \`+$${payload.pnlDollars.toFixed(2)}\`` : '',
+          `🛑 *Stop Loss Baharu:* \`${payload.entryPrice}\` *(BREAKEVEN — 100% BEBAS RISIKO)*`,
+          payload.pnlDollars !== undefined ? `💰 *Keuntungan Dikutip:* \`+$${payload.pnlDollars.toFixed(2)}\`` : '',
+          payload.brokerOrderId ? `🔗 *ID Pesanan cTrader:* \`#${payload.brokerOrderId}\`` : '',
+          `⏱️ *Waktu TP1 Dikunci:* \`${timeMYT} MYT\` (\`${timeUTC} UTC\`)`,
           ``,
-          `🧠 *Status Pelaksanaan Method 2:*`,
-          `  • Tiket A ditutup dengan untung di TP1 (50% volum).`,
-          `  • Tiket B dialihkan Stop Loss ke paras harga Entri.`,
-          `  • Baki posisi kini 100% Bebas Risiko (Risk-Free Runner) menuju TP2.`,
+          `💡 *STATUS TRADE:*`,
+          `  • Tiket 1 ditutup dengan untung di TP1 (50% volum).`,
+          `  • Tiket 2 dialihkan Stop Loss ke paras harga Entri (BE).`,
+          `  • Baki posisi kini 100% Bebas Risiko (Risk-Free Runner) menuju TP2. Anda tidak boleh rugi lagi dalam trade ini.`,
           ``,
           `⏰ _${new Date().toUTCString()}_ | _Quantum AI Institutional Copier_`
         ].filter(Boolean).join('\n');
@@ -973,8 +1023,8 @@ export class TelegramNotificationService {
 
       if (payload.status === 'TP_HIT') {
         return [
-          `🏆 *[QUANTUM AI - TAKE PROFIT DICAPAI]* 🚀`,
-          `📌 *SASARAN PENUH DICAPAI — KEUNTUNGAN DIKUNCI*`,
+          `✅ *[QUANTUM AI - TRADE SELESAI (UNTUNG)]* 🏆`,
+          `📌 *SASARAN UNTUNG PENUH DICAPAI — KEUNTUNGAN DIKUNCI*`,
           ``,
           `💱 *Pasangan:* \`${payload.pair}\` (${payload.timeframe})`,
           `🧭 *Arah:* *${payload.direction}*`,
@@ -982,8 +1032,10 @@ export class TelegramNotificationService {
           `🎯 *Harga Keluar:* \`${payload.takeProfit2 || payload.takeProfit1}\``,
           payload.pnlDollars !== undefined ? `💰 *Jumlah Untung Bersih:* \`+$${payload.pnlDollars.toFixed(2)}\` (\`${payload.pnlPips ? payload.pnlPips.toFixed(1) : (tp2Pips || tp1Pips || 0)} pips\`)` : '',
           payload.brokerOrderId ? `🔗 *ID Pesanan cTrader:* \`#${payload.brokerOrderId}\`` : '',
+          `⏱️ *Waktu Trade Selesai:* \`${timeMYT} MYT\` (\`${timeUTC} UTC\`)`,
           ``,
-          `🧠 *Analisis Teknikal AI:*`,
+          `💡 *STATUS TRADE:*`,
+          `  • Trade telah ditutup sepenuhnya dengan kemenangan untung bersih.`,
           `  • ${payload.analysisNotes || 'Harga bergerak tepat menyapu likuiditi sasaran dengan sokongan volum institusi.'}`,
           ``,
           `⏰ _${new Date().toUTCString()}_ | _Quantum AI Institutional Copier_`
@@ -992,8 +1044,8 @@ export class TelegramNotificationService {
 
       if (payload.status === 'SL_HIT') {
         return [
-          `🛡️ *[QUANTUM AI - STOP LOSS DIKENAKAN]* 🛑`,
-          `📌 *RISIKO DIKAWAL KETAT — DISIPLIN PERISAI MODAL*`,
+          `🛑 *[QUANTUM AI - TRADE SELESAI (KERUGIAN DIKAWAL)]* 🛡️`,
+          `📌 *STOP LOSS DIKENAKAN — DISIPLIN PERISAI MODAL*`,
           ``,
           `💱 *Pasangan:* \`${payload.pair}\` (${payload.timeframe})`,
           `🧭 *Arah:* *${payload.direction}*`,
@@ -1001,19 +1053,21 @@ export class TelegramNotificationService {
           `🛑 *Harga Keluar:* \`${payload.stopLoss}\``,
           payload.pnlDollars !== undefined ? `📉 *Kerugian Realized:* \`-$${Math.abs(payload.pnlDollars).toFixed(2)}\` (\`-${payload.pnlPips ? Math.abs(payload.pnlPips).toFixed(1) : (slPips || 0)} pips\`)` : '',
           payload.brokerOrderId ? `🔗 *ID Pesanan cTrader:* \`#${payload.brokerOrderId}\`` : '',
+          `⏱️ *Waktu Trade Ditutup:* \`${timeMYT} MYT\` (\`${timeUTC} UTC\`)`,
           ``,
-          `🧠 *Analisis Pasca-Trade & Peraturan Risiko:*`,
+          `💡 *STATUS TRADE:*`,
+          `  • Trade telah ditutup pada paras Stop Loss.`,
           `  • ${payload.analysisNotes || 'Struktur pasaran terbatal. Kerugian dikawal ketat dalam bajet risiko 1% (Perisai Modal Method 2). Modal kekal selamat.'}`,
           ``,
           `⏰ _${new Date().toUTCString()}_ | _Quantum AI Capital Defense_`
         ].filter(Boolean).join('\n');
       }
 
-      // Default: ENTRY_DISPATCHED (Isyarat Baharu)
-      const headerEmojiMs = isFreeSignal ? '🌟' : '🚀';
-      const headerTitleMs = isFreeSignal ? 'KOMUNITI PERCUMA (HIGH CONFIDENCE)' : 'VIP ISYARAT PERDAGANGAN';
+      // Default: ENTRY_DISPATCHED (Isyarat Baharu / Pending Order)
+      const headerEmojiMs = isFreeSignal ? '📢' : '🚀';
+      const headerTitleMs = isFreeSignal ? 'ISYARAT BAHARU (PENDING ORDER)' : 'VIP ISYARAT PERDAGANGAN';
       const entryModeLabelMs = payload.entryMode ? payload.entryMode.replace('_', ' — ') : `${payload.direction} SETUP`;
-      const setupStatusLabelMs = payload.setupStatus || (payload.entryMode?.includes('PULLBACK') ? 'MENUNGGU ENTRI (PULLBACK)' : 'DISAMBAR (TRIGGERED)');
+      const setupStatusLabelMs = payload.setupStatus || (payload.entryMode?.includes('PULLBACK') ? 'MENUNGGU HARGA ENTRI DISENTUH (PENDING LIMIT ORDER)' : 'DISAMBAR (TRIGGERED)');
 
       const bullishListMs = (payload.bullishEvidence && payload.bullishEvidence.length > 0)
         ? payload.bullishEvidence.slice(0, 3).map(b => `  • ${b}`).join('\n')
@@ -1034,10 +1088,12 @@ export class TelegramNotificationService {
         `🧭 *${payload.direction} — ${entryModeLabelMs}*`,
         ``,
         `💱 *Pasangan:* \`${payload.pair}\` (${payload.timeframe})`,
-        payload.currentPrice ? `📊 *Harga Semasa:* \`${payload.currentPrice}\`` : '',
+        payload.currentPrice ? `📊 *Harga Pasaran Semasa:* \`${payload.currentPrice}\`` : '',
         `💵 *Harga Rancang Entri:* \`${payload.entryPrice}\``,
         payload.distancePips !== undefined ? `📏 *Jarak ke Entri:* \`${payload.distancePips} pip\`` : '',
-        `⚡ *Status Persediaan:* *${setupStatusLabelMs}*`,
+        `⏳ *Status Isyarat:* *${setupStatusLabelMs}*`,
+        payload.brokerOrderId ? `🔗 *ID Pesanan cTrader:* \`#${payload.brokerOrderId}\`` : '',
+        `⏱️ *Masa Isyarat Dikeluarkan:* \`${timeMYT} MYT\` (\`${timeUTC} UTC\`)`,
         ``,
         payload.direction === 'BUY' && bullishListMs ? `🟢 *Bukti Utama Bullish:*\n${bullishListMs}\n` : '',
         payload.direction === 'SELL' && bearishListMs ? `🔴 *Bukti Utama Bearish:*\n${bearishListMs}\n` : '',
@@ -1058,9 +1114,9 @@ export class TelegramNotificationService {
         `  • *${modelConfMs}% Keyakinan Model AI* (Nasihat / Advisory)`,
         `  • _Nota: Skor keyakinan model bukan kebarangkalian menang statistik._`,
         ``,
-        `⚙️ *Strategi Pelaksanaan (Method 2 Split-Lot):*`,
-        `  • 🤖 *cBot / Auto-Copier:* Membuka 2 tiket secara automatik (50% volum ke TP1, 50% volum ke TP2). Sebaik TP1 dicapai, cBot mengunci 50% profit dan mengalihkan SL Tiket 2 ke paras Entri (Breakeven / Bebas Risiko).`,
-        `  • 📱 *Trader Manual:* Pasang pesanan pending limit pada harga \`${payload.entryPrice}\`. Jangan kejar pasaran sebelum paras entri dicapai.`,
+        `📲 *PANDUAN TINDAKAN SUBSCRIBER:*`,
+        `  • 🤖 *Auto-Copier / VIP:* Sistem cBot memasang pesanan secara automatik 100% tanpa sebarang tindakan manual.`,
+        `  • 📱 *Trader Manual:* Pasang pesanan **Pending Limit Order** pada harga \`${payload.entryPrice}\`. **JANGAN** masuk pasaran terus (Instant Execution) sebelum harga entri disentuh.`,
         ``,
         isFreeSignal ? `👑 _Ingin trade automatik 100% tanpa perlu entri manual? Sertai VIP Auto-Copier Quantum AI._\n` : '',
         `⏰ _${new Date().toUTCString()}_ | _Quantum AI Institutional Intelligence_`
@@ -1889,11 +1945,12 @@ export class TelegramNotificationService {
   public async broadcastTradeEvent(payload: TradeBroadcastPayload): Promise<boolean> {
     if (!this.isEnabled) return false;
 
-    // Strict Safety Guard: Block dummy, simulated, paper, shadow, and test execution payloads from live Telegram channels
+    // Strict Safety Guard: Block dummy, simulated, paper, shadow, and test execution payloads from live Telegram channels.
+    // Real broker trades (including cTrader demo execution with brokerOrderId) are allowed.
     if (
       payload.isSimulated ||
-      payload.isDemo ||
       payload.isTest ||
+      (payload.isDemo && !payload.brokerOrderId) ||
       (payload.proposalId && (
         payload.proposalId.includes('test') ||
         payload.proposalId.includes('dummy') ||
@@ -1932,6 +1989,18 @@ export class TelegramNotificationService {
         if (!claimEntryAlert(payload, path.resolve(process.cwd(), 'data', 'telegram_entry_alerts.json'))) return false;
       } catch (err: any) {
         console.warn('[TelegramNotificationService] Entry alert suppressed: dedup ledger unavailable:', err.message);
+        return false;
+      }
+    }
+
+    if (payload.status === 'ORDER_FILLED') {
+      try {
+        if (!claimOrderFilledAlert(payload, path.resolve(process.cwd(), 'data', 'telegram_order_filled_alerts.json'))) {
+          console.log(`🛡️ [TelegramNotificationService] Suppressed duplicate ORDER_FILLED alert for ${payload.pair} (#${payload.brokerOrderId || ''}) - Ledger shows already broadcasted.`);
+          return false;
+        }
+      } catch (err: any) {
+        console.warn('[TelegramNotificationService] ORDER_FILLED alert suppressed: dedup ledger error:', err.message);
         return false;
       }
     }
@@ -2043,14 +2112,14 @@ export class TelegramNotificationService {
             }
           }
 
-          // 2. Instant News Outcome & Market Impact Check (0 to 15m post-release)
+          // 2. Instant News Outcome & Market Impact Check (When actual result is released up to 24h)
           const timeSinceRelease = now - event.timestamp;
-          if (timeSinceRelease >= 0 && timeSinceRelease <= FIFTEEN_MINUTES) {
-            if (!this.alertedOutcomeNews.has(eventOccurrenceKey) && !this.alertedOutcomeNews.has(event.id)) {
-              this.alertedOutcomeNews.add(eventOccurrenceKey);
+          if (timeSinceRelease >= 0 && timeSinceRelease <= 24 * 60 * 60 * 1000 && event.actual) {
+            const outcomeKey = `OUTCOME_${event.id}_${event.actual}`;
+            if (!this.alertedOutcomeNews.has(outcomeKey)) {
+              this.alertedOutcomeNews.add(outcomeKey);
               this.alertedOutcomeNews.add(event.id);
               this.saveNewsAlertsLedger();
-              const actualVal = event.actual || (event as any).actualIfReleased || event.forecast;
               await this.broadcastNewsAlert({
                 eventId: event.id,
                 title: event.title,
@@ -2062,7 +2131,7 @@ export class TelegramNotificationService {
                 timestamp: event.timestamp,
                 forecast: event.forecast,
                 previous: event.previous,
-                actual: actualVal,
+                actual: event.actual,
                 betterIfHigher: (event as any).betterIfHigher,
                 affectedPairs: event.affectedPairs,
                 type: 'NEWS_OUTCOME'
@@ -2099,6 +2168,52 @@ export class TelegramNotificationService {
     if (this.newsMonitorInterval && (this.newsMonitorInterval as any).unref) {
       (this.newsMonitorInterval as any).unref();
     }
+  }
+
+  /**
+   * Broadcast specific or latest released high-impact economic news outcomes
+   */
+  public async broadcastLatestEconomicOutcome(eventId?: string): Promise<{ success: boolean; count: number; events: string[] }> {
+    const { economicCalendarProvider } = await import('./economicCalendarProvider');
+    const events = economicCalendarProvider.getWeeklyEvents();
+    const targetEvents = eventId
+      ? events.filter(e => e.id === eventId || e.title.toLowerCase().includes(eventId.toLowerCase()))
+      : events.filter(e => e.impact === 'HIGH' && e.actual && e.status === 'RELEASED')
+              .sort((a, b) => b.timestamp - a.timestamp)
+              .slice(0, 3);
+
+    const dispatched: string[] = [];
+    for (const ev of targetEvents) {
+      const outcomeKey = `OUTCOME_${ev.id}_${ev.actual}`;
+      this.alertedOutcomeNews.add(outcomeKey);
+      this.saveNewsAlertsLedger();
+
+      const payload: MacroNewsAlertPayload = {
+        eventId: ev.id,
+        title: ev.title,
+        currency: ev.currency,
+        impact: ev.impact,
+        flag: ev.flag,
+        country: ev.country,
+        timeStr: ev.time,
+        timestamp: ev.timestamp,
+        forecast: ev.forecast,
+        previous: ev.previous,
+        actual: ev.actual,
+        betterIfHigher: (ev as any).betterIfHigher,
+        affectedPairs: ev.affectedPairs,
+        type: 'NEWS_OUTCOME'
+      };
+
+      await this.broadcastNewsAlert(payload);
+      dispatched.push(`${ev.flag || '🌐'} ${ev.currency}: ${ev.title} (Sebenar: ${ev.actual})`);
+    }
+
+    return {
+      success: true,
+      count: dispatched.length,
+      events: dispatched
+    };
   }
 
   /**

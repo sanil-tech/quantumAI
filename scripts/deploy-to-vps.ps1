@@ -10,13 +10,19 @@ $LOCAL = "c:\Users\sanil\OneDrive\Desktop\studyquest-ai-1\quantumAI"
 
 $files = @(
   @{ src = "$LOCAL\apps\decision-agent\src\services\aiDecisionEngine.ts"; dst = "$VPS_PATH/apps/decision-agent/src/services/" },
+  @{ src = "$LOCAL\apps\decision-agent\src\services\signalIntelligenceService.ts"; dst = "$VPS_PATH/apps/decision-agent/src/services/" },
+  @{ src = "$LOCAL\apps\decision-agent\src\services\researchLearningEngine.ts"; dst = "$VPS_PATH/apps/decision-agent/src/services/" },
+  @{ src = "$LOCAL\src\server\routes\decision.ts"; dst = "$VPS_PATH/src/server/routes/" },
+  @{ src = "$LOCAL\src\server\services\pairDailyRangeService.ts"; dst = "$VPS_PATH/src/server/services/" },
+  @{ src = "$LOCAL\src\server\services\demoAutonomousTradingService.ts"; dst = "$VPS_PATH/src/server/services/" },
   @{ src = "$LOCAL\src\server\services\autonomousMarketScannerService.ts"; dst = "$VPS_PATH/src/server/services/" },
-  @{ src = "$LOCAL\src\server\services\base44AiService.ts";                dst = "$VPS_PATH/src/server/services/" },
-  @{ src = "$LOCAL\src\server\services\strategyEngineService.ts";          dst = "$VPS_PATH/src/server/services/" },
-  @{ src = "$LOCAL\src\server\services\validation\signalValidationGate.ts";dst = "$VPS_PATH/src/server/services/validation/" },
-  @{ src = "$LOCAL\src\components\Header.tsx";                            dst = "$VPS_PATH/src/components/" },
-  @{ src = "$LOCAL\src\components\UserDashboard.tsx";                     dst = "$VPS_PATH/src/components/" },
-  @{ src = "$LOCAL\src\components\VipSubscriberCockpit.tsx";              dst = "$VPS_PATH/src/components/" }
+  @{ src = "$LOCAL\src\server\services\base44AiService.ts"; dst = "$VPS_PATH/src/server/services/" },
+  @{ src = "$LOCAL\src\server\services\strategyEngineService.ts"; dst = "$VPS_PATH/src/server/services/" },
+  @{ src = "$LOCAL\src\server\services\validation\signalValidationGate.ts"; dst = "$VPS_PATH/src/server/services/validation/" },
+  @{ src = "$LOCAL\src\components\AdaptiveLearningModal.tsx"; dst = "$VPS_PATH/src/components/" },
+  @{ src = "$LOCAL\src\components\UserDashboard.tsx"; dst = "$VPS_PATH/src/components/" },
+  @{ src = "$LOCAL\src\components\Header.tsx"; dst = "$VPS_PATH/src/components/" },
+  @{ src = "$LOCAL\src\components\VipSubscriberCockpit.tsx"; dst = "$VPS_PATH/src/components/" }
 )
 
 Write-Host "=== QuantumAI VPS Deploy ===" -ForegroundColor Cyan

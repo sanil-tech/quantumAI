@@ -13,6 +13,7 @@ import { InteractiveTradeStatisticsCockpit } from './InteractiveTradeStatisticsC
 import { CTraderBrokerConnectionHub } from './CTraderBrokerConnectionHub';
 import { CommercialOnboardingModal } from './onboarding/CommercialOnboardingModal';
 import { VipSubscriberCockpit } from './VipSubscriberCockpit';
+import { ClientExperienceHub } from './onboarding/ClientExperienceHub';
 
 interface UserDashboardProps {
   currentPrice: number;
@@ -55,9 +56,14 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   onOpenAdaptiveLearning,
   onAskAi,
   onSyncToRiskCalc,
-  onLogToJournal
 }) => {
-  const [activeTab, setActiveTab] = useState<'VIP_COCKPIT' | 'TERMINAL' | 'STATISTICS' | 'ECONOMIC_CALENDAR' | 'BROKER_CONNECT'>('VIP_COCKPIT');
+  const [activeTab, setActiveTab] = useState<'ONBOARDING' | 'VIP_COCKPIT' | 'TERMINAL' | 'STATISTICS' | 'ECONOMIC_CALENDAR' | 'BROKER_CONNECT'>(() => {
+    try {
+      const hasConnectedAccount = localStorage.getItem('vip_account_id') || localStorage.getItem('quantum_tenant_account');
+      if (hasConnectedAccount) return 'VIP_COCKPIT';
+    } catch {}
+    return 'ONBOARDING';
+  });
   const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(false);
 
   // Broker and Trader State from Backend
@@ -296,6 +302,18 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
         <div className="mt-5 pt-4 border-t border-white/[0.08] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           <div className="flex items-center gap-1.5 bg-slate-950/90 p-1.5 rounded-2xl border border-white/[0.08] shadow-inner overflow-x-auto no-scrollbar scroll-smooth">
             <button
+              onClick={() => setActiveTab('ONBOARDING')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all duration-200 flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
+                activeTab === 'ONBOARDING'
+                  ? 'bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 text-white shadow-lg shadow-cyan-950/60 ring-1 ring-cyan-400'
+                  : 'text-cyan-400 hover:text-white hover:bg-slate-900/60 bg-cyan-500/10 border border-cyan-500/20'
+              }`}
+            >
+              <Sparkles className="w-4 h-4 text-cyan-300 animate-pulse" />
+              <span>🚀 1. Percubaan 7 Hari</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('VIP_COCKPIT')}
               className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all duration-200 flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
                 activeTab === 'VIP_COCKPIT'
@@ -304,7 +322,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
               }`}
             >
               <ShieldCheck className="w-4 h-4 text-emerald-300" />
-              <span>1. Portal VIP Saya</span>
+              <span>2. Portal VIP Saya</span>
             </button>
 
             <button
@@ -316,7 +334,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
               }`}
             >
               <Zap className="w-4 h-4 text-cyan-300" />
-              <span>2. Terminal Analisis AI</span>
+              <span>3. Terminal Analisis AI</span>
             </button>
 
             <button
@@ -328,7 +346,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
               }`}
             >
               <History className="w-4 h-4 text-emerald-300" />
-              <span>3. Rekod & Prestasi</span>
+              <span>4. Rekod & Prestasi</span>
               {closedTrades.length > 0 && (
                 <span className="px-1.5 py-0.5 rounded-full text-[9px] font-mono font-black bg-emerald-400 text-slate-950">
                   {closedTrades.length}
@@ -345,7 +363,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
               }`}
             >
               <Calendar className="w-4 h-4 text-amber-300" />
-              <span>4. Berita Makro</span>
+              <span>5. Berita Makro</span>
               {economicEvents.filter(e => e.impact === 'HIGH').length > 0 && (
                 <span className="px-1.5 py-0.5 rounded-full text-[9px] font-mono font-black bg-rose-500 text-white">
                   {economicEvents.filter(e => e.impact === 'HIGH').length}
@@ -362,7 +380,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
               }`}
             >
               <Cpu className="w-4 h-4 text-purple-300" />
-              <span>5. Pautan Broker</span>
+              <span>6. Pautan Broker</span>
             </button>
           </div>
 
@@ -393,15 +411,29 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
       </div>
 
       {/* ========================================================================= */}
+      {/* 0. TAB 0: 5-STEP CLIENT EXPERIENCE & ONBOARDING HUB                        */}
+      {/* ========================================================================= */}
+      {activeTab === 'ONBOARDING' && (
+        <ClientExperienceHub
+          isMalay={isMalay}
+          onOpenBrokerModal={onOpenBrokerModal}
+          onConnectSuccess={(accountData) => {
+            fetchDashboardState();
+            setActiveTab('VIP_COCKPIT');
+          }}
+        />
+      )}
+
+      {/* ========================================================================= */}
       {/* 3. TAB 1: VIP SUBSCRIBER PERSONAL COCKPIT                                  */}
       {/* ========================================================================= */}
-        {activeTab === 'VIP_COCKPIT' && (
-          <VipSubscriberCockpit
-            isMalay={isMalay}
-            onOpenBrokerConnect={onOpenBrokerModal}
-            onOpenAdaptiveLearning={onOpenAdaptiveLearning}
-          />
-        )}
+      {activeTab === 'VIP_COCKPIT' && (
+        <VipSubscriberCockpit
+          isMalay={isMalay}
+          onOpenBrokerConnect={onOpenBrokerModal}
+          onOpenAdaptiveLearning={onOpenAdaptiveLearning}
+        />
+      )}
 
         {/* ========================================================================= */}
         {/* TAB 2: TERMINAL AI LIVE (FULL COMMAND CENTER)                             */}

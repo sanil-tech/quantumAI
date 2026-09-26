@@ -5,7 +5,7 @@ import {
   RefreshCw, CheckCircle, CheckCircle2, AlertTriangle, Play, Pause, XCircle, ChevronRight,
   BarChart3, Clock, Target, ArrowUpRight, ArrowDownRight, Layers, Eye,
   Lock, Key, Sparkles, Sliders, Shield, Radio, CheckSquare, Sparkle, History, Power,
-  Search, Filter, X
+  Search, Filter, X, Brain
 } from 'lucide-react';
 import {
   CurrencyPair, CandleData, IndicatorValues, SmcStructures, SupportResistanceZone,
@@ -34,6 +34,7 @@ interface DemoTraderCommandCenterProps {
   aiLoading?: boolean;
   onRefreshData?: () => void;
   onOpenBrokerModal: () => void;
+  onOpenAdaptiveLearning?: () => void;
   timeframe?: Timeframe;
   setTimeframe?: (tf: Timeframe) => void;
   language: Language;
@@ -62,6 +63,7 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
   aiLoading,
   onRefreshData,
   onOpenBrokerModal,
+  onOpenAdaptiveLearning,
   timeframe = 'M15',
   setTimeframe,
   language
@@ -104,6 +106,8 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
   const [scannerStatus, setScannerStatus] = useState<any>(null);
   const [scannerConnectionError, setScannerConnectionError] = useState(false);
   const [showDiscoveredSetupsModal, setShowDiscoveredSetupsModal] = useState<boolean>(false);
+  const [strategyFilter, setStrategyFilter] = useState<'SEMUA' | 'M5_SCALP' | 'BASELINE'>('SEMUA');
+  const [expandedDetailsSetupId, setExpandedDetailsSetupId] = useState<string | null>(null);
   const [subscriberRiskMode, setSubscriberRiskMode] = useState<SubscriberRiskMode>('BALANCED');
   const [watchlistSearchQuery, setWatchlistSearchQuery] = useState<string>('');
   const [watchlistCategory, setWatchlistCategory] = useState<'ALL' | 'MAJOR' | 'JPY' | 'COMMODITIES' | 'CRYPTO_INDEX'>('ALL');
@@ -579,12 +583,34 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
     const priceDiff = trade.direction === 'BUY' ? (liveCurrent - sanitizedEntry) : (sanitizedEntry - liveCurrent);
     const pnlPips = Number((priceDiff * pipFactor).toFixed(1));
     
-    const lot = Number(trade.lotSize || trade.quantity || 0.10);
-    const pnlDollars = isGold 
-      ? Number((priceDiff * 100 * lot).toFixed(2))
-      : isIndex
-        ? Number((priceDiff * lot).toFixed(2))
-        : Number((pnlPips * 10 * lot).toFixed(2));
+    const lot = Number(trade.lotSize || trade.quantity || trade.volume || 0.10);
+    
+    // 1. Direct cTrader Broker PnL check (if connected to live cTrader feed)
+    const directBrokerPnL = typeof trade.grossProfit === 'number'
+      ? (Math.abs(trade.grossProfit) > 5000 ? trade.grossProfit / 100 : trade.grossProfit)
+      : (typeof trade.unrealizedPnL === 'number' ? trade.unrealizedPnL : (typeof trade.unrealizedProfit === 'number' ? trade.unrealizedProfit : null));
+
+    // 2. Dynamic quote currency pip value calculation fallback for local/simulated mode
+    let fallbackPnlDollars = 0;
+    if (isGold) {
+      fallbackPnlDollars = Number((priceDiff * 100 * lot).toFixed(2));
+    } else if (isIndex) {
+      fallbackPnlDollars = Number((priceDiff * lot).toFixed(2));
+    } else {
+      const parts = tradeSym.split('/');
+      const base = parts[0];
+      const quote = parts[1] || (isJpy ? 'JPY' : 'USD');
+      let pipValInUsdPer001 = 0.10;
+      if (quote === 'JPY' || isJpy) pipValInUsdPer001 = (liveCurrent > 0 ? 10 / liveCurrent : 0.065);
+      else if (quote === 'CAD') pipValInUsdPer001 = 0.10 / (liveCurrent || 1.41339);
+      else if (quote === 'CHF') pipValInUsdPer001 = 0.10 / (liveCurrent || 0.82835);
+      else if (quote === 'AUD') pipValInUsdPer001 = 0.10 * 0.70;
+      else if (quote === 'NZD') pipValInUsdPer001 = 0.10 * 0.57;
+
+      fallbackPnlDollars = Number((pnlPips * pipValInUsdPer001 * (lot / 0.01)).toFixed(2));
+    }
+
+    const pnlDollars = directBrokerPnL !== null ? Number(directBrokerPnL.toFixed(2)) : fallbackPnlDollars;
 
     const pipMultiplier = isJpy ? 0.01 : (isGold || isIndex) ? 1.0 : 0.0001;
     let sl = Number(trade.stopLoss || 0);
@@ -703,6 +729,18 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
               Lihat Radar →
             </span>
           </button>
+
+          {onOpenAdaptiveLearning && (
+            <button
+              id="scanner-bar-adaptive-btn"
+              onClick={onOpenAdaptiveLearning}
+              className="bg-gradient-to-r from-cyan-600 via-indigo-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 border border-cyan-400/40 px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 transition cursor-pointer shadow-md shadow-cyan-950/60 text-white font-bold"
+              title="Buka Enjin Pembelajaran Adaptif AI & Jalankan Ulangkaji Mingguan Base44 (~380 Token)"
+            >
+              <Brain className="w-3.5 h-3.5 text-cyan-300 animate-pulse" />
+              <span>📚 Ulangkaji Base44</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -926,19 +964,32 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
           ? (nextDiffMins >= 60 ? `${Math.floor(nextDiffMins / 60)}j ${nextDiffMins % 60}m` : `${nextDiffMins}m`)
           : 'Tiada dalam 24j';
 
-        const aiReasonsList = (aiOpportunity?.reasons && aiOpportunity.reasons.length > 0)
-          ? aiOpportunity.reasons
-          : ((aiOpportunity?.technicalEvidence && aiOpportunity.technicalEvidence.length > 0)
-              ? aiOpportunity.technicalEvidence
-              : (aiOpportunity?.reasoning ? [aiOpportunity.reasoning] : []));
+        // Check if there is an authoritative setup from scannerStatus for the currently active pair
+        const setupForActivePair = Array.isArray(scannerStatus?.recentSetups) 
+          ? scannerStatus.recentSetups.find((s: any) => s.pair === activePair)
+          : null;
 
-        const realAiDecision = aiOpportunity && aiOpportunity.action && aiOpportunity.action !== 'NO_SETUP' ? {
-          pair: activePair,
-          direction: (aiOpportunity.type === 'BUY' || aiOpportunity.type === 'SELL' || aiOpportunity.bias === 'BULLISH' ? 'BUY' : 'SELL') as 'BUY' | 'SELL',
-          confidence: Number(aiOpportunity.confidence) || 80,
-          decision: (Number(aiOpportunity.confidence) >= 70 ? 'CONFIRM' : 'ADJUST') as 'CONFIRM' | 'VETO' | 'ADJUST',
-          reasons: aiReasonsList.length > 0 ? aiReasonsList : [`Struktur SMC ${activePair}: Analisis zon Order Block (${timeframe})`],
-          vetoReason: (aiOpportunity.vetoReasons && aiOpportunity.vetoReasons.length > 0) ? aiOpportunity.vetoReasons[0] : undefined
+        const effectiveSetup = setupForActivePair;
+
+        const aiReasonsList = (effectiveSetup?.reasons && effectiveSetup.reasons.length > 0)
+          ? effectiveSetup.reasons
+          : [];
+
+        const realAiDecision = effectiveSetup ? {
+          pair: effectiveSetup.pair,
+          direction: effectiveSetup.direction as 'BUY' | 'SELL',
+          timeframe: effectiveSetup.timeframe,
+          confidence: Number(effectiveSetup.confidence) || 80,
+          decision: (effectiveSetup.status === 'SKIPPED_RISK' || effectiveSetup.status === 'INVALID' || effectiveSetup.isValid === false)
+            ? ('VETO' as const)
+            : ((Number(effectiveSetup.confidence) >= 80 ? 'CONFIRM' : 'ADJUST') as 'CONFIRM' | 'VETO' | 'ADJUST'),
+          reasons: aiReasonsList.length > 0 ? aiReasonsList : [`Struktur SMC ${effectiveSetup.pair}: Analisis zon Order Block`],
+          vetoReason: effectiveSetup.invalidationReason,
+          entryPrice: effectiveSetup.entryPrice,
+          stopLoss: effectiveSetup.stopLoss,
+          takeProfit1: effectiveSetup.takeProfit1,
+          takeProfit2: effectiveSetup.takeProfit2,
+          source: 'BASE44_AI_LIVE'
         } : undefined;
 
         return (
@@ -953,6 +1004,8 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
             <div className="lg:col-span-6">
               <AiReasoningCard
                 latestDecision={realAiDecision}
+                selectedPair={activePair}
+                onOpenAdaptiveLearning={onOpenAdaptiveLearning}
                 postMortemReviews={accountState.latestAiRule ? [{
                   pair: activePair,
                   outcome: 'LOSS',
@@ -1362,7 +1415,7 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
       {/* 5. MODAL: 24/7 AI AUTONOMOUS MARKET SCANNER RADAR & DISCOVERED SETUPS */}
       {showDiscoveredSetupsModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-indigo-500/40 rounded-2xl max-w-3xl w-full p-6 space-y-5 shadow-2xl overflow-y-auto max-h-[90vh]">
+          <div className="bg-slate-900 border border-indigo-500/40 rounded-2xl max-w-4xl w-full p-6 space-y-5 shadow-2xl overflow-y-auto max-h-[90vh]">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-800 pb-4">
               <div className="flex items-center gap-3">
@@ -1372,7 +1425,7 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-base font-black text-white uppercase tracking-wider">
-                      📡 Radar Imbasan Autonomi AI ({scannerStatus?.watchlist?.length ?? '—'} Pairs • M15/H1/H4)
+                      📡 Radar Imbasan Autonomi AI ({scannerStatus?.watchlist?.length ?? '—'} Pairs • M5/M15/H1/H4)
                     </h3>
                     <span className="px-2 py-0.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[10px] font-mono font-bold rounded-full">
                       {scannerConnectionError ? 'SAMBUNGAN PELAYAN TERPUTUS' : !scannerStatus ? 'MENGAMBIL STATUS PELAYAN' : scannerStatus.isScanning ? 'SCANNER AKTIF' : 'SCANNER TIDAK AKTIF'}
@@ -1407,7 +1460,24 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
 
             {/* Setups List */}
             {(() => {
-              const displayedSetups = Array.isArray(scannerStatus?.recentSetups) ? scannerStatus.recentSetups : [];
+              const rawSetups = Array.isArray(scannerStatus?.recentSetups) ? scannerStatus.recentSetups : [];
+
+              const checkIsM5Scalp = (s: any) => {
+                const stratVer = s?.strategy_version || s?.strategyVersion || s?.canonicalSignal?.strategyVersion || s?.strategy;
+                if (stratVer === 'QAI_M5_SCALP_BASELINE_V1') return true;
+                if (s?.timeframe === 'M5' || s?.tf === 'M5') return true;
+                const commentStr = String(s?.comment || s?.label || s?.executionDetails?.label || '');
+                if (commentStr.includes('M5') || commentStr.includes('QAI-M5-V1')) return true;
+                return false;
+              };
+
+              const displayedSetups = rawSetups.filter((setup: any) => {
+                const isM5Scalp = checkIsM5Scalp(setup);
+
+                if (strategyFilter === 'M5_SCALP') return isM5Scalp;
+                if (strategyFilter === 'BASELINE') return !isM5Scalp;
+                return true;
+              });
 
               // Helper to format found timestamp
               const formatFoundTime = (ts?: number | string) => {
@@ -1429,210 +1499,325 @@ export const DemoTraderCommandCenter: React.FC<DemoTraderCommandCenterProps> = (
                 return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${timeStr}`;
               };
 
-              if (displayedSetups.length === 0) {
-                return (
-                  <div className="p-8 text-center bg-slate-950/60 border border-slate-800/80 rounded-xl text-slate-400 font-sans text-xs">
-                    <Sparkles className="w-6 h-6 text-indigo-400 mx-auto mb-2 opacity-60 animate-pulse" />
-                    <p className="font-semibold text-slate-200">{scannerConnectionError || !scannerStatus ? 'Status imbasan belum dapat disahkan' : 'Tiada setup aktif dijumpai pada imbasan pasaran terkini'}</p>
-                    <p className="text-[11px] text-slate-400 mt-1">{scannerConnectionError ? 'Tidak dapat menghubungi pelayan. Keputusan lama bukan status langsung.' : !scannerStatus ? 'Status scanner belum diterima. Menunggu sambungan pelayan; ini bukan keputusan imbasan.' : scannerStatus.isScanning ? 'Scanner aktif. Sebab belum ada signal layak ditunjukkan di bawah.' : 'Scanner tidak aktif. Semak sambungan pelayan.'}</p>
-                    {Array.isArray(scannerStatus?.scanDiagnostics) && scannerStatus.scanDiagnostics.length > 0 ? (
-                      <div className="mt-5 text-left overflow-x-auto">
-                        <p className="text-slate-400 mb-2">Pemerhatian terakhir: {new Date(Math.max(...scannerStatus.scanDiagnostics.map((d: any) => d.observedAt))).toLocaleTimeString()}</p>
-                        <table className="w-full text-xs">
-                          <thead><tr className="border-b border-slate-700 text-slate-400"><th className="py-2 pr-3">Pasangan</th><th className="py-2 pr-3">Keyakinan</th><th className="py-2">Sebab menunggu</th></tr></thead>
-                          <tbody>{scannerStatus.scanDiagnostics.map((d: any) => {
-                            const detail = d.details || {};
-                            const reason = d.stage === 'EXISTING_OPEN_POSITION' ? 'Posisi masih terbuka; entry baharu dilangkau'
-                              : detail.action === 'VETO' ? 'Ditahan oleh peraturan pembelajaran / risiko'
-                              : detail.action === 'WAIT_FOR_CONFIRMATION' ? 'Menunggu pengesahan candle / struktur'
-                              : d.stage === 'ANALYSIS_ERROR' ? 'Ralat analisis — perlu disemak'
-                              : d.stage === 'INSUFFICIENT_CANDLES' ? 'Data candle belum mencukupi'
-                              : d.stage === 'SECOND_OPINION_VETO' ? 'Ditolak oleh semakan kedua'
-                              : d.stage === 'FINAL_VALIDATION' ? 'Semakan akhir: ' + (detail.validationStatus || 'belum selesai')
-                              : d.stage === 'FINAL_APPROVAL_BLOCKED' ? 'Belum layak untuk entry'
-                              : 'Belum memenuhi syarat gred A';
-                            return <tr key={d.pair + ':' + (d.timeframe || 'ALL')} className="border-b border-slate-800"><td className="py-2 pr-3 text-slate-200 whitespace-nowrap">{d.pair} {d.timeframe || ''}</td><td className="py-2 pr-3">{typeof detail.confidence === 'number' ? detail.confidence + '%' : typeof detail.finalConfidence === 'number' ? detail.finalConfidence + '%' : '—'}</td><td className="py-2 text-slate-300">{reason}</td></tr>;
-                          })}</tbody>
-                        </table>
-                      </div>
-                    ) : <p className="mt-3 text-slate-500">Menunggu keputusan pusingan imbasan.</p>}
-                  </div>
-                );
-              }
-
               return (
                 <div className="space-y-3">
-                  {displayedSetups.map((setup: any, idx: number) => {
-                    const isBuy = setup.direction === 'BUY';
-                    const patternLabel = setup.pattern?.name || setup.patternName;
-                    const patternQ = setup.pattern?.quality || setup.patternQuality;
-                    const isValid = (typeof setup.isValid === 'boolean') 
-                      ? setup.isValid 
-                      : (setup.confidence >= 70 && setup.status !== 'EXPIRED' && setup.status !== 'INVALID' && setup.status !== 'FAILED');
-                    const foundTimeFormatted = formatFoundTime(setup.timestamp || setup.lastFoundAt || setup.createdAt);
-
-                    return (
-                      <div 
-                        key={setup.id || idx}
-                        className="p-4 bg-slate-950/80 border border-slate-800 hover:border-indigo-500/40 rounded-xl transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 font-mono text-xs"
+                  {/* Strategy Filter Control Bar */}
+                  <div className="flex items-center justify-between gap-2 mb-3 flex-wrap bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 font-mono text-xs">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-slate-400 font-bold mr-1">Tapis Strategi:</span>
+                      <button
+                        onClick={() => setStrategyFilter('SEMUA')}
+                        className={`px-3 py-1 rounded-lg text-xs font-black transition cursor-pointer ${
+                          strategyFilter === 'SEMUA'
+                            ? 'bg-indigo-600 text-white shadow shadow-indigo-950/50'
+                            : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
+                        }`}
                       >
-                        <div className="flex items-center gap-3">
-                          <span className={`px-2.5 py-1 rounded font-black text-xs ${
-                            isBuy ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
-                          }`}>
-                            {setup.direction}
-                          </span>
-                          <div>
+                        SEMUA ({rawSetups.length})
+                      </button>
+                      <button
+                        onClick={() => setStrategyFilter('M5_SCALP')}
+                        className={`px-3 py-1 rounded-lg text-xs font-black transition cursor-pointer flex items-center gap-1 ${
+                          strategyFilter === 'M5_SCALP'
+                            ? 'bg-cyan-600 text-white shadow shadow-cyan-950/50'
+                            : 'bg-slate-800 text-cyan-400 hover:text-cyan-200 border border-slate-700'
+                        }`}
+                      >
+                        ⚡ M5 SCALP ({rawSetups.filter((s: any) => checkIsM5Scalp(s)).length})
+                      </button>
+                      <button
+                        onClick={() => setStrategyFilter('BASELINE')}
+                        className={`px-3 py-1 rounded-lg text-xs font-black transition cursor-pointer ${
+                          strategyFilter === 'BASELINE'
+                            ? 'bg-blue-600 text-white shadow shadow-blue-950/50'
+                            : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
+                        }`}
+                      >
+                        BASELINE ({rawSetups.filter((s: any) => !checkIsM5Scalp(s)).length})
+                      </button>
+                    </div>
+                  </div>
+
+                  {displayedSetups.length === 0 ? (
+                    <div className="p-8 text-center bg-slate-950/60 border border-slate-800/80 rounded-xl text-slate-400 font-sans text-xs">
+                      <Sparkles className="w-6 h-6 text-indigo-400 mx-auto mb-2 opacity-60 animate-pulse" />
+                      <p className="font-semibold text-slate-200">
+                        {strategyFilter === 'M5_SCALP' 
+                          ? 'Tiada signal M5 SCALP aktif dijumpai pada imbasan pasaran terkini'
+                          : strategyFilter === 'BASELINE'
+                            ? 'Tiada signal BASELINE aktif dijumpai pada imbasan pasaran terkini'
+                            : (scannerConnectionError || !scannerStatus ? 'Status imbasan belum dapat disahkan' : 'Tiada setup aktif dijumpai pada imbasan pasaran terkini')}
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        {strategyFilter !== 'SEMUA' ? 'Cuba tukar penapis kepada [ SEMUA ] untuk melihat semua signal.' : (scannerConnectionError ? 'Tidak dapat menghubungi pelayan.' : 'Menunggu keputusan pusingan imbasan.')}
+                      </p>
+                    </div>
+                  ) : (
+                    displayedSetups.map((setup: any, idx: number) => {
+                      const isBuy = setup.direction === 'BUY';
+                      const patternLabel = setup.pattern?.name || setup.patternName;
+                      const patternQ = setup.pattern?.quality || setup.patternQuality;
+                      const isValid = (typeof setup.isValid === 'boolean') 
+                        ? setup.isValid 
+                        : (setup.confidence >= 70 && setup.status !== 'EXPIRED' && setup.status !== 'INVALID' && setup.status !== 'FAILED');
+                      const foundTimeFormatted = formatFoundTime(setup.timestamp || setup.lastFoundAt || setup.createdAt);
+                      
+                      const isM5Scalp = checkIsM5Scalp(setup);
+
+                      const statusText = (() => {
+                        if (setup.status === 'SKIPPED_PENDING_ORDER_EXISTS') {
+                          return isM5Scalp ? '⚡ M5 SCALP | ⌛ PENDING ORDER' : '⏳ MENUNGGU — PENDING ORDER SEDIA ADA';
+                        }
+                        if (setup.status === 'SKIPPED_ECONOMIC_EVENT') {
+                          return '🛡️ DISEKAT — BERITA / KALENDAR';
+                        }
+                        if (setup.status === 'SKIPPED_MARKET_CLOSED') {
+                          return '⏸️ PASARAN DITUTUP';
+                        }
+                        if (setup.status === 'EXECUTED') {
+                          return isM5Scalp ? '⚡ M5 SCALP | 🟢 ORDER DIHANTAR KE CTRADER DEMO' : '✅ ORDER CTRADER AKTIF';
+                        }
+                        if (setup.status === 'SKIPPED_ALREADY_OPEN') {
+                          return isM5Scalp ? '⚡ M5 SCALP | ⌛ MENUNGGU — POSISI SEDIA ADA' : '⏳ MENUNGGU — POSISI SEDIA ADA';
+                        }
+                        if (setup.status === 'DISCOVERED_CAPACITY_REACHED') {
+                          return isM5Scalp ? '⚡ M5 SCALP | ⌛ HAD KAPASITI MASTER' : '⏳ MENUNGGU — HAD KAPASITI MASTER';
+                        }
+                        if (setup.status === 'SKIPPED_RISK') {
+                          return '🛡️ RISK LIMIT';
+                        }
+                        if (setup.status === 'SKIPPED_COOLDOWN') {
+                          return '⏳ COOLDOWN (2m)';
+                        }
+                        return isM5Scalp ? '⚡ M5 SCALP | 🎯 RADAR SETUP' : '🎯 RADAR SETUP';
+                      })();
+
+                      return (
+                        <div 
+                          key={setup.id || idx}
+                          className={`p-4 bg-slate-950/90 border rounded-2xl transition space-y-3 font-mono text-xs ${
+                            isM5Scalp ? 'border-cyan-500/50 hover:border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.12)]' : 'border-slate-800 hover:border-indigo-500/50'
+                          }`}
+                        >
+                          {/* TOP ROW: DIRECTION + SYMBOL + BADGES */}
+                          <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-800/80">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-extrabold text-white">{setup.pair}</span>
-                              <span className="px-1.5 py-0.5 bg-blue-500/20 border border-blue-500/40 text-blue-300 rounded text-[10px] font-bold">
+                              <span className={`px-3 py-1 rounded-lg font-black text-xs shadow-sm ${
+                                isBuy ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-emerald-950/50' : 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-rose-950/50'
+                              }`}>
+                                {setup.direction}
+                              </span>
+                              <span className="text-base font-black text-white tracking-wide">{setup.pair}</span>
+                              <span className="px-2 py-0.5 bg-blue-500/20 border border-blue-500/40 text-blue-300 rounded-md text-[11px] font-bold">
                                 {setup.timeframe}
                               </span>
-                              <span className="px-1.5 py-0.5 bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded text-[10px] font-bold">
+
+                              {isM5Scalp ? (
+                                <span 
+                                  className="px-2.5 py-0.5 bg-cyan-500/20 border border-cyan-400/60 text-cyan-300 rounded-md text-[10px] font-black flex items-center gap-1 shadow-[0_0_10px_rgba(6,182,212,0.4)] animate-pulse"
+                                  title="Strategi Berdedikasi: QAI_M5_SCALP_BASELINE_V1"
+                                >
+                                  ⚡ M5 SCALP
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 bg-slate-800/80 border border-slate-700 text-slate-400 rounded-md text-[10px] font-medium">
+                                  BASELINE
+                                </span>
+                              )}
+
+                              <span className="px-2 py-0.5 bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-md text-[10px] font-bold">
                                 {setup.confidence}% CONF
                               </span>
 
-                              {/* VALID / INVALID STATUS BADGE */}
                               {isValid ? (
-                                <span className="px-2 py-0.5 bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 rounded text-[10px] font-black flex items-center gap-1 shadow-[0_0_8px_rgba(16,185,129,0.3)]">
+                                <span className="px-2 py-0.5 bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 rounded-md text-[10px] font-black flex items-center gap-1 shadow-[0_0_8px_rgba(16,185,129,0.3)]">
                                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                                   VALID
                                 </span>
                               ) : (
-                                <span className="px-2 py-0.5 bg-rose-500/20 border border-rose-500/50 text-rose-300 rounded text-[10px] font-black flex items-center gap-1 shadow-[0_0_8px_rgba(244,63,94,0.3)]">
+                                <span className="px-2 py-0.5 bg-rose-500/20 border border-rose-500/50 text-rose-300 rounded-md text-[10px] font-black flex items-center gap-1 shadow-[0_0_8px_rgba(244,63,94,0.3)]">
                                   <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
                                   INVALID
                                 </span>
                               )}
 
                               {patternLabel && (
-                                <span className="px-1.5 py-0.5 bg-purple-500/20 border border-purple-500/40 text-purple-300 rounded text-[10px] font-bold flex items-center gap-1">
+                                <span className="px-2 py-0.5 bg-purple-500/20 border border-purple-500/40 text-purple-300 rounded-md text-[10px] font-bold flex items-center gap-1">
                                   📐 {patternLabel} {patternQ ? `(Q: ${patternQ}/10)` : ''}
                                 </span>
                               )}
                             </div>
 
-                            {/* Price Parameters with TP1, TP2 (Runner), and Break-Even (BE) */}
-                            {(() => {
-                              const isJpy = setup.pair?.includes('JPY');
-                              const decimals = isJpy ? 3 : 5;
-                              const tp2Calculated = setup.takeProfit2 || (
-                                setup.direction === 'BUY'
-                                  ? +(setup.entryPrice + (setup.takeProfit1 - setup.entryPrice) * 1.8).toFixed(decimals)
-                                  : +(setup.entryPrice - (setup.entryPrice - setup.takeProfit1) * 1.8).toFixed(decimals)
-                              );
-                              const beTrigger = setup.breakEvenPrice || setup.entryPrice;
-
-                              return (
-                                <div className="text-[11px] text-slate-400 mt-1.5 flex items-center gap-2 flex-wrap">
-                                  <span className="bg-slate-900/90 px-2 py-0.5 rounded border border-slate-700/60">
-                                    Entri: <strong className="text-slate-100">{setup.entryPrice}</strong>
-                                  </span>
-                                  <span className="bg-rose-950/40 px-2 py-0.5 rounded border border-rose-800/40">
-                                    SL: <strong className="text-rose-400">{setup.stopLoss}</strong>
-                                  </span>
-                                  <span className="bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-800/40">
-                                    TP1 (50%): <strong className="text-emerald-300 font-bold">{setup.takeProfit1}</strong>
-                                  </span>
-                                  <span className="bg-teal-950/40 px-2 py-0.5 rounded border border-teal-800/40">
-                                    TP2 (Runner): <strong className="text-teal-300 font-bold">{tp2Calculated}</strong>
-                                  </span>
-                                  <span className="bg-indigo-950/40 px-2 py-0.5 rounded border border-indigo-800/40 text-[10px]" title="Stop Loss dialihkan ke Entri secara automatik sebaik sahaja TP1 tercapai">
-                                    BE: <strong className="text-indigo-300">Auto @ {beTrigger}</strong>
-                                  </span>
-
-                                  {/* TIMESTAMP WHEN SIGNAL WAS LAST FOUND */}
-                                  <span className="text-[10px] text-indigo-300/90 font-mono flex items-center gap-1 bg-indigo-950/50 px-2 py-0.5 rounded border border-indigo-500/30">
-                                    <Clock className="w-3 h-3 text-indigo-400" />
-                                    Dikesan: {foundTimeFormatted}
-                                  </span>
-                                </div>
-                              );
-                            })()}
-
-                            {/* Invalidation Reason Banner */}
-                            {(!isValid || setup.status === 'INVALID') && setup.invalidationReason && (
-                              <div className="text-[10px] text-rose-300/90 bg-rose-950/40 border border-rose-500/30 rounded px-2 py-0.5 mt-1.5 flex items-center gap-1">
-                                <span>⚠️ {setup.invalidationReason}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end flex-wrap">
-                          {!isValid || setup.status === 'INVALID' ? (
-                            <div className="flex items-center gap-1.5">
-                              <span className="px-2 py-1 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1">
-                                🚫 TIADA ORDER CTRADER
+                            {/* TOP RIGHT: DETECTED TIME & EXECUTION STATUS BADGE */}
+                            <div className="flex items-center gap-2 flex-wrap text-[11px]">
+                              <span className="text-[10px] text-indigo-300/90 font-mono flex items-center gap-1 bg-indigo-950/60 px-2.5 py-1 rounded-lg border border-indigo-500/30">
+                                <Clock className="w-3 h-3 text-indigo-400" />
+                                Dikesan: {foundTimeFormatted}
                               </span>
-                              {setup.invalidatedAt && (
-                                <span className="px-1.5 py-0.5 bg-slate-800 text-amber-300 border border-amber-500/30 rounded text-[9px] font-mono">
-                                  ⏳ Padam: {Math.max(1, Math.ceil((120000 - (Date.now() - setup.invalidatedAt)) / 1000))}s
+                              <span className={`px-2.5 py-1 rounded-lg text-[11px] font-bold ${
+                                isM5Scalp
+                                  ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-500/50 shadow-sm'
+                                  : setup.status === 'EXECUTED' 
+                                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                    : setup.status === 'SKIPPED_ALREADY_OPEN'
+                                      ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                                      : setup.status === 'DISCOVERED_CAPACITY_REACHED'
+                                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                                        : setup.status === 'SKIPPED_RISK'
+                                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                                          : setup.status === 'SKIPPED_COOLDOWN'
+                                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                            : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
+                              }`}>
+                                {statusText}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* MIDDLE ROW: PRICE PARAMETERS GRID (FULL WIDTH 5-COL GRID) */}
+                          {(() => {
+                            const isJpy = setup.pair?.includes('JPY');
+                            const decimals = isJpy ? 3 : 5;
+                            const tp2Calculated = setup.takeProfit2 || (
+                              setup.direction === 'BUY'
+                                ? +(setup.entryPrice + (setup.takeProfit1 - setup.entryPrice) * 1.8).toFixed(decimals)
+                                : +(setup.entryPrice - (setup.entryPrice - setup.takeProfit1) * 1.8).toFixed(decimals)
+                            );
+                            const beTrigger = setup.breakEvenPrice || setup.entryPrice;
+
+                            return (
+                              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
+                                <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-700/60">
+                                  <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Entri</div>
+                                  <div className="text-sm font-black text-slate-100 mt-0.5">{setup.entryPrice}</div>
+                                </div>
+                                <div className="bg-rose-950/40 p-2.5 rounded-xl border border-rose-800/40">
+                                  <div className="text-[10px] text-rose-300 font-bold uppercase tracking-wider">Stop Loss (SL)</div>
+                                  <div className="text-sm font-black text-rose-400 mt-0.5">{setup.stopLoss}</div>
+                                </div>
+                                <div className="bg-emerald-950/40 p-2.5 rounded-xl border border-emerald-800/40">
+                                  <div className="text-[10px] text-emerald-300 font-bold uppercase tracking-wider">TP1 (50%)</div>
+                                  <div className="text-sm font-black text-emerald-300 mt-0.5">{setup.takeProfit1}</div>
+                                </div>
+                                <div className="bg-teal-950/40 p-2.5 rounded-xl border border-teal-800/40">
+                                  <div className="text-[10px] text-teal-300 font-bold uppercase tracking-wider">TP2 (Runner)</div>
+                                  <div className="text-sm font-black text-teal-300 mt-0.5">{tp2Calculated}</div>
+                                </div>
+                                <div className="bg-indigo-950/40 p-2.5 rounded-xl border border-indigo-800/40 col-span-2 sm:col-span-1" title="Stop Loss dialihkan ke Entri secara automatik sebaik sahaja TP1 tercapai">
+                                  <div className="text-[10px] text-indigo-300 font-bold uppercase tracking-wider">Auto BE</div>
+                                  <div className="text-xs font-black text-indigo-200 mt-0.5">Auto @ {beTrigger}</div>
+                                </div>
+                              </div>
+                            );
+                          })()}
+
+                          {/* ULASAN & PANDANGAN BASE44 INVOKELLM */}
+                          {Array.isArray(setup.reasons) && setup.reasons.length > 0 && (
+                            <div className="bg-slate-900/90 border border-cyan-900/50 rounded-xl p-3 space-y-2 font-mono text-xs shadow-inner">
+                              <div className="flex items-center justify-between text-[11px] text-cyan-300 font-bold border-b border-cyan-950/80 pb-1.5">
+                                <span className="flex items-center gap-1.5">
+                                  <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                                  <span className="text-white">Ulasan &amp; Pandangan Base44 InvokeLLM:</span>
+                                </span>
+                                <span className="px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800/60 text-[10px] font-black">
+                                  Second Opinion Gate
+                                </span>
+                              </div>
+                              <ul className="space-y-1.5 pt-0.5">
+                                {setup.reasons.slice(0, 4).map((r: string, rIdx: number) => {
+                                  const isAiOpinion = r.includes('Base44') || r.includes('Gemini') || r.includes('Second Opinion');
+                                  return (
+                                    <li key={rIdx} className={`flex items-start gap-1.5 text-[11px] leading-relaxed ${isAiOpinion ? 'text-cyan-200 font-bold' : 'text-slate-300'}`}>
+                                      <span className={`${isAiOpinion ? 'text-cyan-400 font-black' : 'text-indigo-400'} shrink-0 mt-0.5`}>›</span>
+                                      <span>{r}</span>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* BOTTOM ROW: FOOTER WITH STRATEGY INFO & ACTION BUTTONS */}
+                          <div className="flex items-center justify-between gap-3 pt-1 flex-wrap">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {isM5Scalp && (
+                                <span className="bg-cyan-950/70 border border-cyan-800/50 px-2.5 py-1 rounded-lg text-[10px] text-cyan-300 flex items-center gap-1 shadow-sm">
+                                  Strategy: <strong className="text-cyan-200 font-bold">QAI M5 SCALP V1</strong>
+                                </span>
+                              )}
+                              {isM5Scalp && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExpandedDetailsSetupId(expandedDetailsSetupId === setup.id ? null : setup.id);
+                                  }}
+                                  className="text-[10px] text-cyan-400 hover:text-cyan-300 font-mono font-bold flex items-center gap-1 cursor-pointer bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-800/50 px-2.5 py-1 rounded-lg transition shadow-sm"
+                                >
+                                  <span>{expandedDetailsSetupId === setup.id ? '▲ Sembunyi Detail' : '▼ Detail Strategi'}</span>
+                                </button>
+                              )}
+                              {(!isValid || setup.status === 'INVALID') && setup.invalidationReason && (
+                                <span className="text-[10px] text-rose-300/90 bg-rose-950/40 border border-rose-500/30 rounded-lg px-2.5 py-1 flex items-center gap-1">
+                                  ⚠️ {setup.invalidationReason}
                                 </span>
                               )}
                             </div>
-                          ) : (
-                            <span className={`px-2 py-1 rounded text-[10px] font-bold ${
-                              setup.status === 'EXECUTED' 
-                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                                : setup.status === 'SKIPPED_ALREADY_OPEN'
-                                  ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
-                                  : setup.status === 'DISCOVERED_CAPACITY_REACHED'
-                                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                                    : setup.status === 'SKIPPED_RISK'
-                                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
-                                      : setup.status === 'SKIPPED_COOLDOWN'
-                                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                                        : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
-                            }`}>
-                              {setup.status === 'SKIPPED_PENDING_ORDER_EXISTS' ? '⏳ MENUNGGU — PENDING ORDER SEDIA ADA' : setup.status === 'SKIPPED_ECONOMIC_EVENT' ? '🛡️ DISEKAT — BERITA / KALENDAR' : setup.status === 'SKIPPED_MARKET_CLOSED' ? '⏸️ PASARAN DITUTUP' : setup.status === 'EXECUTED' 
-                                ? '✅ ORDER CTRADER AKTIF' 
-                                : setup.status === 'SKIPPED_ALREADY_OPEN' 
-                                  ? '⏳ MENUNGGU — POSISI SEDIA ADA' 
-                                  : setup.status === 'DISCOVERED_CAPACITY_REACHED'
-                                    ? '⏳ MENUNGGU — HAD KAPASITI MASTER'
-                                    : setup.status === 'SKIPPED_RISK' 
-                                      ? '🛡️ RISK LIMIT' 
-                                      : setup.status === 'SKIPPED_COOLDOWN' 
-                                        ? '⏳ COOLDOWN (2m)' 
-                                        : '🎯 RADAR SETUP'}
-                            </span>
-                          )}
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                try {
-                                  await fetch('/api/autotrader/scanner/archive-setup', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ setupId: setup.id })
-                                  });
-                                  if (onRefreshData) onRefreshData();
-                                } catch {}
-                              }}
-                              className="px-2.5 py-1.5 bg-slate-800 hover:bg-rose-900/60 text-slate-300 hover:text-rose-200 border border-slate-700 hover:border-rose-500/50 font-medium rounded-xl transition cursor-pointer text-xs flex items-center gap-1"
-                              title="Arkibkan setup ini dan bebaskan laluan untuk signal baru"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                              <span>Arkib</span>
-                            </button>
-                            <button
-                              onClick={() => {
-                                setActivePair(setup.pair);
-                                if (setTimeframe && setup.timeframe) setTimeframe(setup.timeframe);
-                                setShowDiscoveredSetupsModal(false);
-                              }}
-                              className="px-3.5 py-1.5 bg-gradient-to-r from-cyan-600 via-indigo-600 to-blue-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-extrabold rounded-xl transition shadow-lg shadow-cyan-950/50 cursor-pointer text-xs flex items-center gap-1.5"
-                            >
-                              <Zap className="w-3.5 h-3.5 text-cyan-300" />
-                              <span>⚡ Muat Setup &amp; Carta</span>
-                            </button>
+
+                            {/* ACTION BUTTONS (ARCHIVE & LOAD CHART) */}
+                            <div className="flex items-center gap-2 ml-auto">
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  try {
+                                    await fetch('/api/autotrader/scanner/archive-setup', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ setupId: setup.id })
+                                    });
+                                    if (onRefreshData) onRefreshData();
+                                  } catch {}
+                                }}
+                                className="px-3 py-1.5 bg-slate-800 hover:bg-rose-900/60 text-slate-300 hover:text-rose-200 border border-slate-700 hover:border-rose-500/50 font-semibold rounded-xl transition cursor-pointer text-xs flex items-center gap-1.5"
+                                title="Arkibkan setup ini dan bebaskan laluan untuk signal baru"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                                <span>Arkib</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setActivePair(setup.pair);
+                                  if (setTimeframe && setup.timeframe) setTimeframe(setup.timeframe);
+                                  setShowDiscoveredSetupsModal(false);
+                                }}
+                                className="px-4 py-1.5 bg-gradient-to-r from-cyan-600 via-indigo-600 to-blue-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-extrabold rounded-xl transition shadow-lg shadow-cyan-950/50 cursor-pointer text-xs flex items-center gap-1.5"
+                              >
+                                <Zap className="w-3.5 h-3.5 text-cyan-300" />
+                                <span>⚡ Muat Setup &amp; Carta</span>
+                              </button>
+                            </div>
                           </div>
+
+                          {/* EXPANDABLE ACCORDION DETAILS */}
+                          {isM5Scalp && expandedDetailsSetupId === setup.id && (
+                            <div className="mt-2 p-3 bg-slate-900/95 border border-cyan-500/40 rounded-xl text-[10px] font-mono text-slate-300 grid grid-cols-2 sm:grid-cols-4 gap-2 shadow-inner">
+                              <div><span className="text-slate-400">Strategy:</span> <strong className="text-cyan-300">QAI_M5_SCALP_BASELINE_V1</strong></div>
+                              <div><span className="text-slate-400">Execution:</span> <strong className="text-emerald-300">DEMO_FORWARD</strong></div>
+                              <div><span className="text-slate-400">H4 Regime:</span> <strong className="text-slate-200">{setup.h4Regime || setup.validationReport?.h4Regime || 'BULLISH'}</strong></div>
+                              <div><span className="text-slate-400">M15 Context:</span> <strong className="text-slate-200">{setup.m15Context || 'ALIGNED'}</strong></div>
+                              <div><span className="text-slate-400">M5 Trigger:</span> <strong className="text-slate-200">{setup.entryMode || setup.pattern?.name || 'ORDER_BLOCK_RETEST'}</strong></div>
+                              <div><span className="text-slate-400">ATR(14):</span> <strong className="text-slate-200">{setup.canonicalSignal?.indicators?.atr ? Number(setup.canonicalSignal.indicators.atr).toFixed(5) : '—'}</strong></div>
+                              <div><span className="text-slate-400">SL Distance:</span> <strong className="text-slate-200">{setup.slDistancePips ? `${setup.slDistancePips} pips` : '—'}</strong></div>
+                              <div><span className="text-slate-400">SL / ATR:</span> <strong className="text-slate-200">{setup.slAtrRatio ? Number(setup.slAtrRatio).toFixed(2) : '—'}</strong></div>
+                              <div><span className="text-slate-400">Planned R:R:</span> <strong className="text-slate-200">{setup.plannedRr ? `1:${setup.plannedRr}` : '1:1.5'}</strong></div>
+                              <div><span className="text-slate-400">Spread:</span> <strong className="text-slate-200">{setup.spreadPips ? `${setup.spreadPips} pips` : '—'}</strong></div>
+                              <div><span className="text-slate-400">cTrader Label:</span> <strong className="text-cyan-300 font-bold">QAI-M5-V1</strong></div>
+                              <div><span className="text-slate-400">Signal Age:</span> <strong className="text-slate-200">{foundTimeFormatted}</strong></div>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
               );
             })()}

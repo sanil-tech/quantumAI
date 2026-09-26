@@ -425,7 +425,7 @@ export class CTraderAdapter implements BrokerAdapter {
           if (alreadyOpen && !order.order_id?.includes('test_') && !order.proposal_id?.includes('test_')) {
             throw new Error(`MAX_POSITIONS_PER_SYMBOL_EXCEEDED: An active open position for ${order.symbol} already exists on cTrader.`);
           }
-          const maxConcurrent = Number(process.env.MAX_CONCURRENT_ORDERS) || 8;
+          const maxConcurrent = Number(process.env.MAX_CONCURRENT_ORDERS) || 20;
           if (this.lastPositions.length >= maxConcurrent && !order.order_id?.includes('test_') && !order.proposal_id?.includes('test_')) {
             throw new Error(`MAX_CONCURRENT_POSITIONS_REACHED: Maximum concurrent positions limit (${maxConcurrent}) reached on cTrader.`);
           }
@@ -437,6 +437,20 @@ export class CTraderAdapter implements BrokerAdapter {
 
         const isLimit = order.order_type === 'LIMIT' || (order as any).orderType === 'LIMIT';
         const ctidAccountId = Number(this.config.accountId === '5881460' || !this.config.accountId || this.config.accountId === '5877246' ? 48282756 : (Number(this.config.accountId) || 48282756));
+
+        const stratVer = (order as any).strategy_version || (order as any).strategyVersion || (order as any).strategy;
+        const timeframe = (order as any).timeframe;
+
+        let cTraderLabel: string | undefined = (order as any).label;
+        let cTraderComment: string = (order as any).comment || `QuantumAI_${order.proposal_id || order.order_id}`;
+
+        if (stratVer === 'QAI_M5_SCALP_BASELINE_V1' || timeframe === 'M5') {
+          cTraderLabel = 'QAI-M5-V1';
+          const sigRef = String(order.proposal_id || (order as any).signalId || order.order_id || '');
+          const sigShort = sigRef.replace(/[^a-zA-Z0-9]/g, '').slice(-6);
+          cTraderComment = `QAI-M5-V1 | DEMO${sigShort ? ' | SIG:' + sigShort : ''}`;
+        }
+
         const payload: any = {
           ctidTraderAccountId: ctidAccountId,
           symbolId,
@@ -444,7 +458,8 @@ export class CTraderAdapter implements BrokerAdapter {
           tradeSide: orderDirection === 'BUY' ? 1 : 2, // 1 = BUY, 2 = SELL
           volume: volumeCents,
           clientOrderId,
-          comment: `QuantumAI_${order.proposal_id || order.order_id}`,
+          comment: cTraderComment,
+          label: cTraderLabel,
           timeInForce: isLimit ? 2 : undefined // 2 = GOOD_TILL_CANCEL
         };
 

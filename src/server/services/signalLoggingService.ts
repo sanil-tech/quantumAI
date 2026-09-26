@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { CurrencyPair } from '../../types';
+import { TradingRepository } from '@iati/database';
 
 export interface SignalLog {
   id: string;
@@ -17,8 +18,10 @@ export interface SignalLog {
   entryPrice: number;
   stopLoss: number;
   takeProfit: number;
-  status: 'GENERATED' | 'VALIDATED' | 'EXECUTED' | 'REJECTED' | 'TIMEOUT';
+  status: 'GENERATED' | 'VALIDATED' | 'EXECUTED' | 'REJECTED' | 'TIMEOUT' | 'VETOED' | 'SKIPPED' | 'FAILED';
   rejectionReason?: string;
+  setupId?: string;
+  timeframe?: string;
   executionResult?: {
     tradeId: string;
     executedAt: Date;
@@ -34,7 +37,11 @@ export interface SignalLog {
 export class SignalLoggingService {
   private signalLogs: Map<string, SignalLog> = new Map();
   private maxLogs = 10000; // Keep last 10k signals in memory
-  private logFile = '/tmp/signal_logs.jsonl'; // Optional: stream to file
+  private repo: TradingRepository;
+
+  constructor(repo?: TradingRepository) {
+    this.repo = repo || new TradingRepository();
+  }
 
   /**
    * Log a new signal
@@ -47,9 +54,12 @@ export class SignalLoggingService {
     reasons: string[],
     entryPrice: number,
     stopLoss: number,
-    takeProfit: number
+    takeProfit: number,
+    timeframe: string = 'M15',
+    setupId?: string
   ): string {
     const id = uuidv4();
+    const effectiveSetupId = setupId || `sig_${pair}_${Date.now()}`;
 
     const log: SignalLog = {
       id,
@@ -57,11 +67,13 @@ export class SignalLoggingService {
       pair,
       signal,
       confidence,
+      timeframe,
+      setupId: effectiveSetupId,
       indicators: {
-        rsi: indicators.rsi || 0,
-        ema200: indicators.ema200 || 0,
-        superTrend: indicators.superTrend?.trend || 'UNKNOWN',
-        smcSignal: indicators.smcSignal || 'NEUTRAL'
+        rsi: indicators?.rsi || 0,
+        ema200: indicators?.ema200 || 0,
+        superTrend: indicators?.superTrend?.trend || 'UNKNOWN',
+        smcSignal: indicators?.smcSignal || 'NEUTRAL'
       },
       technicalReasons: reasons,
       entryPrice,
@@ -75,11 +87,48 @@ export class SignalLoggingService {
     // Cleanup if too many logs
     if (this.signalLogs.size > this.maxLogs) {
       const firstKey = this.signalLogs.keys().next().value;
-      this.signalLogs.delete(firstKey);
+      if (firstKey) this.signalLogs.delete(firstKey);
     }
+
+    // Persist immediately to PostgreSQL before outcome is known
+    this.persistSignalToDb(log).catch(err => {
+      console.warn(`[SIGNAL LOG DB] Error persisting signal ${id}: ${err.message}`);
+    });
 
     console.log(`📝 [SIGNAL LOG] ${id} - ${pair} ${signal} @ ${confidence}%`);
     return id;
+  }
+
+  private async persistSignalToDb(log: SignalLog) {
+    if (log.signal === 'NONE') return;
+    const slDist = Math.abs(log.entryPrice - log.stopLoss);
+    const tpDist = Math.abs(log.takeProfit - log.entryPrice);
+    const plannedRr = slDist > 0 ? parseFloat((tpDist / slDist).toFixed(2)) : 2.0;
+
+    await this.repo.saveSignal({
+      id: log.id,
+      symbol: log.pair,
+      timeframe: log.timeframe || 'M15',
+      direction: log.signal === 'BUY' ? 'BUY' : 'SELL',
+      entryPrice: log.entryPrice,
+      stopLoss: log.stopLoss,
+      takeProfit1: log.takeProfit,
+      confidence: log.confidence,
+      reasoning: log.technicalReasons.join(' | '),
+      status: 'ACTIVE',
+      dataClass: 'LIVE',
+      provider: 'CTRADER',
+      source: 'QUANTUMAI_AUTONOMOUS_SCANNER',
+      setupId: log.setupId || log.id,
+      plannedRr,
+      decision: 'ACCEPTED',
+      strategyVersion: 'QAI_BASELINE_V1',
+      modelVersion: 'gemini-2.5-flash',
+      configurationVersion: '1.0',
+      provenance: 'NATURAL_RUNTIME',
+      marketContext: log.indicators,
+      effectiveFrom: new Date()
+    });
   }
 
   /**
@@ -92,11 +141,17 @@ export class SignalLoggingService {
     executionResult?: SignalLog['executionResult']
   ) {
     const log = this.signalLogs.get(signalId);
-    if (!log) return;
+    if (log) {
+      log.status = status;
+      if (rejectionReason) log.rejectionReason = rejectionReason;
+      if (executionResult) log.executionResult = executionResult;
+    }
 
-    log.status = status;
-    if (rejectionReason) log.rejectionReason = rejectionReason;
-    if (executionResult) log.executionResult = executionResult;
+    // Update in PostgreSQL database
+    const mappedDecision = status === 'EXECUTED' ? 'ACCEPTED' : (status as any);
+    this.repo.updateSignalDecision(signalId, mappedDecision, rejectionReason).catch(err => {
+      console.warn(`[SIGNAL LOG DB] Error updating signal decision ${signalId}: ${err.message}`);
+    });
 
     console.log(`📝 [SIGNAL UPDATE] ${signalId} - Status: ${status}`);
   }

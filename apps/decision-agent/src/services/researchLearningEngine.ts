@@ -263,10 +263,10 @@ export class ResearchLearningEngine {
     stats.evidenceTier = tierInfo.tier;
     stats.learningWeight = tierInfo.weight;
 
-    // Bounded SL multiplier based strictly on loss rate and sample tier (max 1.20)
+    // Bounded SL multiplier based strictly on loss rate and sample tier (max 1.60 for liquidity sweep protection)
     if (stats.lossCount > stats.winCount && tierInfo.weight > 0) {
-      stats.recommendedSlMultiplier = parseFloat((1.0 + (tierInfo.weight * (stats.lossCount / stats.totalObservations))).toFixed(2));
-      stats.recommendedSlMultiplier = Math.min(stats.recommendedSlMultiplier, 1.20);
+      stats.recommendedSlMultiplier = parseFloat((1.0 + (tierInfo.weight * (stats.lossCount / stats.totalObservations) * 1.5)).toFixed(2));
+      stats.recommendedSlMultiplier = Math.min(stats.recommendedSlMultiplier, 1.60);
     } else {
       stats.recommendedSlMultiplier = 1.0;
     }

@@ -517,15 +517,23 @@ export class SignalIntelligenceService {
         const entryMax = Number((priceNum + atr * 0.1).toFixed(decimals));
         entryZone = { min: entryMin, max: entryMax };
 
-        const adrTargets = PairDailyRangeService.calculateIntradayTargets(pair, 'BUY', priceNum);
-        sl = adrTargets.slPrice;
-        tp1 = adrTargets.tp1Price;
-        tp2 = adrTargets.tp2Price;
-        invalidation = Number((priceNum - (adrTargets.slPips + 2) * PairDailyRangeService.getProfile(pair).pipMultiplier).toFixed(decimals));
-        riskRewardRatio = adrTargets.riskRewardTp1;
+        const adrTargets = PairDailyRangeService.calculateIntradayTargets(pair, 'BUY', priceNum, timeframe, slMultiplier);
+        // Adaptive Stop Loss: use atr * slMultiplier when atr > 0, ensuring full harmony with adaptive learning
+        const slDistance = atr > 0 ? (atr * slMultiplier) : (adrTargets.slPips * PairDailyRangeService.getProfile(pair).pipMultiplier);
+        sl = Number((priceNum - slDistance).toFixed(decimals));
+
+        // Ensure TP1 & TP2 preserve minimum 1:1.5 Risk:Reward with the adaptive SL
+        const minTp1Dist = slDistance * 1.5;
+        const actualTp1Dist = Math.max(Math.abs(adrTargets.tp1Price - priceNum), minTp1Dist);
+        const actualTp2Dist = Math.max(Math.abs(adrTargets.tp2Price - priceNum), minTp1Dist * 1.6);
+        tp1 = Number((priceNum + actualTp1Dist).toFixed(decimals));
+        tp2 = Number((priceNum + actualTp2Dist).toFixed(decimals));
+        invalidation = Number((priceNum - slDistance - (2 * PairDailyRangeService.getProfile(pair).pipMultiplier)).toFixed(decimals));
+        riskRewardRatio = (actualTp1Dist / slDistance).toFixed(1);
         if (hasBullishRejection && matchedBullishPattern) {
           technicalEvidence.push(`[CANDLE CONFIRMATION] ${matchedBullishPattern} confirmed on closed candle.`);
         }
+        technicalEvidence.push(`[ADAPTIVE SL BUFFER] Protected with ${slMultiplier.toFixed(1)}x ATR buffer to absorb liquidity sweeps.`);
       }
     } else if (isBearishCandidate && finalConfidence >= 45) {
       if (inputCandles.length >= 3 && !hasBearishRejection) {
@@ -544,15 +552,23 @@ export class SignalIntelligenceService {
         const entryMax = Number((priceNum + atr * 0.2).toFixed(decimals));
         entryZone = { min: entryMin, max: entryMax };
 
-        const adrTargets = PairDailyRangeService.calculateIntradayTargets(pair, 'SELL', priceNum);
-        sl = adrTargets.slPrice;
-        tp1 = adrTargets.tp1Price;
-        tp2 = adrTargets.tp2Price;
-        invalidation = Number((priceNum + (adrTargets.slPips + 2) * PairDailyRangeService.getProfile(pair).pipMultiplier).toFixed(decimals));
-        riskRewardRatio = adrTargets.riskRewardTp1;
+        const adrTargets = PairDailyRangeService.calculateIntradayTargets(pair, 'SELL', priceNum, timeframe, slMultiplier);
+        // Adaptive Stop Loss: use atr * slMultiplier when atr > 0, ensuring full harmony with adaptive learning
+        const slDistance = atr > 0 ? (atr * slMultiplier) : (adrTargets.slPips * PairDailyRangeService.getProfile(pair).pipMultiplier);
+        sl = Number((priceNum + slDistance).toFixed(decimals));
+
+        // Ensure TP1 & TP2 preserve minimum 1:1.5 Risk:Reward with the adaptive SL
+        const minTp1Dist = slDistance * 1.5;
+        const actualTp1Dist = Math.max(Math.abs(priceNum - adrTargets.tp1Price), minTp1Dist);
+        const actualTp2Dist = Math.max(Math.abs(priceNum - adrTargets.tp2Price), minTp1Dist * 1.6);
+        tp1 = Number((priceNum - actualTp1Dist).toFixed(decimals));
+        tp2 = Number((priceNum - actualTp2Dist).toFixed(decimals));
+        invalidation = Number((priceNum + slDistance + (2 * PairDailyRangeService.getProfile(pair).pipMultiplier)).toFixed(decimals));
+        riskRewardRatio = (actualTp1Dist / slDistance).toFixed(1);
         if (hasBearishRejection && matchedBearishPattern) {
           technicalEvidence.push(`[CANDLE CONFIRMATION] ${matchedBearishPattern} confirmed on closed candle.`);
         }
+        technicalEvidence.push(`[ADAPTIVE SL BUFFER] Protected with ${slMultiplier.toFixed(1)}x ATR buffer to absorb liquidity sweeps.`);
       }
     } else {
       action = 'NO_SETUP';

@@ -14,13 +14,23 @@ export interface SignalRecord {
   setupType?: string;
   confidence?: number;
   reasoning?: string;
-  status?: 'ACTIVE' | 'EXECUTED' | 'CANCELLED' | 'EXPIRED' | 'INVALIDATED';
+  status?: 'ACTIVE' | 'EXECUTED' | 'CANCELLED' | 'EXPIRED' | 'INVALIDATED' | 'REJECTED' | 'VETOED' | 'SKIPPED' | 'FAILED';
   dataClass?: string;
   provider?: string;
   source?: string;
   marketTimestamp?: number;
   executable?: boolean;
   strategy?: string;
+  setupId?: string;
+  plannedRr?: number;
+  decision?: 'ACCEPTED' | 'REJECTED' | 'VETOED' | 'SKIPPED' | 'EXPIRED' | 'FAILED';
+  decisionReason?: string;
+  strategyVersion?: string;
+  modelVersion?: string;
+  configurationVersion?: string;
+  provenance?: 'NATURAL_RUNTIME' | 'RECONSTRUCTED_HISTORICAL' | 'SIMULATED_TEST' | 'MANUAL' | 'BROKER_RECONCILIATION';
+  marketContext?: any;
+  effectiveFrom?: Date;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -275,11 +285,18 @@ export class TradingRepository {
       INSERT INTO signals (
         id, symbol, timeframe, direction, entry_price, stop_loss, take_profit_1, take_profit_2,
         setup_type, confidence, reasoning, status, data_class, provider, source,
-        market_timestamp, executable, strategy, created_at, updated_at
+        market_timestamp, executable, strategy, setup_id, planned_rr, decision, decision_reason,
+        strategy_version, model_version, configuration_version, provenance, market_context, effective_from,
+        created_at, updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW())
+      VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
+        $21, $22, $23, $24, $25, $26, $27, $28, NOW(), NOW()
+      )
       ON CONFLICT (id) DO UPDATE SET
         status = EXCLUDED.status,
+        decision = COALESCE(EXCLUDED.decision, signals.decision),
+        decision_reason = COALESCE(EXCLUDED.decision_reason, signals.decision_reason),
         updated_at = NOW()
       RETURNING *;
     `;
@@ -301,7 +318,17 @@ export class TradingRepository {
       signal.source || 'UNKNOWN',
       signal.marketTimestamp || null,
       signal.executable ?? true,
-      signal.strategy || null
+      signal.strategy || null,
+      signal.setupId || signal.id,
+      signal.plannedRr || null,
+      signal.decision || 'ACCEPTED',
+      signal.decisionReason || null,
+      signal.strategyVersion || 'QAI_BASELINE_V1',
+      signal.modelVersion || 'gemini-2.5-flash',
+      signal.configurationVersion || '1.0',
+      signal.provenance || 'NATURAL_RUNTIME',
+      signal.marketContext ? JSON.stringify(signal.marketContext) : null,
+      signal.effectiveFrom || new Date()
     ];
 
     try {
@@ -310,6 +337,25 @@ export class TradingRepository {
     } catch (err: any) {
       logger.error(`[DB-REPOSITORY] Failed to save signal ${signal.id}: ${err.message}`);
       throw new Error(`DB_SAVE_SIGNAL_FAILED: ${err.message}`);
+    }
+  }
+
+  async updateSignalDecision(signalId: string, decision: 'ACCEPTED' | 'REJECTED' | 'VETOED' | 'SKIPPED' | 'EXPIRED' | 'FAILED', decisionReason?: string, client?: PoolClient): Promise<SignalRecord | null> {
+    const text = `
+      UPDATE signals
+      SET status = $2,
+          decision = $2,
+          decision_reason = $3,
+          updated_at = NOW()
+      WHERE id = $1
+      RETURNING *;
+    `;
+    try {
+      const res = await this.query(text, [signalId, decision, decisionReason || null], client);
+      return res.rows.length ? this.mapSignalRow(res.rows[0]) : null;
+    } catch (err: any) {
+      logger.error(`[DB-REPOSITORY] Failed to update signal decision ${signalId}: ${err.message}`);
+      throw new Error(`DB_UPDATE_SIGNAL_DECISION_FAILED: ${err.message}`);
     }
   }
 
@@ -561,9 +607,8 @@ export class TradingRepository {
     const res = await this.query(
       `SELECT * FROM positions 
        WHERE status = 'CLOSED' 
-         AND (ticket_id ~ '^[0-9]{7,10}$' OR position_id ~ '^trade_[0-9]{7,10}$')
-         AND position_id NOT LIKE 'pos_%'
          AND position_id NOT LIKE '%mock%'
+         AND (ticket_id IS NULL OR ticket_id NOT LIKE '%mock%')
        ORDER BY closed_at DESC NULLS LAST, opened_at DESC 
        LIMIT $1 OFFSET $2`,
       [limit, offset]
@@ -577,8 +622,8 @@ export class TradingRepository {
        LEFT JOIN post_mortem_reviews pm
          ON (p.position_id = pm.trade_id AND pm.learning_version = $1)
        WHERE p.status = 'CLOSED' 
-         AND (p.ticket_id ~ '^[0-9]{7,10}$' OR p.position_id ~ '^trade_[0-9]{7,10}$')
-         AND p.position_id NOT LIKE 'pos_%'
+         AND p.position_id NOT LIKE '%mock%'
+         AND (p.ticket_id IS NULL OR p.ticket_id NOT LIKE '%mock%')
          AND pm.id IS NULL
        ORDER BY p.closed_at ASC NULLS LAST, p.opened_at ASC
        LIMIT $2`,
@@ -656,9 +701,8 @@ export class TradingRepository {
         COALESCE(SUM(pnl_pips), 0)::float as total_pnl_pips
       FROM positions
       WHERE status = 'CLOSED' 
-        AND (ticket_id ~ '^[0-9]{7,10}$' OR position_id ~ '^trade_[0-9]{7,10}$')
-        AND position_id NOT LIKE 'pos_%'
         AND position_id NOT LIKE '%mock%'
+        AND (ticket_id IS NULL OR ticket_id NOT LIKE '%mock%')
     `);
 
     const row = res.rows[0] || {};
@@ -1099,6 +1143,16 @@ export class TradingRepository {
       marketTimestamp: r.market_timestamp ? parseInt(r.market_timestamp, 10) : undefined,
       executable: r.executable,
       strategy: r.strategy,
+      setupId: r.setup_id,
+      plannedRr: r.planned_rr ? parseFloat(r.planned_rr) : undefined,
+      decision: r.decision,
+      decisionReason: r.decision_reason,
+      strategyVersion: r.strategy_version || 'QAI_BASELINE_V1',
+      modelVersion: r.model_version || 'gemini-2.5-flash',
+      configurationVersion: r.configuration_version || '1.0',
+      provenance: r.provenance || 'NATURAL_RUNTIME',
+      marketContext: typeof r.market_context === 'string' ? JSON.parse(r.market_context) : r.market_context,
+      effectiveFrom: r.effective_from ? new Date(r.effective_from) : undefined,
       createdAt: r.created_at ? new Date(r.created_at) : undefined,
       updatedAt: r.updated_at ? new Date(r.updated_at) : undefined
     };

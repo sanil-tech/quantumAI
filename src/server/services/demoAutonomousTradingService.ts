@@ -58,6 +58,7 @@ export interface DemoOpenPosition {
   orderId: string;
   mfe: number;
   mae: number;
+  nearMissArmed?: boolean;
 }
 
 export interface DemoClosedTrade {
@@ -84,11 +85,12 @@ export class DemoAutonomousTradingService extends EventEmitter {
   private maxAllowedSpreadPips: number = 3.0; // <= 3.0 pips
   private staleDataThresholdMs: number = 30000; // < 30s
   private maxLotsLimit: number = 0.04; // Method 2: 0.04 lots per setup (Split 2x0.02 lots for TP1 and TP2)
-  private maxConcurrentPositions: number = 2; // Strict cap of 2 concurrent positions for controlled risk (<1.6% total)
+  private maxConcurrentPositions: number = Number(process.env.MAX_CONCURRENT_ORDERS) || 20; // Controlled capacity cap of 20 concurrent positions for DEMO forward validation
 
   private portfolioRiskEngine: PortfolioRiskEngine;
   private openPositions: Map<number, DemoOpenPosition> = new Map();
   private closedTrades: DemoClosedTrade[] = [];
+  private latestPrices: Map<string, number> = new Map();
   private executionLogs: Array<{
     id: string;
     timestamp: string;
@@ -227,6 +229,9 @@ export class DemoAutonomousTradingService extends EventEmitter {
       timestamp: tickTimestamp
     };
 
+    // Keep track of latest price for quote currency conversion
+    this.latestPrices.set(symbol, (bid + ask) / 2);
+
     // 1. Update Open Positions PnL & Monitor SL/TP
     this.updatePositionsAndCheckExits(mappedTick);
 
@@ -239,6 +244,56 @@ export class DemoAutonomousTradingService extends EventEmitter {
         console.error(`[DemoAutonomousTradingService] Evaluation Error on ${tick.symbol}:`, err.message);
       });
     }
+  }
+
+  /**
+   * Calculate precise Pip Value in USD for 0.01 Lot based on quote currency conversion.
+   */
+  public calculateUsdPipValuePer001Lot(symbol: CurrencyPair, currentPrice: number): number {
+    if (symbol === 'XAU/USD' || (symbol as string).includes('XAU') || (symbol as string).includes('GOLD')) return 1.0;
+    if (symbol === 'BTC/USD' || (symbol as string).includes('BTC')) return 0.1;
+    if (symbol === 'NASDAQ' || (symbol as string).includes('NAS100')) return 1.0;
+
+    const parts = (symbol as string).split('/') as [string, string];
+    const base = parts[0];
+    const quote = parts[1] || (symbol.includes('JPY') ? 'JPY' : 'USD');
+
+    const isJpy = quote === 'JPY' || symbol.includes('JPY');
+    const pipSize = isJpy ? 0.01 : 0.0001;
+    const rawQuotePipValue = 1000 * pipSize; // $0.10 for standard, 10.0 for JPY
+
+    if (!quote || quote === 'USD') {
+      return rawQuotePipValue; // Exactly $0.10 USD per 0.01 lot
+    }
+
+    if (base === 'USD') {
+      // Direct USD base rate (e.g. USD/CAD = 1.41339, USD/CHF = 0.82835, USD/JPY = 159.28)
+      return currentPrice > 0 ? (rawQuotePipValue / currentPrice) : (isJpy ? 0.065 : 0.10);
+    }
+
+    // Cross pairs (e.g. EUR/CHF, GBP/AUD, EUR/GBP, AUD/NZD)
+    if (quote === 'CHF') {
+      const usdChf = this.latestPrices.get('USD/CHF') || 0.82835;
+      return rawQuotePipValue / usdChf;
+    }
+    if (quote === 'CAD') {
+      const usdCad = this.latestPrices.get('USD/CAD') || 1.41339;
+      return rawQuotePipValue / usdCad;
+    }
+    if (quote === 'AUD') {
+      const audUsd = this.latestPrices.get('AUD/USD') || 0.70267;
+      return rawQuotePipValue * audUsd;
+    }
+    if (quote === 'NZD') {
+      const nzdUsd = this.latestPrices.get('NZD/USD') || 0.56648;
+      return rawQuotePipValue * nzdUsd;
+    }
+    if (quote === 'GBP') {
+      const gbpUsd = this.latestPrices.get('GBP/USD') || 1.3500;
+      return rawQuotePipValue * gbpUsd;
+    }
+
+    return rawQuotePipValue;
   }
 
   /**
@@ -255,12 +310,12 @@ export class DemoAutonomousTradingService extends EventEmitter {
       const currentPrice = isBuy ? tick.bid : tick.ask;
       pos.currentPrice = currentPrice;
 
-      // Calculate PnL (EUR/USD, GBP/USD, AUD/USD: 1 pip = $0.10 for 0.01 lot)
+      // Calculate PnL with precise Quote Currency Pip Value
       const pipMultiplier = pos.symbol.includes('JPY') ? 100 : (pos.symbol === 'XAU/USD' || pos.symbol === 'BTC/USD') ? 1 : 10000;
       const priceDiff = isBuy ? (currentPrice - pos.entryPrice) : (pos.entryPrice - currentPrice);
       const pips = priceDiff * pipMultiplier;
       
-      const pipValuePer001Lot = pos.symbol === 'XAU/USD' ? 1.0 : pos.symbol.includes('JPY') ? 0.065 : 0.10;
+      const pipValuePer001Lot = this.calculateUsdPipValuePer001Lot(pos.symbol, currentPrice);
       const lotMultiplier = pos.volume / 0.01;
       pos.unrealizedPnL = parseFloat((pips * pipValuePer001Lot * lotMultiplier).toFixed(2));
 
@@ -269,9 +324,28 @@ export class DemoAutonomousTradingService extends EventEmitter {
       if (pos.unrealizedPnL < pos.mae) pos.mae = pos.unrealizedPnL;
 
       // ----------------------------------------------------
-      // METHOD 2: STAGE 1 (TP1 Scale-Out & SL -> Break-Even)
+      // NEAR-MISS 70% TP1 TRAILING PROTECTION GUARD
+      // Protects position when price reaches >= 70% of TP1 target distance
       // ----------------------------------------------------
       const tp1Target = pos.takeProfit1 || (pos.isMultiTarget ? pos.tp : null);
+      if (tp1Target && !pos.tp1Hit && !pos.nearMissArmed) {
+        const totalTp1Pips = Math.abs(tp1Target - pos.entryPrice) * pipMultiplier;
+        if (totalTp1Pips > 0 && pips >= totalTp1Pips * 0.70) {
+          pos.nearMissArmed = true;
+          const lockedPipDistance = (totalTp1Pips * 0.35) * (1 / pipMultiplier);
+          const newLockedSl = isBuy ? (pos.entryPrice + lockedPipDistance) : (pos.entryPrice - lockedPipDistance);
+          const formattedSl = Number(newLockedSl.toFixed(pos.symbol.includes('JPY') ? 3 : (pos.symbol === 'XAU/USD' || pos.symbol === 'BTC/USD') ? 2 : 5));
+          
+          if ((isBuy && formattedSl > pos.sl) || (!isBuy && formattedSl < pos.sl)) {
+            console.log(`🛡️ [Near-Miss Guard] Position #${posId} (${pos.symbol}) reached ${pips.toFixed(1)} pips (70%+ of TP1 ${totalTp1Pips.toFixed(1)} pips). Arming profit lock SL @ ${formattedSl}.`);
+            pos.sl = formattedSl;
+          }
+        }
+      }
+
+      // ----------------------------------------------------
+      // METHOD 2: STAGE 1 (TP1 Scale-Out & SL -> Break-Even)
+      // ----------------------------------------------------
       if (pos.isMultiTarget && pos.takeProfit2 && !pos.tp1Hit && tp1Target) {
         const tp1Hit = isBuy ? currentPrice >= tp1Target : currentPrice <= tp1Target;
         if (tp1Hit) {
@@ -313,7 +387,7 @@ export class DemoAutonomousTradingService extends EventEmitter {
     const pipMultiplier = pos.symbol.includes('JPY') ? 100 : (pos.symbol === 'XAU/USD' || pos.symbol === 'BTC/USD') ? 1 : 10000;
     const priceDiff = isBuy ? (tp1Price - pos.entryPrice) : (pos.entryPrice - tp1Price);
     const pips = priceDiff * pipMultiplier;
-    const pipValuePer001Lot = pos.symbol === 'XAU/USD' ? 1.0 : pos.symbol.includes('JPY') ? 0.065 : 0.10;
+    const pipValuePer001Lot = this.calculateUsdPipValuePer001Lot(pos.symbol, tp1Price);
     const realizedPartialPnL = parseFloat((pips * pipValuePer001Lot * (closedLots / 0.01)).toFixed(2));
 
     console.log(`🎯 [METHOD 2 SCALE-OUT] Position #${positionId} (${pos.symbol} ${pos.tradeSide}) hit TP1 @ ${tp1Price}!`);
@@ -440,8 +514,8 @@ export class DemoAutonomousTradingService extends EventEmitter {
     const pipMultiplier = pos.symbol.includes('JPY') ? 100 : (pos.symbol === 'XAU/USD' || pos.symbol === 'BTC/USD') ? 1 : 10000;
     const priceDiff = isBuy ? (exitPrice - pos.entryPrice) : (pos.entryPrice - exitPrice);
     const pips = priceDiff * pipMultiplier;
-    const pipValue = pos.symbol === 'XAU/USD' ? 1.0 : pos.symbol.includes('JPY') ? 0.065 : 0.10;
-    const realizedPnL = parseFloat((pips * pipValue).toFixed(2));
+    const pipValuePer001Lot = this.calculateUsdPipValuePer001Lot(pos.symbol, exitPrice);
+    const realizedPnL = parseFloat((pips * pipValuePer001Lot * (pos.volume / 0.01)).toFixed(2));
 
     const closedRecord: DemoClosedTrade = {
       tradeId: positionId,

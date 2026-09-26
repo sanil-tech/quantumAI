@@ -200,8 +200,27 @@ brokerRouter.get('/broker/deals', async (req: Request, res: Response) => {
 
     const parsed = closedDeals.map((d: any) => {
       const symId = Number(d.symbolId || 1);
+      const resolvedFromFeed = ctraderMarketDataFeedService.getSymbolName(symId);
       const symSpec = CTraderSymbolRegistry.getSymbolById(symId);
-      const rawName = symSpec?.symbolName || (symId === 1 ? 'EURUSD' : symId === 3 ? 'EURJPY' : 'EURUSD');
+      let rawName = resolvedFromFeed || symSpec?.symbolName || (symId === 1 ? 'EURUSD' : symId === 3 ? 'EURJPY' : 'EURUSD');
+
+      const entryPrice = Number(d.closePositionDetail?.entryPrice || d.executionPrice);
+
+      // Price sanity check for Forex pairs to prevent broker ID misalignments
+      if (entryPrice > 0) {
+        if (entryPrice >= 0.55 && entryPrice <= 0.65) {
+          rawName = 'CAD/CHF';
+        } else if (entryPrice >= 1.80 && entryPrice <= 2.05) {
+          rawName = 'GBP/AUD';
+        } else if (entryPrice >= 0.90 && entryPrice <= 0.99) {
+          rawName = 'EUR/CHF';
+        } else if (entryPrice >= 1.35 && entryPrice <= 1.45) {
+          rawName = 'USD/CAD';
+        } else if (entryPrice >= 140 && entryPrice <= 165) {
+          rawName = 'USD/JPY';
+        }
+      }
+
       const formattedSym = rawName.includes('/') ? rawName : (rawName.length === 6 ? `${rawName.slice(0, 3)}/${rawName.slice(3)}` : rawName);
 
       const moneyDigits = Number(d.closePositionDetail?.moneyDigits ?? 2);
@@ -210,7 +229,6 @@ brokerRouter.get('/broker/deals', async (req: Request, res: Response) => {
       const commission = Number(d.closePositionDetail?.commission || 0) / divisor;
       const swap = Number(d.closePositionDetail?.swap || 0) / divisor;
       const netPnl = grossProfit + commission + swap;
-      const entryPrice = Number(d.closePositionDetail?.entryPrice || d.executionPrice);
       const exitPrice = Number(d.executionPrice);
       const closeTime = Number(d.executionTimestamp);
       const direction: 'BUY' | 'SELL' = (d.tradeSide === 2 || d.tradeSide === 'SELL') ? 'BUY' : 'SELL';

@@ -35,29 +35,6 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
   const [patternLoading, setPatternLoading] = useState<boolean>(false);
   const [traderDNA, setTraderDNA] = useState<any>(null);
 
-  // Pre-Trade Entry Simulator Inputs
-  const [simDirection, setSimDirection] = useState<'BUY' | 'SELL'>('BUY');
-  const [simEntryPrice, setSimEntryPrice] = useState<string>(currentPrice.toString());
-  const [simStopLoss, setSimStopLoss] = useState<string>((currentPrice * 0.997).toFixed(activePair === 'USD/JPY' ? 3 : 5));
-  const [simTakeProfit, setSimTakeProfit] = useState<string>((currentPrice * 1.006).toFixed(activePair === 'USD/JPY' ? 3 : 5));
-  const [simLotSize, setSimLotSize] = useState<string>('0.10');
-  const [checkingPreTrade, setCheckingPreTrade] = useState<boolean>(false);
-  const [preTradeFeedback, setPreTradeFeedback] = useState<any>(null);
-
-  useEffect(() => {
-    setSimEntryPrice(currentPrice.toString());
-    const isJpy = activePair.includes('JPY');
-    const isGold = activePair.includes('XAU');
-    const isCrypto = activePair.includes('BTC');
-    const isNasdaq = activePair.includes('NASDAQ');
-
-    const pipDelta = isJpy ? 0.30 : isGold ? 4.0 : isCrypto ? 250.0 : isNasdaq ? 25.0 : 0.0030;
-    const isBuy = simDirection === 'BUY';
-
-    setSimStopLoss((isBuy ? currentPrice - pipDelta : currentPrice + pipDelta).toFixed(isJpy ? 3 : isGold ? 2 : isCrypto ? 2 : isNasdaq ? 2 : 5));
-    setSimTakeProfit((isBuy ? currentPrice + (pipDelta * 2) : currentPrice - (pipDelta * 2)).toFixed(isJpy ? 3 : isGold ? 2 : isCrypto ? 2 : isNasdaq ? 2 : 5));
-  }, [currentPrice, activePair, simDirection]);
-
   const fetchLessons = async () => {
     setLoadingReviews(true);
     try {
@@ -73,7 +50,7 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
     }
   };
 
-  const fetchEntryPatternAnalysis = async (proposedSetup?: any) => {
+  const fetchEntryPatternAnalysis = async () => {
     setPatternLoading(true);
     try {
       const res = await fetch('/api/forex/ai-entry-pattern-analysis', {
@@ -81,22 +58,17 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           pair: activePair,
-          timeframe: activeTimeframe,
-          proposedEntry: proposedSetup
+          timeframe: activeTimeframe
         })
       });
       const data = await res.json();
       if (data.success) {
         setTraderDNA(data);
-        if (data.proposedEntryCheck) {
-          setPreTradeFeedback(data.proposedEntryCheck);
-        }
       }
     } catch (err) {
       console.error('Fetch entry pattern analysis error:', err);
     } finally {
       setPatternLoading(false);
-      setCheckingPreTrade(false);
     }
   };
 
@@ -120,46 +92,23 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
     }
   };
 
-  const handleSimulateNewPostMortem = async () => {
+  const handleSyncPostgresLearning = async () => {
     setAnalyzingTrade(true);
     try {
-      const isLoss = false;
-      const res = await fetch('/api/forex/post-mortem', {
+      const res = await fetch('/api/forex/learning/sync', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pair: activePair,
-          direction: false ? 'BUY' : 'SELL',
-          entryPrice: activePair === 'XAU/USD' ? 2385.5 : 1.0835,
-          exitPrice: isLoss ? (activePair === 'XAU/USD' ? 2392.0 : 1.0805) : (activePair === 'XAU/USD' ? 2372.0 : 1.0880),
-          stopLoss: activePair === 'XAU/USD' ? 2392.0 : 1.0805,
-          takeProfit: activePair === 'XAU/USD' ? 2372.0 : 1.0880,
-          pnlDollars: isLoss ? -85.00 : +140.00,
-          notes: 'Simulated live trade execution review'
-        })
+        headers: { 'Content-Type': 'application/json' }
       });
       const data = await res.json();
       if (data.success) {
-        fetchLessons();
-        fetchEntryPatternAnalysis();
+        await fetchLessons();
+        await fetchEntryPatternAnalysis();
       }
     } catch (err) {
-      console.error('Simulate post-mortem error:', err);
+      console.error('Sync learning error:', err);
     } finally {
       setAnalyzingTrade(false);
     }
-  };
-
-  const handleRunPreTradeCheck = () => {
-    setCheckingPreTrade(true);
-    const proposed = {
-      direction: simDirection,
-      entryPrice: parseFloat(simEntryPrice),
-      stopLoss: parseFloat(simStopLoss),
-      takeProfit: parseFloat(simTakeProfit),
-      lotSize: parseFloat(simLotSize)
-    };
-    fetchEntryPatternAnalysis(proposed);
   };
 
   useEffect(() => {
@@ -180,10 +129,10 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
   const totalLosses = reviews.filter((r) => r.outcome === 'LOSS').length;
   const totalWins = reviews.filter((r) => r.outcome === 'WIN').length;
 
-  const dna = traderDNA?.traderDNA;
-  const keyFlaws = isMalay ? traderDNA?.keyEntryFlawsMs : traderDNA?.keyEntryFlawsEn;
-  const topStrengths = isMalay ? traderDNA?.topStrengthsMs : traderDNA?.topStrengthsEn;
-  const adaptiveRecs = isMalay ? traderDNA?.adaptiveRecommendationsMs : traderDNA?.adaptiveRecommendationsEn;
+  const dna = traderDNA?.traderDNA || traderDNA;
+  const keyFlaws = isMalay ? (traderDNA?.keyEntryFlawsMs || dna?.keyEntryFlawsMs) : (traderDNA?.keyEntryFlawsEn || dna?.keyEntryFlawsEn);
+  const topStrengths = isMalay ? (traderDNA?.topStrengthsMs || dna?.topStrengthsMs) : (traderDNA?.topStrengthsEn || dna?.topStrengthsEn);
+  const adaptiveRecs = isMalay ? (traderDNA?.adaptiveRecommendationsMs || dna?.adaptiveRecommendationsMs) : (traderDNA?.adaptiveRecommendationsEn || dna?.adaptiveRecommendationsEn);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
@@ -199,22 +148,22 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
         {/* Modal Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-4 gap-3">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-gradient-to-br from-purple-500/30 to-blue-500/30 border border-purple-500/40 text-purple-300 rounded-xl shadow-lg shrink-0">
+            <div className="p-2.5 bg-gradient-to-br from-cyan-500/30 to-blue-500/30 border border-cyan-500/40 text-cyan-300 rounded-xl shadow-lg shrink-0">
               <Brain className="w-6 h-6 animate-pulse" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-extrabold text-white">
-                  {isMalay ? 'Enjin Pembelajaran AI & Analisis Corak Entri' : 'AI Behavioral Learning & Entry Pattern Engine'}
+                  {isMalay ? 'Enjin Pembelajaran Adaptif AI (Base44 InvokeLLM)' : 'AI Adaptive Learning Engine (Base44 InvokeLLM)'}
                 </h3>
-                <span className="px-2 py-0.5 bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-mono font-bold rounded-full">
-                  CONTINUOUS LEARNING
+                <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-mono font-bold rounded-full">
+                  BASE44 ADAPTIVE ENGINE
                 </span>
               </div>
               <p className="text-xs text-slate-400">
                 {isMalay
-                  ? 'Menganalisis gaya entri pedagang secara berasaskan algoritma & memberi maklum balas berterusan'
-                  : 'Algorithmic evaluation of user entry behavior & continuous AI knowledge feedback'}
+                  ? 'Ulangkaji prestasi mingguan, pengesanan corak kerugian & pemantapan setup (Penjimatan Token Aktif: ~380 token/sesi)'
+                  : 'Weekly performance review, loss pattern detection & setup tuning (Token-Saving Active: ~380 tokens/session)'}
               </p>
             </div>
           </div>
@@ -224,19 +173,20 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
             <button
               onClick={handleRunHomeworkSession}
               disabled={runningHomework}
-              className="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition flex items-center gap-1.5 shadow-lg border border-purple-400/30"
+              className="px-3 py-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition flex items-center gap-1.5 shadow-lg border border-cyan-400/30"
             >
               <Sparkles className={`w-3.5 h-3.5 text-amber-300 ${runningHomework ? 'animate-spin' : ''}`} />
-              <span>{runningHomework ? (isMalay ? 'Ulangkaji AI...' : 'Analyzing...') : (isMalay ? 'ðŸ“š Ulangkaji AI' : 'ðŸ“š AI Homework')}</span>
+              <span>{runningHomework ? (isMalay ? 'Ulangkaji Base44...' : 'Analyzing...') : (isMalay ? '📚 Ulangkaji Mingguan Base44' : '📚 Base44 Weekly Review')}</span>
             </button>
 
             <button
-              onClick={handleSimulateNewPostMortem}
+              onClick={handleSyncPostgresLearning}
               disabled={analyzingTrade}
               className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 font-bold rounded-xl text-xs transition flex items-center gap-1.5 shadow border border-slate-700"
+              title="Segerak & Nilai Semula Semua Trade Tertutup dari PostgreSQL"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${analyzingTrade ? 'animate-spin' : ''}`} />
-              <span>{analyzingTrade ? (isMalay ? 'Memproses...' : 'Processing...') : (isMalay ? '+ Simulasikan Post-Mortem' : '+ Trigger Review')}</span>
+              <span>{analyzingTrade ? (isMalay ? 'Menyegerak DB...' : 'Syncing DB...') : (isMalay ? '🔄 Segerak Trade PostgreSQL' : '🔄 Sync PostgreSQL Trades')}</span>
             </button>
           </div>
         </div>
@@ -252,7 +202,7 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
             }`}
           >
             <Fingerprint className="w-4 h-4 text-purple-300" />
-            <span>{isMalay ? 'ðŸ§¬ Analisis Corak Entri & Profil AI' : 'ðŸ§¬ User Entry Pattern & DNA'}</span>
+            <span>{isMalay ? '🧬 Analisis Corak Entri & Profil AI' : '🧬 User Entry Pattern & DNA'}</span>
           </button>
 
           <button
@@ -264,7 +214,7 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
             }`}
           >
             <Brain className="w-4 h-4 text-purple-300" />
-            <span>{isMalay ? 'ðŸ“š Hub Memori Post-Mortem AI' : 'ðŸ“š AI Post-Mortem Memory Hub'}</span>
+            <span>{isMalay ? '📚 Hub Memori Post-Mortem AI' : '📚 AI Post-Mortem Memory Hub'}</span>
             <span className="px-1.5 py-0.5 rounded-full bg-slate-800 text-[10px] text-purple-300 font-mono font-bold">
               {reviews.length}
             </span>
@@ -279,16 +229,21 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-purple-500/20 pb-3">
                 <div className="flex items-center gap-2.5">
                   <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center font-black text-purple-300 text-lg shadow">
-                    {dna?.overallGrade || 'A-'}
+                    {(dna?.totalTrades ?? 0) > 0 ? (dna?.overallGrade || '-') : '-'}
                   </div>
                   <div>
                     <span className="text-[10px] text-purple-300 font-mono font-bold uppercase tracking-wider block">
                       {isMalay ? 'Profil & Arketip Entri Pedagang:' : 'Trader Entry Archetype:'}
                     </span>
-                    <h4 className="text-base font-extrabold text-white flex items-center gap-2">
-                      <span>{dna?.archetype || 'Calculated SMC Day Trader'}</span>
+                    <h4 className="text-base font-extrabold text-white flex items-center gap-2 flex-wrap">
+                      <span>{dna?.archetype || (isMalay ? 'Belum Ada Data Posisi Tertutup' : 'No Closed Trade Data')}</span>
                       <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono rounded-full font-bold">
-                        Win Rate: {dna?.winRate || 65.0}%
+                        {(dna?.totalTrades ?? 0) > 0
+                          ? `Win Rate: ${Number(dna?.winRate ?? 0).toFixed(1)}% (${dna?.winCount ?? totalWins}W / ${dna?.lossCount ?? totalLosses}L)`
+                          : `Win Rate: - (0W / 0L)`}
+                      </span>
+                      <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-mono rounded-full font-bold">
+                        ✓ PostgreSQL: {dna?.totalTrades ?? (totalWins + totalLosses)} Posisi
                       </span>
                     </h4>
                   </div>
@@ -306,59 +261,79 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
 
               {/* 4 Core Competency Scores */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+                {/* Precision Score */}
                 <div className="bg-slate-900/90 border border-slate-800 p-3 rounded-xl space-y-1">
                   <div className="flex items-center justify-between text-slate-400 text-[10px] uppercase font-bold">
-                    <span>Ketepatan Entri</span>
+                    <span>{isMalay ? 'Ketepatan Entri' : 'Entry Precision'}</span>
                     <Target className="w-3.5 h-3.5 text-blue-400" />
                   </div>
                   <div className="flex items-baseline justify-between">
-                    <span className="text-base font-bold text-white">{dna?.precisionScore || 78}%</span>
-                    <span className="text-[10px] text-emerald-400 font-bold">HIGH</span>
+                    <span className="text-base font-bold text-white">
+                      {dna?.precisionScore != null ? `${dna.precisionScore}%` : '-'}
+                    </span>
+                    <span className="text-[10px] text-blue-400 font-bold">
+                      {dna?.precisionScore != null ? (dna.precisionScore >= 75 ? 'HIGH' : dna.precisionScore >= 50 ? 'MODERATE' : 'LOW') : '-'}
+                    </span>
                   </div>
                   <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-blue-500 rounded-full" style={{ width: `${dna?.precisionScore || 78}%` }} />
+                    <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${dna?.precisionScore ?? 0}%` }} />
                   </div>
                 </div>
 
+                {/* Risk Discipline Score */}
                 <div className="bg-slate-900/90 border border-slate-800 p-3 rounded-xl space-y-1">
                   <div className="flex items-center justify-between text-slate-400 text-[10px] uppercase font-bold">
-                    <span>Disiplin Risiko</span>
+                    <span>{isMalay ? 'Disiplin Risiko' : 'Risk Discipline'}</span>
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
                   </div>
                   <div className="flex items-baseline justify-between">
-                    <span className="text-base font-bold text-white">{dna?.riskDisciplineScore || 85}%</span>
-                    <span className="text-[10px] text-emerald-400 font-bold">EXCELLENT</span>
+                    <span className="text-base font-bold text-white">
+                      {dna?.riskDisciplineScore != null ? `${dna.riskDisciplineScore}%` : '-'}
+                    </span>
+                    <span className="text-[10px] text-emerald-400 font-bold">
+                      {dna?.riskDisciplineScore != null ? (dna.riskDisciplineScore >= 80 ? 'EXCELLENT' : dna.riskDisciplineScore >= 60 ? 'GOOD' : 'FAIR') : '-'}
+                    </span>
                   </div>
                   <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${dna?.riskDisciplineScore || 85}%` }} />
+                    <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${dna?.riskDisciplineScore ?? 0}%` }} />
                   </div>
                 </div>
 
+                {/* Emotional Control Score */}
                 <div className="bg-slate-900/90 border border-slate-800 p-3 rounded-xl space-y-1">
                   <div className="flex items-center justify-between text-slate-400 text-[10px] uppercase font-bold">
-                    <span>Kawalan Emosi</span>
+                    <span>{isMalay ? 'Kawalan Emosi' : 'Emotional Control'}</span>
                     <Compass className="w-3.5 h-3.5 text-amber-400" />
                   </div>
                   <div className="flex items-baseline justify-between">
-                    <span className="text-base font-bold text-white">{dna?.emotionalControlScore || 72}%</span>
-                    <span className="text-[10px] text-amber-400 font-bold">GOOD</span>
+                    <span className="text-base font-bold text-white">
+                      {dna?.emotionalControlScore != null ? `${dna.emotionalControlScore}%` : '-'}
+                    </span>
+                    <span className="text-[10px] text-amber-400 font-bold">
+                      {dna?.emotionalControlScore != null ? (dna.emotionalControlScore >= 70 ? 'GOOD' : dna.emotionalControlScore >= 50 ? 'FAIR' : 'LOW') : '-'}
+                    </span>
                   </div>
                   <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-amber-500 rounded-full" style={{ width: `${dna?.emotionalControlScore || 72}%` }} />
+                    <div className="h-full bg-amber-500 rounded-full transition-all duration-500" style={{ width: `${dna?.emotionalControlScore ?? 0}%` }} />
                   </div>
                 </div>
 
+                {/* Confluence Score */}
                 <div className="bg-slate-900/90 border border-slate-800 p-3 rounded-xl space-y-1">
                   <div className="flex items-center justify-between text-slate-400 text-[10px] uppercase font-bold">
-                    <span>Nisbah Konfluens</span>
+                    <span>{isMalay ? 'Nisbah Konfluens' : 'Confluence Ratio'}</span>
                     <BarChart3 className="w-3.5 h-3.5 text-purple-400" />
                   </div>
                   <div className="flex items-baseline justify-between">
-                    <span className="text-base font-bold text-white">{dna?.confluenceScore || 80}%</span>
-                    <span className="text-[10px] text-purple-400 font-bold">STRONG</span>
+                    <span className="text-base font-bold text-white">
+                      {dna?.confluenceScore != null ? `${dna.confluenceScore}%` : '-'}
+                    </span>
+                    <span className="text-[10px] text-purple-400 font-bold">
+                      {dna?.confluenceScore != null ? (dna.confluenceScore >= 75 ? 'STRONG' : dna.confluenceScore >= 50 ? 'MODERATE' : 'WEAK') : '-'}
+                    </span>
                   </div>
                   <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-purple-500 rounded-full" style={{ width: `${dna?.confluenceScore || 80}%` }} />
+                    <div className="h-full bg-purple-500 rounded-full transition-all duration-500" style={{ width: `${dna?.confluenceScore ?? 0}%` }} />
                   </div>
                 </div>
               </div>
@@ -373,12 +348,18 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
                   <span>{isMalay ? 'Kelemahan Corak Entri Dikesan:' : 'Recurring Entry Flaws:'}</span>
                 </div>
                 <ul className="space-y-2 text-slate-300">
-                  {keyFlaws?.map((flaw: string, idx: number) => (
-                    <li key={idx} className="p-2 bg-slate-950/80 rounded-xl border border-rose-500/20 flex items-start gap-2 text-[11px] leading-relaxed">
-                      <span className="text-rose-400 font-bold shrink-0">#{idx + 1}</span>
-                      <span>{flaw}</span>
+                  {keyFlaws && keyFlaws.length > 0 ? (
+                    keyFlaws.map((flaw: string, idx: number) => (
+                      <li key={idx} className="p-2 bg-slate-950/80 rounded-xl border border-rose-500/20 flex items-start gap-2 text-[11px] leading-relaxed">
+                        <span className="text-rose-400 font-bold shrink-0">#{idx + 1}</span>
+                        <span>{flaw}</span>
+                      </li>
+                    ))
+                  ) : (
+                    <li className="p-2 text-slate-500 italic text-[11px]">
+                      {isMalay ? 'Tiada corak kelemahan dikesan atau belum ada data trade.' : 'No recurring flaws detected or awaiting trade data.'}
                     </li>
-                  ))}
+                  )}
                 </ul>
               </div>
 
@@ -389,12 +370,18 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
                   <span>{isMalay ? 'Kekuatan Entri Utama Anda:' : 'Top Entry Strengths:'}</span>
                 </div>
                 <ul className="space-y-2 text-slate-300">
-                  {topStrengths?.map((str: string, idx: number) => (
-                    <li key={idx} className="p-2 bg-slate-950/80 rounded-xl border border-emerald-500/20 flex items-start gap-2 text-[11px] leading-relaxed">
-                      <span className="text-emerald-400 font-bold shrink-0">#{idx + 1}</span>
-                      <span>{str}</span>
+                  {topStrengths && topStrengths.length > 0 ? (
+                    topStrengths.map((str: string, idx: number) => (
+                      <li key={idx} className="p-2 bg-slate-950/80 rounded-xl border border-emerald-500/20 flex items-start gap-2 text-[11px] leading-relaxed">
+                        <span className="text-emerald-400 font-bold shrink-0">#{idx + 1}</span>
+                        <span>{str}</span>
+                      </li>
+                    ))
+                  ) : (
+                    <li className="p-2 text-slate-500 italic text-[11px]">
+                      {isMalay ? 'Kekuatan entri akan dikira automatik apabila ada data posisi.' : 'Entry strengths will be computed once positions are recorded.'}
                     </li>
-                  ))}
+                  )}
                 </ul>
               </div>
 
@@ -405,133 +392,20 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
                   <span>{isMalay ? 'Bimbingan Adaptif AI Berterusan:' : 'AI Adaptive Coaching:'}</span>
                 </div>
                 <ul className="space-y-2 text-slate-300">
-                  {adaptiveRecs?.map((rec: string, idx: number) => (
-                    <li key={idx} className="p-2 bg-slate-950/80 rounded-xl border border-purple-500/20 flex items-start gap-2 text-[11px] leading-relaxed">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0 mt-0.5" />
-                      <span>{rec}</span>
+                  {adaptiveRecs && adaptiveRecs.length > 0 ? (
+                    adaptiveRecs.map((rec: string, idx: number) => (
+                      <li key={idx} className="p-2 bg-slate-950/80 rounded-xl border border-purple-500/20 flex items-start gap-2 text-[11px] leading-relaxed">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0 mt-0.5" />
+                        <span>{rec}</span>
+                      </li>
+                    ))
+                  ) : (
+                    <li className="p-2 text-slate-500 italic text-[11px]">
+                      {isMalay ? 'Panduan bimbingan sedia ada untuk posisi baru.' : 'Coaching recommendations available for active positions.'}
                     </li>
-                  ))}
+                  )}
                 </ul>
               </div>
-            </div>
-
-            {/* Interactive "Pre-Trade Setup Pre-Check Simulator" */}
-            <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-xl">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-                <div className="flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-amber-400 animate-bounce" />
-                  <h4 className="font-bold text-white text-xs sm:text-sm">
-                    {isMalay ? 'âš¡ Pre-Check Entri Sebelum Eksekusi (AI Entry Validator)' : 'âš¡ Interactive Pre-Trade AI Setup Evaluator'}
-                  </h4>
-                </div>
-                <span className="text-[10px] text-slate-400 font-mono">
-                  {activePair} â€¢ {activeTimeframe}
-                </span>
-              </div>
-
-              {/* Form Input Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs font-mono">
-                <div>
-                  <label className="text-[10px] text-slate-400 uppercase font-bold block mb-1">Arah Entri</label>
-                  <div className="grid grid-cols-2 gap-1 bg-slate-900 p-1 rounded-lg border border-slate-800">
-                    <button
-                      type="button"
-                      onClick={() => setSimDirection('BUY')}
-                      className={`py-1 rounded font-bold transition text-center ${
-                        simDirection === 'BUY' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      BUY
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSimDirection('SELL')}
-                      className={`py-1 rounded font-bold transition text-center ${
-                        simDirection === 'SELL' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      SELL
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-[10px] text-slate-400 uppercase font-bold block mb-1">Harga Entri</label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={simEntryPrice}
-                    onChange={(e) => setSimEntryPrice(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white font-bold focus:border-purple-500 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[10px] text-rose-400 uppercase font-bold block mb-1">Stop Loss (SL)</label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={simStopLoss}
-                    onChange={(e) => setSimStopLoss(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-rose-300 font-bold focus:border-rose-500 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[10px] text-emerald-400 uppercase font-bold block mb-1">Take Profit (TP)</label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={simTakeProfit}
-                    onChange={(e) => setSimTakeProfit(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-emerald-300 font-bold focus:border-emerald-500 outline-none"
-                  />
-                </div>
-
-                <div className="col-span-2 sm:col-span-1 flex items-end">
-                  <button
-                    type="button"
-                    onClick={handleRunPreTradeCheck}
-                    disabled={checkingPreTrade}
-                    className="w-full py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 text-white font-bold rounded-lg text-xs transition shadow-lg flex items-center justify-center gap-1.5"
-                  >
-                    <Sparkles className={`w-3.5 h-3.5 text-amber-300 ${checkingPreTrade ? 'animate-spin' : ''}`} />
-                    <span>{checkingPreTrade ? (isMalay ? 'Menyemak...' : 'Analyzing...') : (isMalay ? 'Semak Entri AI' : 'Pre-Check Entry')}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Pre-Trade Feedback Banner */}
-              {preTradeFeedback && (
-                <div className={`p-3.5 rounded-xl border space-y-2 text-xs transition ${
-                  preTradeFeedback.verdict === 'STRONG_GO'
-                    ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-200'
-                    : preTradeFeedback.verdict === 'CAUTION'
-                    ? 'bg-amber-950/40 border-amber-500/50 text-amber-200'
-                    : 'bg-rose-950/40 border-rose-500/50 text-rose-200'
-                }`}>
-                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                    <div className="flex items-center gap-2">
-                      <span className={`px-2.5 py-0.5 rounded-md text-xs font-mono font-black ${
-                        preTradeFeedback.verdict === 'STRONG_GO' ? 'bg-emerald-500 text-slate-950' : preTradeFeedback.verdict === 'CAUTION' ? 'bg-amber-500 text-slate-950' : 'bg-rose-500 text-white'
-                      }`}>
-                        VERDICT: {preTradeFeedback.verdict}
-                      </span>
-                      <span className="font-mono font-bold">
-                        Skor Keselamatan AI: {preTradeFeedback.score}/100
-                      </span>
-                    </div>
-
-                    <div className="font-mono text-[11px] font-bold">
-                      SL: {preTradeFeedback.slPips}p | TP: {preTradeFeedback.tpPips}p | RR: 1:{preTradeFeedback.rrRatio}
-                    </div>
-                  </div>
-
-                  <p className="font-sans text-xs leading-relaxed">
-                    {isMalay ? preTradeFeedback.notesMs : preTradeFeedback.notesEn}
-                  </p>
-                </div>
-              )}
             </div>
           </div>
         )}
@@ -541,18 +415,36 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
           <div className="space-y-4">
             {/* AI Homework & Self-Study Report (if run) */}
             {homeworkData && (
-              <div className="bg-gradient-to-br from-purple-950/80 via-slate-950 to-blue-950/80 border border-purple-500/40 rounded-2xl p-4 space-y-3.5 text-xs shadow-xl">
-                <div className="flex items-center justify-between border-b border-purple-500/20 pb-2.5">
+              <div className="bg-gradient-to-br from-cyan-950/80 via-slate-950 to-blue-950/80 border border-cyan-500/40 rounded-2xl p-4 space-y-3.5 text-xs shadow-xl">
+                <div className="flex items-center justify-between border-b border-cyan-500/20 pb-2.5">
                   <div className="flex items-center gap-2">
-                    <Brain className="w-5 h-5 text-purple-400 animate-pulse" />
+                    <Brain className="w-5 h-5 text-cyan-400 animate-pulse" />
                     <h4 className="font-bold text-white text-sm">
-                      {isMalay ? 'ðŸŽ“ Laporan Sesi Ulangkaji Analisis & Homework AI' : 'ðŸŽ“ AI Analysis Review & Homework Report'}
+                      {isMalay ? '🎓 Laporan Ulangkaji Mingguan & Pemantapan Setup (Base44)' : '🎓 Weekly Review & Setup Optimization Report (Base44)'}
                     </h4>
                   </div>
-                  <span className="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono text-[10px] rounded-full font-bold">
-                    âœ“ AutoTrader Updated
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2.5 py-0.5 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono text-[10px] rounded-full font-bold">
+                      {homeworkData.provider || 'Base44 InvokeLLM Intelligence'}
+                    </span>
+                    <span className="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono text-[10px] rounded-full font-bold">
+                      ✓ AutoTrader Updated
+                    </span>
+                  </div>
                 </div>
+
+                {/* Executive Summary */}
+                {homeworkData.executiveSummaryMs && (
+                  <div className="p-3 bg-slate-900/90 rounded-xl border border-cyan-500/30 text-cyan-100 text-[11px] leading-relaxed flex items-start gap-2">
+                    <Sparkles className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold text-cyan-300 block mb-0.5">
+                        {isMalay ? 'Ringkasan Eksekutif Prestasi:' : 'Executive Summary:'}
+                      </span>
+                      <p>{homeworkData.executiveSummaryMs}</p>
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-[11px]">
                   <div className="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
@@ -570,8 +462,8 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
                     </span>
                   </div>
                   <div className="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block uppercase">Backtest 1-Tahun</span>
-                    <span className="text-blue-400 font-bold text-sm">{homeworkData.backtestReport?.backtestWinRate}% ({homeworkData.backtestReport?.simulatedTrades} Trades)</span>
+                    <span className="text-[10px] text-slate-400 block uppercase">Penggunaan Token</span>
+                    <span className="text-cyan-400 font-bold text-sm">~{homeworkData.tokensUsedEstimate || 380} Token</span>
                   </div>
                 </div>
 
@@ -617,6 +509,24 @@ export const AdaptiveLearningModal: React.FC<AdaptiveLearningModalProps> = ({
                     ))}
                   </div>
                 </div>
+
+                {/* Setup Tuning Recommendations */}
+                {homeworkData.setupTuningRecommendationsMs && (
+                  <div className="bg-cyan-950/40 border border-cyan-500/30 rounded-xl p-3 space-y-2">
+                    <span className="font-bold text-cyan-200 text-xs flex items-center gap-1.5">
+                      <Zap className="w-4 h-4 text-cyan-400" />
+                      {isMalay ? 'Cadangan Pemantapan Setup & Parameter (Base44 Tuning):' : 'Setup & Parameter Tuning Recommendations:'}
+                    </span>
+                    <div className="space-y-1.5">
+                      {homeworkData.setupTuningRecommendationsMs.map((tuning: string, idx: number) => (
+                        <div key={idx} className="p-2 bg-slate-900/90 rounded-lg border border-cyan-500/20 font-mono text-[11px] text-cyan-200 flex items-start gap-2">
+                          <span className="text-cyan-400 font-bold shrink-0">#{idx + 1}</span>
+                          <p className="leading-tight">{tuning}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

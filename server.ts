@@ -41,6 +41,7 @@ import { copierRouter } from "./src/server/routes/copier";
 import { subscriberRouter } from "./src/server/routes/subscriber";
 import { telegramRouter } from "./src/server/routes/telegram";
 import { authRouter } from "./src/server/routes/auth";
+import { saasBridgeRouter } from "./src/server/routes/saasBridge";
 import { backtestEngine } from "./apps/decision-agent/src/services/backtestEngine";
 import { aiDecisionEngine } from "./apps/decision-agent/src/services/aiDecisionEngine";
 import { learningService } from "./src/server/services/learningService";
@@ -106,6 +107,8 @@ async function startServer() {
   app.use("/api", telegramRouter);
   // cTrader OAuth 2.0 Authentication Routes
   app.use("/api", authRouter);
+  // Base44 SaaS & Client Management Bridge
+  app.use("/api/saas", saasBridgeRouter);
 
   // Direct top-level scanner status & trigger routes
   app.get("/api/autotrader/scanner/status", async (req, res) => {
@@ -1243,7 +1246,7 @@ async function startServer() {
             maxRiskPerTradePercent: 0.10,
             currentExposure: openPositions.length * 0.01,
             concurrentPositionCount: openPositions.length,
-            maxConcurrentPositions: 10,
+            maxConcurrentPositions: Number(process.env.MAX_CONCURRENT_ORDERS) || 20,
             dailyPnL: totalRealizedPnL,
             dailyLossLimit: 250.00,
             drawdownPercent: 0.00,

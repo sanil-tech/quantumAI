@@ -19,21 +19,44 @@ import { AdaptiveLearningModal } from './components/AdaptiveLearningModal';
 import { SystemAuditModal } from './components/SystemAuditModal';
 import { UserDashboard } from './components/UserDashboard';
 import { AdminDeveloperDashboard } from './components/AdminDeveloperDashboard';
+import { SuperAdminAuthModal } from './components/SuperAdminAuthModal';
 
 export default function App() {
-  const isAdminMode = typeof window !== 'undefined' && (
+  const [isSuperAdminAuthenticated, setIsSuperAdminAuthenticated] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const email = localStorage.getItem('super_admin_email');
+      const isAuth = localStorage.getItem('admin_authenticated');
+      return email === 'sanilbans88@gmail.com' && isAuth === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const [isAdminAuthModalOpen, setIsAdminAuthModalOpen] = useState<boolean>(false);
+
+  const urlWantsAdmin = typeof window !== 'undefined' && (
     new URLSearchParams(window.location.search).get('mode') === 'admin' ||
     new URLSearchParams(window.location.search).get('admin') === 'true' ||
     window.location.pathname.startsWith('/admin')
   );
 
+  const isAdminMode = isSuperAdminAuthenticated && urlWantsAdmin;
+
   const [portalMode, setPortalMode] = useState<'USER_DASHBOARD' | 'ADMIN_DEVELOPER'>(() => {
-    if (typeof window !== 'undefined') {
-      const mode = new URLSearchParams(window.location.search).get('mode');
-      if (mode === 'admin' || window.location.pathname.startsWith('/admin')) return 'ADMIN_DEVELOPER';
+    if (typeof window !== 'undefined' && urlWantsAdmin && isSuperAdminAuthenticated) {
+      return 'ADMIN_DEVELOPER';
     }
     return 'USER_DASHBOARD';
   });
+
+  const handleOpenAdminPortal = () => {
+    if (isSuperAdminAuthenticated) {
+      setPortalMode('ADMIN_DEVELOPER');
+    } else {
+      setIsAdminAuthModalOpen(true);
+    }
+  };
   const aiOpinionAbortControllerRef = useRef<AbortController | null>(null);
   const [activePair, setActivePair] = useState<CurrencyPair>('EUR/USD');
   const [timeframe, setTimeframe] = useState<Timeframe>('M15');
@@ -734,6 +757,16 @@ export default function App() {
       <SystemAuditModal
         isOpen={isSystemAuditOpen}
         onClose={() => setIsSystemAuditOpen(false)}
+        isMalay={language === 'ms'}
+      />
+
+      <SuperAdminAuthModal
+        isOpen={isAdminAuthModalOpen}
+        onClose={() => setIsAdminAuthModalOpen(false)}
+        onSuccess={() => {
+          setIsSuperAdminAuthenticated(true);
+          setPortalMode('ADMIN_DEVELOPER');
+        }}
         isMalay={language === 'ms'}
       />
     </div>

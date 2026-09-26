@@ -1036,16 +1036,16 @@ Return JSON strictly matching this schema:
     const profitFactor = grossLoss > 0 ? Number((grossProfit / grossLoss).toFixed(2)) : (grossProfit > 0 ? 99.0 : 1.0);
 
     // Compute dynamic scores from real closed trade data
-    let precisionScore = totalTrades > 0
+    let precisionScore: number | null = totalTrades > 0
       ? Math.min(98, Math.max(30, Math.round((winRate * 0.7) + (Math.min(profitFactor, 3.0) * 10))))
-      : 78;
+      : null;
 
-    const avgWin = winCount > 0 ? grossProfit / winCount : 1;
-    const avgLoss = lossCount > 0 ? grossLoss / lossCount : 1;
-    const winLossRatio = avgLoss > 0 ? avgWin / avgLoss : 1.5;
-    let riskDisciplineScore = totalTrades > 0
+    const avgWin = winCount > 0 ? grossProfit / winCount : 0;
+    const avgLoss = lossCount > 0 ? grossLoss / lossCount : 0;
+    const winLossRatio = avgLoss > 0 ? avgWin / avgLoss : 0;
+    let riskDisciplineScore: number | null = totalTrades > 0
       ? Math.min(95, Math.max(35, Math.round(50 + (Math.min(winLossRatio, 3.0) * 15))))
-      : 85;
+      : null;
 
     let maxConsecutiveLosses = 0;
     let currentLossStreak = 0;
@@ -1057,22 +1057,28 @@ Return JSON strictly matching this schema:
         currentLossStreak = 0;
       }
     }
-    let emotionalControlScore = totalTrades > 0
+    let emotionalControlScore: number | null = totalTrades > 0
       ? Math.min(95, Math.max(40, 92 - (maxConsecutiveLosses * 6)))
-      : 72;
+      : null;
 
-    let confluenceScore = totalTrades > 0
-      ? Math.min(95, Math.max(40, Math.round((winRate * 0.5) + (precisionScore * 0.4))))
-      : 80;
+    let confluenceScore: number | null = totalTrades > 0
+      ? Math.min(95, Math.max(40, Math.round((winRate * 0.5) + ((precisionScore || 50) * 0.4))))
+      : null;
 
-    const avgScore = (precisionScore + riskDisciplineScore + emotionalControlScore + confluenceScore) / 4;
-    let overallGrade = avgScore >= 85 ? 'A+' : avgScore >= 78 ? 'A' : avgScore >= 70 ? 'A-' : avgScore >= 60 ? 'B+' : avgScore >= 50 ? 'B' : 'C';
+    let overallGrade = totalTrades > 0
+      ? (((precisionScore || 0) + (riskDisciplineScore || 0) + (emotionalControlScore || 0) + (confluenceScore || 0)) / 4 >= 85 ? 'A+' :
+         ((precisionScore || 0) + (riskDisciplineScore || 0) + (emotionalControlScore || 0) + (confluenceScore || 0)) / 4 >= 78 ? 'A' :
+         ((precisionScore || 0) + (riskDisciplineScore || 0) + (emotionalControlScore || 0) + (confluenceScore || 0)) / 4 >= 70 ? 'A-' :
+         ((precisionScore || 0) + (riskDisciplineScore || 0) + (emotionalControlScore || 0) + (confluenceScore || 0)) / 4 >= 60 ? 'B+' : 'B')
+      : '-';
 
-    let archetype = winRate >= 65 
-      ? 'Calculated SMC Institutional Scalper' 
-      : winRate >= 50 
-        ? 'Disciplined Trend Confluence Trader' 
-        : 'High-Frequency Volatility Scalper';
+    let archetype = totalTrades > 0 
+      ? (winRate >= 65 
+          ? 'Calculated SMC Institutional Scalper' 
+          : winRate >= 50 
+            ? 'Disciplined Trend Confluence Trader' 
+            : 'High-Frequency Volatility Scalper')
+      : 'Belum Ada Rekod Posisi Tertutup';
 
     // Pair breakdown from actual trades
     const symbolMap: Record<string, { wins: number; losses: number; pnl: number }> = {};
@@ -1089,37 +1095,49 @@ Return JSON strictly matching this schema:
     const bestPairName = sortedPairs.length > 0 ? sortedPairs[0][0] : 'EUR/USD';
     const worstPairName = sortedPairs.length > 1 ? sortedPairs[sortedPairs.length - 1][0] : 'XAU/USD';
 
-    let keyEntryFlawsMs = [
+    let keyEntryFlawsMs = totalTrades > 0 ? [
       `Prestasi paling mencabar dikesan pada instrumen ${worstPairName} dengan kerugian terkumpul ($${sortedPairs.length > 1 ? sortedPairs[sortedPairs.length - 1][1].pnl : -15.0}).`,
       `Entri berturutan semasa lonjakan spread mencatatkan siri kerugian sehingga ${maxConsecutiveLosses || 2} trade berturut-turut.`,
       `Penetapan Stop Loss pada posisi rugi menyerap purata kerugian $${avgLoss.toFixed(2)} berbanding sasaran keuntungan $${avgWin.toFixed(2)}.`
+    ] : [
+      'Tiada kelemahan dikesan setakat ini kerana belum ada rekod trade tertutup dalam pangkalan data.'
     ];
-    let keyEntryFlawsEn = [
+    let keyEntryFlawsEn = totalTrades > 0 ? [
       `Most challenging performance observed on ${worstPairName} with net drawdown ($${sortedPairs.length > 1 ? sortedPairs[sortedPairs.length - 1][1].pnl : -15.0}).`,
       `Entries during high volatility windows sustained up to ${maxConsecutiveLosses || 2} consecutive losses.`,
       `Stop loss placement on losing trades absorbed an average loss of $${avgLoss.toFixed(2)} vs target profit of $${avgWin.toFixed(2)}.`
+    ] : [
+      'No entry flaws detected yet as there are no closed trade records in the database.'
     ];
 
-    let topStrengthsMs = [
-      `Ketepatan tinggi pada ${bestPairName} menjana keuntungan tertinggi $${sortedPairs.length > 0 ? sortedPairs[0][1].pnl : 2500.0} merentasi ${sortedPairs.length > 0 ? sortedPairs[0][1].wins : 19} kemenangan.`,
+    let topStrengthsMs = totalTrades > 0 ? [
+      `Ketepatan tinggi pada ${bestPairName} menjana keuntungan tertinggi $${sortedPairs.length > 0 ? sortedPairs[0][1].pnl : 0} merentasi ${sortedPairs.length > 0 ? sortedPairs[0][1].wins : 0} kemenangan.`,
       `Kadar kemenangan portfolio keseluruhan ${winRate}% mencerminkan disiplin pengesahan zon SMC yang kukuh.`,
       `Nisbah Profit Factor ${profitFactor} mengekalkan jangkaan pulangan positif (positive expectancy) merentasi ${totalTrades} posisi.`
+    ] : [
+      'Sedia merekodkan kekuatan entri dan statistik sebaik sahaja posisi pertama selesai dieksekusi.'
     ];
-    let topStrengthsEn = [
-      `High accuracy on ${bestPairName} generating peak profit of $${sortedPairs.length > 0 ? sortedPairs[0][1].pnl : 2500.0} across ${sortedPairs.length > 0 ? sortedPairs[0][1].wins : 19} wins.`,
+    let topStrengthsEn = totalTrades > 0 ? [
+      `High accuracy on ${bestPairName} generating peak profit of $${sortedPairs.length > 0 ? sortedPairs[0][1].pnl : 0} across ${sortedPairs.length > 0 ? sortedPairs[0][1].wins : 0} wins.`,
       `Overall portfolio win rate of ${winRate}% demonstrates robust SMC zone confluence discipline.`,
       `Profit Factor of ${profitFactor} preserves healthy positive expectancy across ${totalTrades} closed positions.`
+    ] : [
+      'Ready to record entry strengths and statistics once the first trade is completed.'
     ];
 
-    let adaptiveRecommendationsMs = [
+    let adaptiveRecommendationsMs = totalTrades > 0 ? [
       `Kuatkuasakan had Stop Loss Buffer maksimum pada ${worstPairName} atau kurangkan saiz posisi kepada 50%.`,
       `Gunakan peraturan penyejukan (Cooldown Rule) selepas ${Math.max(2, maxConsecutiveLosses)} kerugian berturut-turut untuk melindungi modal.`,
       `Kekalkan fokus dan peruntukan modal utama pada zon berkeberkesanan tinggi (${bestPairName}).`
+    ] : [
+      'Jalankan trade pertama anda atau segerak data cTrader untuk memuatkan rekod dagangan sebenar.'
     ];
-    let adaptiveRecommendationsEn = [
+    let adaptiveRecommendationsEn = totalTrades > 0 ? [
       `Enforce tighter Stop Loss buffer on ${worstPairName} or reduce risk allocation by 50%.`,
       `Trigger algorithmic cooldown after ${Math.max(2, maxConsecutiveLosses)} consecutive losses to preserve capital.`,
       `Focus maximum volume allocation on high-expectancy pairs (${bestPairName}).`
+    ] : [
+      'Execute your first trade or sync cTrader data to populate real trading records.'
     ];
 
     let proposedEntryCheck = null;

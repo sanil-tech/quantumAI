@@ -306,7 +306,7 @@ export class LiveAttributionIntegrityService {
   private isHydrated: boolean = false;
 
   constructor(repository?: ILiveAttributionRepository) {
-    this.repository = repository || new InMemoryLiveAttributionRepository();
+    this.repository = repository || new PostgresLiveAttributionRepository();
   }
 
   public static getInstance(repository?: ILiveAttributionRepository): LiveAttributionIntegrityService {

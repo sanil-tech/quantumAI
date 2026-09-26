@@ -1,5 +1,1009 @@
 [
   {
+    "id": "signal-alpha-1790389987465",
+    "masterBrokerOrderId": "99881234",
+    "action": "NEW_ORDER",
+    "pair": "GBPUSD",
+    "direction": "BUY",
+    "entryPrice": 1.335,
+    "stopLoss": 1.332,
+    "takeProfit1": 1.341,
+    "takeProfit2": 1.347,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: GBPUSD BUY (Confidence: 85%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "MARKET",
+    "approvedGrade": "A+",
+    "expiresAt": 1790390047465,
+    "timestamp": 1790389988729
+  },
+  {
+    "id": "sig_EURGBP_M5_1790295554028",
+    "masterBrokerOrderId": "319891869",
+    "action": "NEW_ORDER",
+    "pair": "EUR/GBP",
+    "direction": "BUY",
+    "entryPrice": 0.85988,
+    "stopLoss": 0.85788,
+    "takeProfit1": 0.86288,
+    "takeProfit2": 0.86488,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: EUR/GBP BUY (Confidence: 83%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A",
+    "expiresAt": 1790381954028,
+    "timestamp": 1790295557573
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "EUR/GBP",
+    "direction": "BUY",
+    "entryPrice": 0.85858,
+    "stopLoss": 0.85558,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 24h without fill)"
+    ],
+    "masterConfirmed": false,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "id": "SIG-4bff5584-8a25-4a2d-8982-6133aa09c1e2",
+    "timestamp": 1790293931400
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "GBP/JPY",
+    "direction": "BUY",
+    "entryPrice": 209.917,
+    "stopLoss": 209.567,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 1h without fill)"
+    ],
+    "masterConfirmed": false,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "id": "SIG-656c4dd8-6c3f-483e-936e-234acab4c3c6",
+    "timestamp": 1790293931397
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "EUR/JPY",
+    "direction": "BUY",
+    "entryPrice": 180.55,
+    "stopLoss": 180.2,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 1h without fill)"
+    ],
+    "masterConfirmed": false,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "id": "SIG-a1ebf893-228a-452a-9c48-acc4f1ae7fc0",
+    "timestamp": 1790293931393
+  },
+  {
+    "id": "sig_GBPCHF_M5_1790271403121",
+    "masterBrokerOrderId": "319859614",
+    "action": "NEW_ORDER",
+    "pair": "GBP/CHF",
+    "direction": "BUY",
+    "entryPrice": 1.09409,
+    "stopLoss": 1.09209,
+    "takeProfit1": 1.09709,
+    "takeProfit2": 1.09909,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: GBP/CHF BUY (Confidence: 92%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790357803121,
+    "timestamp": 1790271405128
+  },
+  {
+    "id": "sig_EURNZD_M5_1790271163217",
+    "masterBrokerOrderId": "319859080",
+    "action": "NEW_ORDER",
+    "pair": "EUR/NZD",
+    "direction": "BUY",
+    "entryPrice": 2.007,
+    "stopLoss": 2.005,
+    "takeProfit1": 2.01,
+    "takeProfit2": 2.012,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: EUR/NZD BUY (Confidence: 90%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790357563217,
+    "timestamp": 1790271165272
+  },
+  {
+    "id": "sig_AUDJPY_M5_1790267745205",
+    "masterBrokerOrderId": "319850088",
+    "action": "NEW_ORDER",
+    "pair": "AUD/JPY",
+    "direction": "BUY",
+    "entryPrice": 111.404,
+    "stopLoss": 111.054,
+    "takeProfit1": 111.929,
+    "takeProfit2": 112.279,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: AUD/JPY BUY (Confidence: 93%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790354145205,
+    "timestamp": 1790267747601
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "GBP/AUD",
+    "direction": "BUY",
+    "entryPrice": 1.88397,
+    "stopLoss": 1.88197,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 1h without fill)"
+    ],
+    "masterConfirmed": false,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "id": "SIG-bcd6e03f-b665-4ee5-ba6c-e9f7b4a9e54f",
+    "timestamp": 1790267375948
+  },
+  {
+    "id": "sig_EURJPY_M5_1790266331370",
+    "masterBrokerOrderId": "319845055",
+    "action": "NEW_ORDER",
+    "pair": "EUR/JPY",
+    "direction": "BUY",
+    "entryPrice": 180.55,
+    "stopLoss": 180.2,
+    "takeProfit1": 181.075,
+    "takeProfit2": 181.425,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: EUR/JPY BUY (Confidence: 90%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790352731370,
+    "timestamp": 1790266335524
+  },
+  {
+    "id": "sig_AUDJPY_M5_1790266137523",
+    "masterBrokerOrderId": "319844685",
+    "action": "NEW_ORDER",
+    "pair": "AUD/JPY",
+    "direction": "BUY",
+    "entryPrice": 111.276,
+    "stopLoss": 110.926,
+    "takeProfit1": 111.801,
+    "takeProfit2": 112.151,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: AUD/JPY BUY (Confidence: 92%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790352537523,
+    "timestamp": 1790266140846
+  },
+  {
+    "id": "sig_USDCAD_H4_1790265728592",
+    "masterBrokerOrderId": "319843630",
+    "action": "NEW_ORDER",
+    "pair": "USD/CAD",
+    "direction": "BUY",
+    "entryPrice": 1.41295,
+    "stopLoss": 1.41052,
+    "takeProfit1": 1.417,
+    "takeProfit2": 1.4197,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: USD/CAD BUY (Confidence: 80%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A",
+    "expiresAt": 1790352128592,
+    "timestamp": 1790265730838
+  },
+  {
+    "id": "sig_USDJPY_M5_1790265561078",
+    "masterBrokerOrderId": "319843050",
+    "action": "NEW_ORDER",
+    "pair": "USD/JPY",
+    "direction": "BUY",
+    "entryPrice": 158.78,
+    "stopLoss": 158.43,
+    "takeProfit1": 159.305,
+    "takeProfit2": 159.655,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: USD/JPY BUY (Confidence: 87%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790351961078,
+    "timestamp": 1790265563685
+  },
+  {
+    "id": "sig_GBPJPY_M5_1790263408957",
+    "masterBrokerOrderId": "319838664",
+    "action": "NEW_ORDER",
+    "pair": "GBP/JPY",
+    "direction": "BUY",
+    "entryPrice": 209.917,
+    "stopLoss": 209.567,
+    "takeProfit1": 210.442,
+    "takeProfit2": 210.792,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: GBP/JPY BUY (Confidence: 92%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790349808957,
+    "timestamp": 1790263417902
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "GBP/AUD",
+    "direction": "BUY",
+    "entryPrice": 1.88084,
+    "stopLoss": 1.8794,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 1h without fill)"
+    ],
+    "masterConfirmed": false,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "id": "SIG-5e9a4dd5-7624-4c0e-80f3-1627ae26abbd",
+    "timestamp": 1790262889224
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "EUR/JPY",
+    "direction": "BUY",
+    "entryPrice": 180.509,
+    "stopLoss": 180.392,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Market price (180.725) reached TP1 (180.716) before entry fill"
+    ],
+    "masterConfirmed": false,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "id": "SIG-12084f3b-906f-4bcf-8e1d-4f8dcfbdd5a1",
+    "timestamp": 1790261178053
+  },
+  {
+    "id": "sig_EURJPY_M5_1790260827816",
+    "masterBrokerOrderId": "319826932",
+    "action": "NEW_ORDER",
+    "pair": "EUR/JPY",
+    "direction": "BUY",
+    "entryPrice": 180.509,
+    "stopLoss": 180.392,
+    "takeProfit1": 180.716,
+    "takeProfit2": 180.86,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: EUR/JPY BUY (Confidence: 92%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790347227816,
+    "timestamp": 1790260838974
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "USD/CAD",
+    "direction": "BUY",
+    "entryPrice": 1.40884,
+    "stopLoss": 1.40584,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 24h without fill)"
+    ],
+    "masterConfirmed": false,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "id": "SIG-f025007c-f95a-4acf-b2bc-83bd2982f096",
+    "timestamp": 1790260569732
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "NZD/USD",
+    "direction": "SELL",
+    "entryPrice": 0.56817,
+    "stopLoss": 0.57117,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 24h without fill)"
+    ],
+    "masterConfirmed": false,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "id": "SIG-5831fe27-fac2-4116-bf64-1db9c778b161",
+    "timestamp": 1790260569727
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "USD/CHF",
+    "direction": "BUY",
+    "entryPrice": 0.82419,
+    "stopLoss": 0.82119,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 1h without fill)"
+    ],
+    "masterConfirmed": false,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "id": "SIG-f1035f2c-d436-4e62-8e99-62bcd6575436",
+    "timestamp": 1790260569722
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "EUR/AUD",
+    "direction": "BUY",
+    "entryPrice": 1.61765,
+    "stopLoss": 1.61465,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 1h without fill)"
+    ],
+    "masterConfirmed": false,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "id": "SIG-bb2a05a9-f5a4-4776-8dd0-09503f43f039",
+    "timestamp": 1790260569718
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "GBP/AUD",
+    "direction": "BUY",
+    "entryPrice": 1.88178,
+    "stopLoss": 1.88034,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 1h without fill)"
+    ],
+    "masterConfirmed": false,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "id": "SIG-3abe9e93-9177-464b-ba5e-21a55394b018",
+    "timestamp": 1790255845077
+  },
+  {
+    "id": "sig_AUDJPY_M5_1790250783505",
+    "masterBrokerOrderId": "319789618",
+    "action": "NEW_ORDER",
+    "pair": "AUD/JPY",
+    "direction": "BUY",
+    "entryPrice": 111.455,
+    "stopLoss": 111.356,
+    "takeProfit1": 111.613,
+    "takeProfit2": 111.725,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: AUD/JPY BUY (Confidence: 90%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790337183505,
+    "timestamp": 1790250786438
+  },
+  {
+    "id": "sig_GBPUSD_H4_1790240410371",
+    "masterBrokerOrderId": "319755756",
+    "action": "NEW_ORDER",
+    "pair": "GBP/USD",
+    "direction": "SELL",
+    "entryPrice": 1.3247,
+    "stopLoss": 1.32767,
+    "takeProfit1": 1.31997,
+    "takeProfit2": 1.3166,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: GBP/USD SELL (Confidence: 86%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790326810371,
+    "timestamp": 1790240412393
+  },
+  {
+    "id": "sig_EURUSD_H4_1790240406826",
+    "masterBrokerOrderId": "319755742",
+    "action": "NEW_ORDER",
+    "pair": "EUR/USD",
+    "direction": "SELL",
+    "entryPrice": 1.13904,
+    "stopLoss": 1.14147,
+    "takeProfit1": 1.13526,
+    "takeProfit2": 1.13256,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: EUR/USD SELL (Confidence: 84%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A",
+    "expiresAt": 1790326806825,
+    "timestamp": 1790240409139
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "GBP/AUD",
+    "direction": "BUY",
+    "entryPrice": 1.88072,
+    "stopLoss": 1.87772,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 1h without fill)"
+    ],
+    "masterConfirmed": false,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "id": "SIG-a2bffb9e-2395-4ca4-9ffc-3d58cfacbdb2",
+    "timestamp": 1790239100416
+  },
+  {
+    "id": "sig_EURCHF_M5_1790237154705",
+    "masterBrokerOrderId": "319742235",
+    "action": "NEW_ORDER",
+    "pair": "EUR/CHF",
+    "direction": "BUY",
+    "entryPrice": 0.9412,
+    "stopLoss": 0.9382,
+    "takeProfit1": 0.9472,
+    "takeProfit2": 0.952,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: EUR/CHF BUY (Confidence: 91%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790323554705,
+    "timestamp": 1790237160107
+  },
+  {
+    "id": "sig_EURAUD_M5_1790236771426",
+    "masterBrokerOrderId": "319740869",
+    "action": "NEW_ORDER",
+    "pair": "EUR/AUD",
+    "direction": "BUY",
+    "entryPrice": 1.61765,
+    "stopLoss": 1.61465,
+    "takeProfit1": 1.62365,
+    "takeProfit2": 1.62845,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: EUR/AUD BUY (Confidence: 90%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790323171425,
+    "timestamp": 1790236776342
+  },
+  {
+    "id": "sig_EURAUD_H4_1790233247257",
+    "masterBrokerOrderId": "319732151",
+    "action": "NEW_ORDER",
+    "pair": "EUR/AUD",
+    "direction": "BUY",
+    "entryPrice": 1.6177,
+    "stopLoss": 1.6147,
+    "takeProfit1": 1.6237,
+    "takeProfit2": 1.6285,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: EUR/AUD BUY (Confidence: 85%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790319647257,
+    "timestamp": 1790233249551
+  },
+  {
+    "id": "sig_USDJPY_H4_1790233227785",
+    "masterBrokerOrderId": "319732069",
+    "action": "NEW_ORDER",
+    "pair": "USD/JPY",
+    "direction": "BUY",
+    "entryPrice": 158.274,
+    "stopLoss": 157.924,
+    "takeProfit1": 158.974,
+    "takeProfit2": 159.534,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: USD/JPY BUY (Confidence: 86%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790319627785,
+    "timestamp": 1790233230051
+  },
+  {
+    "id": "sig_GBPJPY_M5_1790212962925",
+    "masterBrokerOrderId": "319701681",
+    "action": "NEW_ORDER",
+    "pair": "GBP/JPY",
+    "direction": "SELL",
+    "entryPrice": 209.069,
+    "stopLoss": 209.419,
+    "takeProfit1": 208.369,
+    "takeProfit2": 207.809,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: GBP/JPY SELL (Confidence: 88%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790299362925,
+    "timestamp": 1790212965896
+  },
+  {
+    "id": "sig_EURJPY_M5_1790212956272",
+    "masterBrokerOrderId": "319701675",
+    "action": "NEW_ORDER",
+    "pair": "EUR/JPY",
+    "direction": "SELL",
+    "entryPrice": 179.813,
+    "stopLoss": 180.163,
+    "takeProfit1": 179.113,
+    "takeProfit2": 178.553,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: EUR/JPY SELL (Confidence: 88%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790299356271,
+    "timestamp": 1790212959094
+  },
+  {
+    "id": "sig_AUDJPY_M5_1790210051173",
+    "masterBrokerOrderId": "319696547",
+    "action": "NEW_ORDER",
+    "pair": "AUD/JPY",
+    "direction": "BUY",
+    "entryPrice": 111.131,
+    "stopLoss": 110.781,
+    "takeProfit1": 111.831,
+    "takeProfit2": 112.391,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: AUD/JPY BUY (Confidence: 90%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790296451173,
+    "timestamp": 1790210053479
+  },
+  {
+    "id": "sig_USDCHF_M5_1790209628547",
+    "masterBrokerOrderId": "319695882",
+    "action": "NEW_ORDER",
+    "pair": "USD/CHF",
+    "direction": "BUY",
+    "entryPrice": 0.82419,
+    "stopLoss": 0.82119,
+    "takeProfit1": 0.83019,
+    "takeProfit2": 0.83499,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: USD/CHF BUY (Confidence: 92%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790296028547,
+    "timestamp": 1790209630958
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "AUD/USD",
+    "direction": "BUY",
+    "entryPrice": 0.70323,
+    "stopLoss": 0.70023,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 1h without fill)"
+    ],
+    "masterConfirmed": false,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "id": "SIG-8ddbabcf-3d4c-47e7-8ec4-2dff956b88f8",
+    "timestamp": 1790208902054
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "AUD/CAD",
+    "direction": "BUY",
+    "entryPrice": 0.99132,
+    "stopLoss": 0.98832,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 1h without fill)"
+    ],
+    "masterConfirmed": false,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "id": "SIG-f2ca0626-091f-4178-8af1-faabf9f4f12b",
+    "timestamp": 1790208615053
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "GBP/CHF",
+    "direction": "BUY",
+    "entryPrice": 1.09088,
+    "stopLoss": 1.08788,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 1h without fill)"
+    ],
+    "masterConfirmed": false,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "id": "SIG-c04b0ff7-b01b-48cc-bef7-487c52c94fdd",
+    "timestamp": 1790208615050
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "EUR/CAD",
+    "direction": "BUY",
+    "entryPrice": 1.60436,
+    "stopLoss": 1.60136,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 1h without fill)"
+    ],
+    "masterConfirmed": false,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "id": "SIG-41f64d27-c87b-4db1-a89d-d3b93ca64c8e",
+    "timestamp": 1790208615048
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "GBP/CAD",
+    "direction": "BUY",
+    "entryPrice": 1.86618,
+    "stopLoss": 1.86318,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 1h without fill)"
+    ],
+    "masterConfirmed": false,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "id": "SIG-e68f2334-a30c-4378-96f5-2d575dade221",
+    "timestamp": 1790208615046
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "AUD/CHF",
+    "direction": "BUY",
+    "entryPrice": 0.57943,
+    "stopLoss": 0.57643,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 1h without fill)"
+    ],
+    "masterConfirmed": false,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "id": "SIG-10772fb6-4609-44c9-9e17-e91cf32651f1",
+    "timestamp": 1790208615043
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "AUD/NZD",
+    "direction": "BUY",
+    "entryPrice": 1.2401,
+    "stopLoss": 1.2371,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 1h without fill)"
+    ],
+    "masterConfirmed": false,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "id": "SIG-662dd623-44a7-41b2-87ae-a206acb5aa2f",
+    "timestamp": 1790208615039
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "AUD/JPY",
+    "direction": "BUY",
+    "entryPrice": 111.278,
+    "stopLoss": 110.928,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 1h without fill)"
+    ],
+    "masterConfirmed": false,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "id": "SIG-ef2694ef-69b3-4326-824d-73128d68292c",
+    "timestamp": 1790208615034
+  },
+  {
+    "id": "sig_CADJPY_M5_1790187438441",
+    "masterBrokerOrderId": "319671045",
+    "action": "NEW_ORDER",
+    "pair": "CAD/JPY",
+    "direction": "BUY",
+    "entryPrice": 112.104,
+    "stopLoss": 111.754,
+    "takeProfit1": 112.804,
+    "takeProfit2": 113.364,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: CAD/JPY BUY (Confidence: 90%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790273838441,
+    "timestamp": 1790187440543
+  },
+  {
+    "id": "sig_AUDUSD_M5_1790187040318",
+    "masterBrokerOrderId": "319670102",
+    "action": "NEW_ORDER",
+    "pair": "AUD/USD",
+    "direction": "BUY",
+    "entryPrice": 0.70323,
+    "stopLoss": 0.70023,
+    "takeProfit1": 0.70923,
+    "takeProfit2": 0.71403,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: AUD/USD BUY (Confidence: 89%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790273440318,
+    "timestamp": 1790187042695
+  },
+  {
+    "id": "sig_EURGBP_H4_1790185969230",
+    "masterBrokerOrderId": "319668267",
+    "action": "NEW_ORDER",
+    "pair": "EUR/GBP",
+    "direction": "BUY",
+    "entryPrice": 0.85858,
+    "stopLoss": 0.85558,
+    "takeProfit1": 0.86458,
+    "takeProfit2": 0.86938,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: EUR/GBP BUY (Confidence: 86%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790272369230,
+    "timestamp": 1790185974054
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "EUR/USD",
+    "direction": "SELL",
+    "entryPrice": 1.14487,
+    "stopLoss": 1.14787,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Market price (1.13711) reached TP1 (1.13887) before entry fill"
+    ],
+    "masterConfirmed": false,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "id": "SIG-6a89782e-1329-4490-9fcb-675a87a6c6ca",
+    "timestamp": 1790184001946
+  },
+  {
+    "id": "sig_USDJPY_M5_1790182209021",
+    "masterBrokerOrderId": "319647508",
+    "action": "NEW_ORDER",
+    "pair": "USD/JPY",
+    "direction": "BUY",
+    "entryPrice": 158.165,
+    "stopLoss": 157.815,
+    "takeProfit1": 158.865,
+    "takeProfit2": 159.425,
+    "lotSize": 0.02,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "reasons": [
+      "Master Trade Dispatched: USD/JPY BUY (Confidence: 88%)"
+    ],
+    "masterConfirmed": true,
+    "orderType": "LIMIT",
+    "approvedGrade": "A+",
+    "expiresAt": 1790268609020,
+    "timestamp": 1790182217457
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "EUR/GBP",
+    "direction": "BUY",
+    "entryPrice": 0.85826,
+    "stopLoss": 0.85526,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 1h without fill)"
+    ],
+    "masterConfirmed": false,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "id": "SIG-cdb46bbc-528e-4647-87a4-cb507f5c1667",
+    "timestamp": 1790181447556
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "USD/CHF",
+    "direction": "BUY",
+    "entryPrice": 0.82343,
+    "stopLoss": 0.82043,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 1h without fill)"
+    ],
+    "masterConfirmed": false,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "id": "SIG-a49e9413-1f67-4e10-9f80-7f057f6988c3",
+    "timestamp": 1790181447552
+  },
+  {
+    "action": "CANCEL_ORDER",
+    "pair": "AUD/JPY",
+    "direction": "BUY",
+    "entryPrice": 111.325,
+    "stopLoss": 110.975,
+    "takeProfit1": 0,
+    "takeProfit2": 0,
+    "lotSize": 0,
+    "reasons": [
+      "Setup expired (> 1h without fill)"
+    ],
+    "masterConfirmed": false,
+    "recommendedRiskPct": 0.5,
+    "maxRiskPct": 2,
+    "id": "SIG-c430061d-64b4-402f-b762-e73b73e79d26",
+    "timestamp": 1790181305106
+  },
+  {
     "id": "sig_NZDUSD_H4_1790173722528",
     "masterBrokerOrderId": "319617151",
     "action": "NEW_ORDER",

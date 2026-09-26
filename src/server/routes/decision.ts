@@ -116,9 +116,15 @@ async function handle1YearBacktestPost(req: Request, res: Response) {
   }
 }
 
-// Handle Post-Mortem Lessons GET
-function handlePostMortemLessonsGet(req: Request, res: Response) {
-  res.json({ reviews: aiDecisionEngine.getPostMortemReviews() });
+// Handle Post-Mortem Lessons GET (Loads Canonical Reviews from PostgreSQL)
+async function handlePostMortemLessonsGet(req: Request, res: Response) {
+  try {
+    const { learningService } = await import('../services/learningService');
+    const reviews = await learningService.loadPersistedLearning();
+    res.json({ reviews, source: 'POSTGRESQL_AUTHORITATIVE' });
+  } catch {
+    res.json({ reviews: aiDecisionEngine.getPostMortemReviews(), source: 'IN_MEMORY_FALLBACK' });
+  }
 }
 
 // Handle Post-Mortem POST
@@ -145,11 +151,126 @@ async function handlePostMortemPost(req: Request, res: Response) {
   }
 }
 
-// Handle AI Homework Session
+// Handle AI Homework Session (Weekly Review & Setup Tuning)
+// Handle AI Homework Session (Weekly Review & Setup Tuning)
 async function handleAiHomeworkSession(req: Request, res: Response) {
   try {
-    const closedTrades = req.body?.closedTrades || [];
+    let closedTrades = req.body?.closedTrades || [];
+
+    // Automatically load real closed trades from PostgreSQL database or cTrader feed
+    try {
+      const { TradingRepository } = await import('@iati/database');
+      const tradingRepo = new TradingRepository();
+      
+      if (!closedTrades || closedTrades.length === 0) {
+        let positions = await tradingRepo.getClosedPositionsAcrossAccounts(200).catch(() => []);
+        
+        // If DB has 0 positions, backfill directly from cTrader broker feed into PostgreSQL
+        if (!positions || positions.length === 0) {
+          try {
+            const { ctraderMarketDataFeedService } = await import('../services/ctraderMarketDataFeedService');
+            const rawDeals = await ctraderMarketDataFeedService.fetchRawClosedDeals(90, 500);
+            const closedDeals = (rawDeals || []).filter((d: any) => d.closePositionDetail != null);
+            
+            for (const d of closedDeals) {
+              const symId = Number(d.symbolId || 1);
+              const sym = ctraderMarketDataFeedService.getSymbolName(symId) || 'EUR/USD';
+              const moneyDigits = Number(d.closePositionDetail?.moneyDigits ?? 2);
+              const divisor = Math.pow(10, moneyDigits);
+              const grossProfit = Number(d.closePositionDetail?.grossProfit || 0) / divisor;
+              const commission = Number(d.closePositionDetail?.commission || 0) / divisor;
+              const swap = Number(d.closePositionDetail?.swap || 0) / divisor;
+              const netPnl = grossProfit + commission + swap;
+              const entryPrice = Number(d.closePositionDetail?.entryPrice || d.executionPrice);
+              const exitPrice = Number(d.executionPrice);
+              const closeTime = new Date(Number(d.executionTimestamp));
+              const direction = (d.tradeSide === 2 || d.tradeSide === 'SELL') ? 'BUY' : 'SELL';
+
+              await tradingRepo.savePosition({
+                positionId: String(d.positionId || d.dealId),
+                ticketId: String(d.positionId || d.dealId),
+                accountId: String(process.env.CTRADER_ACCOUNT_ID || '48282756'),
+                symbol: sym,
+                direction,
+                entryPrice,
+                currentPrice: exitPrice,
+                closePrice: exitPrice,
+                stopLoss: 0,
+                takeProfit: 0,
+                lotSize: Number(((Number(d.closePositionDetail?.closedVolume || 100000)) / 10000000).toFixed(2)),
+                status: 'CLOSED',
+                realizedProfit: Number(netPnl.toFixed(2)),
+                pnlPips: 0,
+                closedAt: closeTime,
+                createdAt: closeTime,
+                updatedAt: closeTime
+              }).catch(() => {});
+            }
+
+            positions = await tradingRepo.getClosedPositionsAcrossAccounts(200).catch(() => []);
+          } catch (syncErr: any) {
+            console.warn('[decisionRouter] cTrader feed backfill note:', syncErr.message);
+          }
+        }
+
+        if (positions && positions.length > 0) {
+          closedTrades = positions.map((p: any) => {
+            const pnl = Number((p.realizedProfit ?? p.realizedPnl ?? p.profit ?? p.pnlDollars ?? 0).toFixed(2));
+            return {
+              id: p.positionId || p.id,
+              ticketId: p.ticketId,
+              symbol: p.symbol || p.pair,
+              pair: p.symbol || p.pair,
+              direction: p.direction || (p.type === 'BUY' ? 'BUY' : 'SELL'),
+              entryPrice: Number(p.entryPrice || p.openPrice),
+              exitPrice: Number(p.closePrice || p.exitPrice || p.currentPrice || p.entryPrice),
+              stopLoss: Number(p.stopLoss || 0),
+              takeProfit: Number(p.takeProfit || 0),
+              pnlDollars: pnl,
+              pnlPips: Number(p.pnlPips || 0),
+              outcome: pnl > 0 ? 'WIN' : pnl < 0 ? 'LOSS' : 'BREAKEVEN',
+              closeTime: p.closedAt || p.closeTime || p.updatedAt
+            };
+          });
+        }
+      }
+    } catch (dbErr: any) {
+      console.warn('[decisionRouter] Database trade fetch for homework notice:', dbErr.message);
+    }
+
     const result = await aiDecisionEngine.runHomeworkSession(closedTrades);
+
+    // Optional Telegram broadcast of weekly adaptive learning review
+    if (req.body?.broadcastTelegram || process.env.TELEGRAM_BROADCAST_HOMEWORK === 'true') {
+      try {
+        const { telegramNotificationService } = await import('../services/telegramNotificationService');
+        const tuningsText = (result.setupTuningRecommendationsMs || [])
+          .map((rec: string) => `• ${rec}`)
+          .join('\n');
+
+        const tgReport = [
+          `📊 *ULANGKAJI PRESTASI MINGGUAN (BASE44 INVOKELLM)*`,
+          `━━━━━━━━━━━━━━━━━━━━━━━━━`,
+          `📈 *Win Rate:* ${result.winRate}% (${result.winCount}W / ${result.lossCount}L)`,
+          `💰 *Net PnL:* $${result.netPnLDollars}`,
+          `📝 *Ringkasan Eksekutif:*`,
+          `_${result.executiveSummaryMs}_`,
+          ``,
+          `🎯 *Peraturan Adaptif Aktif Baharu:*`,
+          `\`${result.primaryActiveRule}\``,
+          ``,
+          `🛠 *Cadangan Pemantapan Setup & Parameter:*`,
+          tuningsText,
+          `━━━━━━━━━━━━━━━━━━━━━━━━━`,
+          `🤖 _Enjin: Base44 InvokeLLM (Penjimatan Token Aktif: ~380 Token)_`
+        ].join('\n');
+
+        await (telegramNotificationService as any).sendRawMessage?.(tgReport);
+      } catch (tgErr: any) {
+        console.warn('[decisionRouter] Telegram homework notification notice:', tgErr.message);
+      }
+    }
+
     res.json(result);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -159,8 +280,164 @@ async function handleAiHomeworkSession(req: Request, res: Response) {
 // Handle AI Entry Pattern Analysis
 async function handleAiEntryPatternAnalysis(req: Request, res: Response) {
   try {
-    const result = await aiDecisionEngine.analyzeEntryPattern(req.body);
+    let userTrades = req.body?.userTrades;
+    let reviews: any[] = [];
+
+    try {
+      const { TradingRepository } = await import('@iati/database');
+      const tradingRepo = new TradingRepository();
+
+      if (!userTrades || userTrades.length === 0) {
+        let positions = await tradingRepo.getClosedPositionsAcrossAccounts(200).catch(() => []);
+
+        // If DB has 0 positions, backfill directly from cTrader broker feed into PostgreSQL
+        if (!positions || positions.length === 0) {
+          try {
+            const { ctraderMarketDataFeedService } = await import('../services/ctraderMarketDataFeedService');
+            const rawDeals = await ctraderMarketDataFeedService.fetchRawClosedDeals(90, 500);
+            const closedDeals = (rawDeals || []).filter((d: any) => d.closePositionDetail != null);
+            
+            for (const d of closedDeals) {
+              const symId = Number(d.symbolId || 1);
+              const sym = ctraderMarketDataFeedService.getSymbolName(symId) || 'EUR/USD';
+              const moneyDigits = Number(d.closePositionDetail?.moneyDigits ?? 2);
+              const divisor = Math.pow(10, moneyDigits);
+              const grossProfit = Number(d.closePositionDetail?.grossProfit || 0) / divisor;
+              const commission = Number(d.closePositionDetail?.commission || 0) / divisor;
+              const swap = Number(d.closePositionDetail?.swap || 0) / divisor;
+              const netPnl = grossProfit + commission + swap;
+              const entryPrice = Number(d.closePositionDetail?.entryPrice || d.executionPrice);
+              const exitPrice = Number(d.executionPrice);
+              const closeTime = new Date(Number(d.executionTimestamp));
+              const direction = (d.tradeSide === 2 || d.tradeSide === 'SELL') ? 'BUY' : 'SELL';
+
+              await tradingRepo.savePosition({
+                positionId: String(d.positionId || d.dealId),
+                ticketId: String(d.positionId || d.dealId),
+                accountId: String(process.env.CTRADER_ACCOUNT_ID || '48282756'),
+                symbol: sym,
+                direction,
+                entryPrice,
+                currentPrice: exitPrice,
+                closePrice: exitPrice,
+                stopLoss: 0,
+                takeProfit: 0,
+                lotSize: Number(((Number(d.closePositionDetail?.closedVolume || 100000)) / 10000000).toFixed(2)),
+                status: 'CLOSED',
+                realizedProfit: Number(netPnl.toFixed(2)),
+                pnlPips: 0,
+                closedAt: closeTime,
+                createdAt: closeTime,
+                updatedAt: closeTime
+              }).catch(() => {});
+            }
+
+            positions = await tradingRepo.getClosedPositionsAcrossAccounts(200).catch(() => []);
+          } catch (syncErr: any) {
+            console.warn('[decisionRouter] cTrader feed backfill for pattern notice:', syncErr.message);
+          }
+        }
+
+        if (positions && positions.length > 0) {
+          userTrades = positions.map((p: any) => {
+            const pnl = Number((p.realizedProfit ?? p.realizedPnl ?? p.profit ?? p.pnlDollars ?? 0).toFixed(2));
+            return {
+              id: p.positionId || p.id,
+              ticketId: p.ticketId,
+              symbol: p.symbol || p.pair,
+              pair: p.symbol || p.pair,
+              direction: p.direction || (p.type === 'BUY' ? 'BUY' : 'SELL'),
+              entryPrice: Number(p.entryPrice || p.openPrice),
+              exitPrice: Number(p.closePrice || p.exitPrice || p.currentPrice || p.entryPrice),
+              stopLoss: Number(p.stopLoss || 0),
+              takeProfit: Number(p.takeProfit || 0),
+              pnlDollars: pnl,
+              pnlPips: Number(p.pnlPips || 0),
+              outcome: pnl > 0 ? 'WIN' : pnl < 0 ? 'LOSS' : 'BREAKEVEN',
+              closedAt: p.closedAt || p.closeTime || p.updatedAt
+            };
+          });
+        }
+      }
+
+      reviews = await tradingRepo.getPostMortemReviews(50).catch(() => []);
+    } catch (dbErr: any) {
+      console.warn('[decisionRouter] Database trade fetch for pattern analysis notice:', dbErr.message);
+    }
+
+    const result = await aiDecisionEngine.analyzeEntryPattern({
+      ...req.body,
+      userTrades: userTrades || [],
+      postMortemReviews: reviews || []
+    });
     res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+// Handle Adaptive Learning Synchronization with PostgreSQL closed trades
+async function handleAdaptiveLearningSync(req: Request, res: Response) {
+  try {
+    const { TradingRepository } = await import('@iati/database');
+    const tradingRepo = new TradingRepository();
+
+    // 1. Sync cTrader broker deals into PostgreSQL positions
+    let syncedDealsCount = 0;
+    try {
+      const { ctraderMarketDataFeedService } = await import('../services/ctraderMarketDataFeedService');
+      const rawDeals = await ctraderMarketDataFeedService.fetchRawClosedDeals(90, 500);
+      const closedDeals = (rawDeals || []).filter((d: any) => d.closePositionDetail != null);
+
+      for (const d of closedDeals) {
+        const symId = Number(d.symbolId || 1);
+        const sym = ctraderMarketDataFeedService.getSymbolName(symId) || 'EUR/USD';
+        const moneyDigits = Number(d.closePositionDetail?.moneyDigits ?? 2);
+        const divisor = Math.pow(10, moneyDigits);
+        const grossProfit = Number(d.closePositionDetail?.grossProfit || 0) / divisor;
+        const commission = Number(d.closePositionDetail?.commission || 0) / divisor;
+        const swap = Number(d.closePositionDetail?.swap || 0) / divisor;
+        const netPnl = grossProfit + commission + swap;
+        const entryPrice = Number(d.closePositionDetail?.entryPrice || d.executionPrice);
+        const exitPrice = Number(d.executionPrice);
+        const closeTime = new Date(Number(d.executionTimestamp));
+        const direction = (d.tradeSide === 2 || d.tradeSide === 'SELL') ? 'BUY' : 'SELL';
+
+        await tradingRepo.savePosition({
+          positionId: String(d.positionId || d.dealId),
+          ticketId: String(d.positionId || d.dealId),
+          accountId: String(process.env.CTRADER_ACCOUNT_ID || '48282756'),
+          symbol: sym,
+          direction,
+          entryPrice,
+          currentPrice: exitPrice,
+          closePrice: exitPrice,
+          stopLoss: 0,
+          takeProfit: 0,
+          lotSize: Number(((Number(d.closePositionDetail?.closedVolume || 100000)) / 10000000).toFixed(2)),
+          status: 'CLOSED',
+          realizedProfit: Number(netPnl.toFixed(2)),
+          pnlPips: 0,
+          closedAt: closeTime,
+          createdAt: closeTime,
+          updatedAt: closeTime
+        }).catch(() => {});
+        syncedDealsCount++;
+      }
+    } catch (dealErr: any) {
+      console.warn('[decisionRouter] cTrader deals sync notice:', dealErr.message);
+    }
+
+    const { learningService } = await import('../services/learningService');
+    const result = await learningService.backfillHistoricalClosedTrades(200);
+    const reviews = await learningService.loadPersistedLearning();
+
+    res.json({
+      success: true,
+      message: `✅ Berjaya menyegerakkan ${syncedDealsCount} rekod cTrader ke PostgreSQL.`,
+      result,
+      totalReviews: reviews.length
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -295,6 +572,9 @@ decisionRouter.post('/forex/ai-homework-session', handleAiHomeworkSession);
 
 decisionRouter.post('/ai-entry-pattern-analysis', handleAiEntryPatternAnalysis);
 decisionRouter.post('/forex/ai-entry-pattern-analysis', handleAiEntryPatternAnalysis);
+
+decisionRouter.post('/learning/sync', handleAdaptiveLearningSync);
+decisionRouter.post('/forex/learning/sync', handleAdaptiveLearningSync);
 
 decisionRouter.post('/manual-signal', handleManualSignal);
 decisionRouter.post('/forex/manual-signal', handleManualSignal);

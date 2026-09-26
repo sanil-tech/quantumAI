@@ -299,18 +299,25 @@ export class PairDailyRangeService {
     rawPair: string,
     direction: 'BUY' | 'SELL',
     entryPrice: number,
-    timeframe: string = 'H1'
+    timeframe: string = 'H1',
+    slMultiplier: number = 1.0
   ): IntradayTargetsResult {
     const profile = this.getProfile(rawPair);
     const isBuy = direction === 'BUY';
 
-    // Timeframe scaling multiplier: M5=0.45x (Scalping), M15=0.65x, H1=1.0x, H4=1.35x
+    // Timeframe scaling multiplier: M5=0.60x (Healthy buffer), M15=0.75x, H1=1.0x, H4=1.35x
     const tfUpper = (timeframe || 'H1').toUpperCase();
-    const tfMultiplier = tfUpper === 'M5' ? 0.45 : (tfUpper === 'M15' ? 0.65 : (tfUpper === 'H4' ? 1.35 : 1.0));
+    const tfMultiplier = tfUpper === 'M5' ? 0.60 : (tfUpper === 'M15' ? 0.75 : (tfUpper === 'H4' ? 1.35 : 1.0));
 
-    const calibratedSlPips = Math.max(5, Number((profile.slPips * tfMultiplier).toFixed(1)));
-    const calibratedTp1Pips = Math.max(8, Number((profile.tp1Pips * tfMultiplier).toFixed(1)));
-    const calibratedTp2Pips = Math.max(14, Number((profile.tp2Pips * tfMultiplier).toFixed(1)));
+    // Dynamic liquidity floor: prevents market maker stop-hunts on tight timeframe noise
+    const isJpy = profile.pair.includes('JPY');
+    const isGold = profile.pair.includes('XAU') || profile.pair.includes('GOLD');
+    const minFloorPips = isGold ? 80 : (isJpy ? 35 : 20);
+
+    const baseSlPips = Math.max(minFloorPips, Number((profile.slPips * tfMultiplier).toFixed(1)));
+    const calibratedSlPips = Number((baseSlPips * (slMultiplier || 1.0)).toFixed(1));
+    const calibratedTp1Pips = Math.max(Number((calibratedSlPips * 1.5).toFixed(1)), Number((profile.tp1Pips * tfMultiplier).toFixed(1)));
+    const calibratedTp2Pips = Math.max(Number((calibratedSlPips * 2.5).toFixed(1)), Number((profile.tp2Pips * tfMultiplier).toFixed(1)));
 
     const slDist = calibratedSlPips * profile.pipMultiplier;
     const tp1Dist = calibratedTp1Pips * profile.pipMultiplier;

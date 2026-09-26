@@ -197,5 +197,53 @@ const handleBriefingBroadcast = async (req: Request, res: Response) => {
 telegramRouter.post('/telegram/briefing/broadcast', adminAuthMiddleware, handleBriefingBroadcast);
 telegramRouter.post('/api/telegram/briefing/broadcast', adminAuthMiddleware, handleBriefingBroadcast);
 
+/**
+ * POST /api/telegram/news-outcome/broadcast
+ * Broadcasts the outcome and market price impact of high-impact economic news to Telegram channels
+ */
+const handleNewsOutcomeBroadcast = async (req: Request, res: Response) => {
+  try {
+    const eventId = req.body?.eventId as (string | undefined);
+    const result = await telegramNotificationService.broadcastLatestEconomicOutcome(eventId);
+    res.json({
+      success: result.success,
+      count: result.count,
+      events: result.events,
+      message: result.count > 0 
+        ? `Keputusan berita ekonomi berjaya disiarkan ke Telegram (${result.count} acara).`
+        : 'Tiada keputusan berita baharu untuk disiarkan.'
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+telegramRouter.post('/telegram/news-outcome/broadcast', handleNewsOutcomeBroadcast);
+telegramRouter.post('/api/telegram/news-outcome/broadcast', handleNewsOutcomeBroadcast);
+
+/**
+ * POST /api/telegram/sync-closed-trades
+ * Forces synchronization and broadcasting of recent cTrader closed trades (TP/SL) to Telegram
+ */
+const handleSyncClosedTradesBroadcast = async (req: Request, res: Response) => {
+  try {
+    const hours = Number(req.body?.hours || 24);
+    const { ctraderMarketDataFeedService } = await import('../services/ctraderMarketDataFeedService');
+    const result = await ctraderMarketDataFeedService.broadcastRecentClosedDeals(hours);
+    res.json({
+      success: true,
+      processed: result.processed,
+      broadcasted: result.broadcasted,
+      deals: result.deals,
+      message: result.broadcasted > 0
+        ? `${result.broadcasted} notifikasi trade ditutup berjaya disiarkan ke Telegram.`
+        : 'Semua trade ditutup telah disiarkan sebelumnya atau tiada trade baharu.'
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+telegramRouter.post('/telegram/sync-closed-trades', handleSyncClosedTradesBroadcast);
+telegramRouter.post('/api/telegram/sync-closed-trades', handleSyncClosedTradesBroadcast);
+
 
 

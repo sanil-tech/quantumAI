@@ -17,6 +17,7 @@
     "ctrader:fix:diagnose": "tsx scripts/ctrader-fix-logon-diagnostic.ts"
   },
   "dependencies": {
+    "@base44/sdk": "^0.8.51",
     "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",

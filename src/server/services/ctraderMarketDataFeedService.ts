@@ -1,7 +1,10 @@
+import fs from 'fs';
+import path from 'path';
 import { EventEmitter } from 'events';
 import { CTraderTransport } from '../../integrations/ctrader/ctraderTransport';
 import { CandleData, CurrencyPair } from '../../types';
 import { fetchRealCandleHistory } from '../../lib/marketDataGenerator';
+import { CTraderSymbolRegistry } from '../../integrations/ctrader/ctraderSymbolService';
 
 export type MarketDataHealthState = 'HEALTHY' | 'DEGRADED' | 'STALE' | 'DISCONNECTED';
 export type ConnectionState = 'CONNECTED' | 'CONNECTING' | 'DISCONNECTED' | 'RECONNECTING';
@@ -175,8 +178,68 @@ export class CTraderMarketDataFeedService extends EventEmitter {
   private spotByPair: Map<string, { bid: number; ask: number; timestamp: number; ticks: number }> = new Map();
   private lastClosedDeals: any[] = [];
   private lastOpenPositions: any[] = [];
+  private broadcastedPositions: Set<string> = new Set<string>();
+  private broadcastedClosedDeals: Set<string> = new Set<string>();
+  private isClosedDealsInitialSeeded: boolean = false;
+  private isPositionsInitialSeeded: boolean = false;
+  private broadcastedPositionsFilePath: string = path.resolve(process.cwd(), 'data', 'broadcasted_positions.json');
+  private broadcastedClosedDealsFilePath: string = path.resolve(process.cwd(), 'data', 'broadcasted_closed_deals.json');
   private lastLiveAccountStatus: any = null;
   private accountsStatusMap: Map<string, any> = new Map();
+
+  private loadBroadcastedPositionsFromDisk(): void {
+    try {
+      if (fs.existsSync(this.broadcastedPositionsFilePath)) {
+        const raw = fs.readFileSync(this.broadcastedPositionsFilePath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          this.broadcastedPositions = new Set(parsed);
+          console.log(`[CTRADER-FEED] Loaded ${this.broadcastedPositions.size} broadcasted position IDs from disk cache.`);
+        }
+      }
+    } catch (err: any) {
+      console.warn('[CTRADER-FEED] Could not load broadcasted positions cache:', err.message);
+    }
+  }
+
+  private saveBroadcastedPositionsToDisk(): void {
+    try {
+      const dataDir = path.dirname(this.broadcastedPositionsFilePath);
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+      fs.writeFileSync(this.broadcastedPositionsFilePath, JSON.stringify(Array.from(this.broadcastedPositions), null, 2), 'utf-8');
+    } catch (err: any) {
+      console.warn('[CTRADER-FEED] Could not save broadcasted positions cache:', err.message);
+    }
+  }
+
+  private loadBroadcastedClosedDealsFromDisk(): void {
+    try {
+      if (fs.existsSync(this.broadcastedClosedDealsFilePath)) {
+        const raw = fs.readFileSync(this.broadcastedClosedDealsFilePath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          this.broadcastedClosedDeals = new Set(parsed);
+          console.log(`[CTRADER-FEED] Loaded ${this.broadcastedClosedDeals.size} broadcasted closed deal IDs from disk cache.`);
+        }
+      }
+    } catch (err: any) {
+      console.warn('[CTRADER-FEED] Could not load broadcasted closed deals cache:', err.message);
+    }
+  }
+
+  public saveBroadcastedClosedDealsToDisk(): void {
+    try {
+      const dataDir = path.dirname(this.broadcastedClosedDealsFilePath);
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+      fs.writeFileSync(this.broadcastedClosedDealsFilePath, JSON.stringify(Array.from(this.broadcastedClosedDeals), null, 2), 'utf-8');
+    } catch (err: any) {
+      console.warn('[CTRADER-FEED] Could not save broadcasted closed deals cache:', err.message);
+    }
+  }
 
   // Symbol mapping: symbolId -> CurrencyPair (aligned 100% with CTraderSymbolRegistry)
   private symbolMap: Map<number, CurrencyPair> = new Map([
@@ -278,6 +341,8 @@ export class CTraderMarketDataFeedService extends EventEmitter {
 
   private constructor() {
     super();
+    this.loadBroadcastedPositionsFromDisk();
+    this.loadBroadcastedClosedDealsFromDisk();
     this.initDefaultSpots();
     this.setupTransportListeners();
     if (process.env.NODE_ENV !== 'test') {
@@ -306,24 +371,39 @@ export class CTraderMarketDataFeedService extends EventEmitter {
       this.handleInboundSpot(spotRecord);
     });
 
-    this.transport.on('executionEvent', async (eventRecord) => {
+    const onExecution = async (eventRecord: any) => {
       this.lastTransportActivityAt = Date.now();
       this.logStructuredEvent('CTRADER_EXECUTION_EVENT_RECEIVED', {
         executionType: eventRecord?.executionTypeName || eventRecord?.executionType,
         symbol: eventRecord?.position?.symbolId || eventRecord?.order?.symbolId
       });
       try {
+        if (eventRecord?.deal?.closePositionDetail) {
+          await this.processClosedDeal(eventRecord.deal);
+        }
         await this.fetchRawOpenPositions();
         const { brokerReconciliationService } = await import('../../../apps/execution-router/src/services/brokerReconciliationService');
         await brokerReconciliationService.reconcile(String(process.env.CTRADER_ACCOUNT_ID || '48282756'));
       } catch (err: any) {
         console.warn('[CTRADER-FEED] Auto-reconciliation on executionEvent warning:', err.message);
       }
+    };
+
+    this.transport.on('execution', onExecution);
+    this.transport.on('positionClosed', async (eventRecord: any) => {
+      const deal = eventRecord?.deal || eventRecord?.executionEvent?.deal;
+      if (deal?.closePositionDetail || deal) {
+        await this.processClosedDeal(deal);
+      }
     });
 
-    this.transport.on('orderFilled', async () => {
+    this.transport.on('orderFilled', async (eventRecord: any) => {
       try {
+        if (eventRecord?.deal?.closePositionDetail) {
+          await this.processClosedDeal(eventRecord.deal);
+        }
         await this.fetchRawOpenPositions();
+        await this.syncOpenPositionsAlerts();
         const { brokerReconciliationService } = await import('../../../apps/execution-router/src/services/brokerReconciliationService');
         await brokerReconciliationService.reconcile(String(process.env.CTRADER_ACCOUNT_ID || '48282756'));
       } catch (_) {}
@@ -477,6 +557,8 @@ export class CTraderMarketDataFeedService extends EventEmitter {
         if (this.isFeedActive && this.isAccountAuthenticated) {
           try {
             await this.fetchRawOpenPositions();
+            await this.syncOpenPositionsAlerts();
+            await this.fetchRawClosedDeals(1, 10).catch(() => {});
             const { brokerReconciliationService } = await import('../../../apps/execution-router/src/services/brokerReconciliationService');
             await brokerReconciliationService.reconcile(String(process.env.CTRADER_ACCOUNT_ID || '48282756'));
           } catch (_) {}
@@ -702,101 +784,10 @@ export class CTraderMarketDataFeedService extends EventEmitter {
         await this.fetchRawOpenPositions();
         const { brokerReconciliationService } = await import('../../../apps/execution-router/src/services/brokerReconciliationService');
         await brokerReconciliationService.reconcile(String(accountId));
-        
-        // Broadcast Telegram alerts for each synced position
-        if (this.lastOpenPositions.length > 0) {
-          const { telegramNotificationService } = await import('./telegramNotificationService');
-          
-          // First, fetch pending limit orders to get SL/TP from them
-          let pendingOrders: any[] = [];
-          try {
-            const ctrader = new (await import('../../../apps/execution-router/src/adapters/ctraderAdapter')).CTraderAdapter({ accountId: String(accountId) });
-            pendingOrders = await ctrader.getPendingOrders().catch(() => []);
-          } catch (_) {}
-          
-          for (const pos of this.lastOpenPositions) {
-            try {
-              // Resolve symbol by matching entry price to live spot prices
-              const entryPrice = Number(pos.price || 0);
-              let symbol: CurrencyPair = 'UNKNOWN' as CurrencyPair;
-              let closestDiff = Infinity;
-              
-              // Find symbol by matching price against live spot prices
-              const allPrices = this.getAllSpotPrices();
-              for (const [sym, spot] of Object.entries(allPrices)) {
-                if (sym.includes('/')) {
-                  const diff = Math.abs(spot - entryPrice);
-                  if (diff < closestDiff && diff < 0.01) {
-                    closestDiff = diff;
-                    symbol = sym as CurrencyPair;
-                  }
-                }
-              }
-              
-              // Only process if we found a valid symbol
-              if (symbol === 'UNKNOWN') continue;
-              
-              // Try to find matching pending order to get the REAL SL/TP that was sent to cTrader
-              let direction = 'SELL';
-              let stopLoss = 0;
-              let takeProfit1 = 0;
-              let tp2Runner = 0;
-              
-              const matchingOrder = pendingOrders.find(o => {
-                const orderSym = (o.symbol || '').replace('/', '').toUpperCase();
-                const posSym = symbol.replace('/', '').toUpperCase();
-                const priceMatch = Math.abs((o.limitPrice || 0) - entryPrice) < 0.001;
-                return orderSym === posSym && priceMatch;
-              });
-              
-              if (matchingOrder) {
-                // Use REAL SL/TP from pending order that was sent to cTrader
-                direction = matchingOrder.tradeSide === 1 ? 'BUY' : 'SELL';
-                stopLoss = Number(matchingOrder.stopLoss || 0);
-                takeProfit1 = Number(matchingOrder.takeProfit || 0);
-                
-                // Calculate TP2 runner from the actual TP1
-                if (takeProfit1 !== 0) {
-                  const riskAmount = Math.abs(entryPrice - stopLoss);
-                  tp2Runner = direction === 'BUY'
-                    ? takeProfit1 + (riskAmount * 1.8)
-                    : takeProfit1 - (riskAmount * 1.8);
-                  tp2Runner = Number(tp2Runner.toFixed(symbol.includes('JPY') ? 3 : 5));
-                }
-                
-                console.log(`[CTRADER-FEED] Position synced from PENDING ORDER: Symbol=${symbol}, Dir=${direction}, Entry=${entryPrice}, SL=${stopLoss}, TP1=${takeProfit1}, TP2=${tp2Runner}`);
-              } else {
-                // Fallback to calculated values if no pending order found
-                const isJpy = symbol.includes('JPY');
-                const isGold = symbol.includes('XAU') || symbol.includes('GOLD');
-                const isBtc = symbol.includes('BTC');
-                const isNas = symbol.includes('NAS') || symbol.includes('TECH') || symbol.includes('USTEC');
-                
-                const pipMultiplier = isJpy ? 0.01 : (isGold || isBtc || isNas) ? 1 : 0.0001;
-                const slPips = isJpy ? 35.0 : (isGold ? 45.0 : (isNas ? 100.0 : (isBtc ? 500.0 : 30.0)));
-                const tpPips = isJpy ? 70.0 : (isGold ? 90.0 : (isNas ? 200.0 : (isBtc ? 1000.0 : 60.0)));
-                
-                direction = 'SELL';
-                stopLoss = direction === 'SELL' 
-                  ? Number((entryPrice + (slPips * pipMultiplier)).toFixed(isJpy ? 3 : (isGold || isBtc || isNas) ? 2 : 5))
-                  : Number((entryPrice - (slPips * pipMultiplier)).toFixed(isJpy ? 3 : (isGold || isBtc || isNas) ? 2 : 5));
-                
-                takeProfit1 = direction === 'SELL'
-                  ? Number((entryPrice - (tpPips * pipMultiplier)).toFixed(isJpy ? 3 : (isGold || isBtc || isNas) ? 2 : 5))
-                  : Number((entryPrice + (tpPips * pipMultiplier)).toFixed(isJpy ? 3 : (isGold || isBtc || isNas) ? 2 : 5));
-                
-                tp2Runner = direction === 'SELL'
-                  ? Number((entryPrice - (tpPips * pipMultiplier * 1.8)).toFixed(isJpy ? 3 : (isGold || isBtc || isNas) ? 2 : 5))
-                  : Number((entryPrice + (tpPips * pipMultiplier * 1.8)).toFixed(isJpy ? 3 : (isGold || isBtc || isNas) ? 2 : 5));
-                
-                console.log(`[CTRADER-FEED] Position synced (CALCULATED): Symbol=${symbol}, Dir=${direction}, Entry=${entryPrice}, SL=${stopLoss}, TP1=${takeProfit1}, TP2=${tp2Runner}`);
-              }
-            } catch (syncErr: any) {
-              console.warn('[CTRADER-FEED] Position sync notification error:', syncErr.message);
-            }
-          }
-        }
-      } catch (_) {}
+        await this.syncOpenPositionsAlerts();
+      } catch (syncErr: any) {
+        console.warn('[CTRADER-FEED] Position sync notification error:', syncErr.message);
+      }
 
       return true;
     } catch (err: any) {
@@ -1157,6 +1148,135 @@ export class CTraderMarketDataFeedService extends EventEmitter {
     return this.lastOpenPositions;
   }
 
+  /**
+   * Synchronizes and dispatches ORDER_FILLED alerts for active positions on cTrader.
+   * On cold start / initial load, seeds all currently open positions so historical positions are muted.
+   * For subsequent fills, dispatches fresh alerts with broker order ID, dual timestamps, and dedup protection.
+   */
+  public async syncOpenPositionsAlerts(): Promise<void> {
+    if (!this.lastOpenPositions || this.lastOpenPositions.length === 0) return;
+
+    // Cold start / initial run: seed existing positions into memory & disk to mute duplicates
+    if (!this.isPositionsInitialSeeded) {
+      this.isPositionsInitialSeeded = true;
+      for (const pos of this.lastOpenPositions) {
+        const posKey = String(pos.positionId || pos.id || '');
+        if (posKey) this.broadcastedPositions.add(posKey);
+      }
+      this.saveBroadcastedPositionsToDisk();
+      console.log(`🛡️ [CTRADER-FEED] Seeded ${this.broadcastedPositions.size} open positions on cold start. Muted duplicate alerts.`);
+      return;
+    }
+
+    const { telegramNotificationService } = await import('./telegramNotificationService');
+    const accountId = Number(process.env.CTRADER_ACCOUNT_ID || 48282756);
+    let pendingOrders: any[] = [];
+    try {
+      const ctrader = new (await import('../../../apps/execution-router/src/adapters/ctraderAdapter')).CTraderAdapter({ accountId: String(accountId) });
+      pendingOrders = await ctrader.getPendingOrders().catch(() => []);
+    } catch (_) {}
+
+    for (const pos of this.lastOpenPositions) {
+      try {
+        const posKey = String(pos.positionId || pos.id || '');
+        if (!posKey || this.broadcastedPositions.has(posKey)) continue;
+
+        // Freshness Guard: If older than 5 minutes, mark as broadcasted and mute
+        const openTime = Number(pos.tradeData?.openTimestamp || pos.openTimestamp || pos.utcLastUpdateTimestamp || 0);
+        const MAX_POS_AGE_MS = 5 * 60 * 1000;
+        if (openTime > 0 && (Date.now() - openTime > MAX_POS_AGE_MS)) {
+          this.broadcastedPositions.add(posKey);
+          this.saveBroadcastedPositionsToDisk();
+          continue;
+        }
+
+        const entryPrice = Number(pos.price || 0);
+        let symbol: CurrencyPair = 'UNKNOWN' as CurrencyPair;
+        let closestDiff = Infinity;
+        const allPrices = this.getAllSpotPrices();
+        for (const [sym, spot] of Object.entries(allPrices)) {
+          if (sym.includes('/')) {
+            const diff = Math.abs(spot - entryPrice);
+            if (diff < closestDiff && diff < 0.01) {
+              closestDiff = diff;
+              symbol = sym as CurrencyPair;
+            }
+          }
+        }
+        if (symbol === 'UNKNOWN') {
+          const rawSymId = Number(pos.tradeData?.symbolId ?? pos.symbolId ?? 0);
+          const resolved = this.symbolMap.get(rawSymId);
+          if (resolved) symbol = resolved as CurrencyPair;
+        }
+        if (symbol === 'UNKNOWN') continue;
+
+        let direction = (pos.tradeData?.tradeSide === 2 || pos.tradeSide === 2) ? 'SELL' : 'BUY';
+        let stopLoss = 0;
+        let takeProfit1 = 0;
+        let tp2Runner = 0;
+
+        const matchingOrder = pendingOrders.find(o => {
+          const orderSym = (o.symbol || '').replace('/', '').toUpperCase();
+          const posSym = symbol.replace('/', '').toUpperCase();
+          const priceMatch = Math.abs((o.limitPrice || 0) - entryPrice) < 0.001;
+          return orderSym === posSym && priceMatch;
+        });
+
+        if (matchingOrder) {
+          direction = matchingOrder.tradeSide === 1 ? 'BUY' : 'SELL';
+          stopLoss = Number(matchingOrder.stopLoss || 0);
+          takeProfit1 = Number(matchingOrder.takeProfit || 0);
+          if (takeProfit1 !== 0) {
+            const riskAmount = Math.abs(entryPrice - stopLoss);
+            tp2Runner = direction === 'BUY'
+              ? takeProfit1 + (riskAmount * 1.8)
+              : takeProfit1 - (riskAmount * 1.8);
+            tp2Runner = Number(tp2Runner.toFixed(symbol.includes('JPY') ? 3 : 5));
+          }
+        } else {
+          // Standard calculation fallback if pending order was already purged
+          const isJpy = symbol.includes('JPY');
+          const isGold = symbol.includes('XAU') || symbol.includes('GOLD');
+          const isBtc = symbol.includes('BTC');
+          const isNas = symbol.includes('NAS') || symbol.includes('TECH') || symbol.includes('USTEC');
+          const pipMultiplier = isJpy ? 0.01 : (isGold || isBtc || isNas) ? 1 : 0.0001;
+          const slPips = isJpy ? 35.0 : (isGold ? 45.0 : (isNas ? 100.0 : (isBtc ? 500.0 : 30.0)));
+          const tpPips = isJpy ? 70.0 : (isGold ? 90.0 : (isNas ? 200.0 : (isBtc ? 1000.0 : 60.0)));
+          stopLoss = direction === 'SELL'
+            ? Number((entryPrice + (slPips * pipMultiplier)).toFixed(isJpy ? 3 : (isGold || isBtc || isNas) ? 2 : 5))
+            : Number((entryPrice - (slPips * pipMultiplier)).toFixed(isJpy ? 3 : (isGold || isBtc || isNas) ? 2 : 5));
+          takeProfit1 = direction === 'SELL'
+            ? Number((entryPrice - (tpPips * pipMultiplier)).toFixed(isJpy ? 3 : (isGold || isBtc || isNas) ? 2 : 5))
+            : Number((entryPrice + (tpPips * pipMultiplier)).toFixed(isJpy ? 3 : (isGold || isBtc || isNas) ? 2 : 5));
+          tp2Runner = direction === 'SELL'
+            ? Number((entryPrice - (tpPips * pipMultiplier * 1.8)).toFixed(isJpy ? 3 : (isGold || isBtc || isNas) ? 2 : 5))
+            : Number((entryPrice + (tpPips * pipMultiplier * 1.8)).toFixed(isJpy ? 3 : (isGold || isBtc || isNas) ? 2 : 5));
+        }
+
+        // Register in dedup set and write to disk immediately
+        this.broadcastedPositions.add(posKey);
+        this.saveBroadcastedPositionsToDisk();
+
+        await telegramNotificationService.broadcastTradeEvent({
+          pair: symbol,
+          direction: direction as 'BUY' | 'SELL',
+          timeframe: matchingOrder?.timeframe || 'M5',
+          entryPrice,
+          stopLoss,
+          takeProfit1,
+          takeProfit2: tp2Runner,
+          confidence: 85,
+          status: 'ORDER_FILLED',
+          brokerOrderId: posKey,
+          timestamp: openTime || Date.now()
+        });
+        console.log(`📡 [CTRADER-FEED] Dispatched fresh ORDER_FILLED alert to Telegram for ${symbol} (${direction} @ ${entryPrice}, posId #${posKey}).`);
+      } catch (err: any) {
+        console.warn('[CTRADER-FEED] syncOpenPositionsAlerts error:', err.message);
+      }
+    }
+  }
+
   public getLastClosedDeals(): any[] {
     return this.lastClosedDeals;
   }
@@ -1181,12 +1301,193 @@ export class CTraderMarketDataFeedService extends EventEmitter {
       if (dealsRes.payloadType === 2134) {
         this.lastClosedDeals = Array.isArray(dealsRes.decodedPayload?.deal) ? dealsRes.decodedPayload.deal : [];
         this.emit('brokerClosedDealsUpdated', this.lastClosedDeals);
+
+        // Seed ALL historical deals on cold start into broadcastedClosedDeals.
+        // This mutes all past trades and guarantees ZERO historical spam to Telegram.
+        if (!this.isClosedDealsInitialSeeded) {
+          this.isClosedDealsInitialSeeded = true;
+          for (const deal of this.lastClosedDeals) {
+            const dealId = String(deal.dealId || deal.positionId || deal.id || '');
+            if (dealId) {
+              this.broadcastedClosedDeals.add(dealId);
+            }
+          }
+          this.saveBroadcastedClosedDealsToDisk();
+          console.log(`🛡️ [CTRADER-FEED] Seeded all ${this.broadcastedClosedDeals.size} historical deals into broadcasted registry. Muting past trades, strictly awaiting NEXT live closed trade.`);
+          return this.lastClosedDeals;
+        }
+
+        // Process only newly arrived closed deals
+        for (const deal of this.lastClosedDeals) {
+          if (deal.closePositionDetail != null) {
+            await this.processClosedDeal(deal).catch(() => {});
+          }
+        }
+
         return this.lastClosedDeals;
       }
     } catch (err: any) {
       console.warn('[CTRADER-FEED] fetchRawClosedDeals error:', err.message);
     }
     return this.lastClosedDeals;
+  }
+
+  /**
+   * Processes a closed deal from cTrader, determines whether TP or SL was hit,
+   * resolves symbol accurately, and dispatches a transparent alert to Telegram.
+   */
+  public async processClosedDeal(deal: any, forceResend: boolean = false): Promise<boolean> {
+    if (!deal) return false;
+    const dealId = String(deal.dealId || deal.positionId || deal.id || '');
+    if (!dealId) return false;
+
+    if (!forceResend && this.broadcastedClosedDeals.has(dealId)) {
+      return false;
+    }
+
+    const detail = deal.closePositionDetail;
+    if (!detail && deal.closePrice == null) {
+      return false;
+    }
+
+    // Strict Freshness Guard: If older than 3 minutes, treat as historical and mute
+    const execTime = Number(deal.executionTimestamp || deal.createTimestamp || deal.timestamp || 0);
+    const FRESHNESS_WINDOW_MS = 3 * 60 * 1000; // 3 minutes
+    if (!forceResend && execTime > 0 && (Date.now() - execTime > FRESHNESS_WINDOW_MS)) {
+      this.broadcastedClosedDeals.add(dealId);
+      this.saveBroadcastedClosedDealsToDisk();
+      return false;
+    }
+
+    try {
+      const rawSymbolId = Number(deal.symbolId || detail?.symbolId || 0);
+      const entryPrice = Number(detail?.entryPrice || deal.entryPrice || 0);
+      const exitPrice = Number(deal.executionPrice || deal.closePrice || detail?.executionPrice || 0);
+
+      // Resolve symbol accurately with market data feed registry and price sanity
+      let symbol: string | undefined = this.symbolMap.get(rawSymbolId) || (deal.symbol ? String(deal.symbol) : undefined);
+      if (!symbol) {
+        const reg = CTraderSymbolRegistry.getSymbolById(rawSymbolId);
+        if (reg?.symbolName) symbol = reg.symbolName;
+      }
+
+      // Institutional Price Sanity Check to prevent cross-symbol contamination:
+      if (entryPrice > 0) {
+        if (entryPrice >= 0.55 && entryPrice <= 0.65 && (!symbol || symbol === 'EUR/CHF')) {
+          symbol = 'CAD/CHF';
+        } else if (entryPrice >= 1.80 && entryPrice <= 2.05 && (!symbol || symbol === 'AUD/JPY')) {
+          symbol = 'GBP/AUD';
+        } else if (entryPrice >= 0.90 && entryPrice <= 0.99 && (!symbol || symbol === 'EUR/AUD')) {
+          symbol = 'EUR/CHF';
+        } else if (entryPrice >= 1.35 && entryPrice <= 1.45 && (!symbol || symbol === 'USD/CAD')) {
+          symbol = 'USD/CAD';
+        } else if (entryPrice >= 140 && entryPrice <= 165 && (!symbol || symbol === 'USD/JPY')) {
+          symbol = 'USD/JPY';
+        }
+      }
+
+      if (!symbol) {
+        symbol = 'EUR/USD';
+      }
+
+      if (!symbol.includes('/') && symbol.length === 6) {
+        symbol = `${symbol.slice(0, 3)}/${symbol.slice(3)}`;
+      }
+
+      const moneyDigits = Number(detail?.moneyDigits ?? 2);
+      const divisor = Math.pow(10, moneyDigits);
+
+      let gross = 0;
+      if (detail?.grossProfit !== undefined) {
+        gross = Number(detail.grossProfit) / divisor;
+      } else if (detail?.profit !== undefined) {
+        gross = Number(detail.profit) / divisor;
+      } else if (deal.profit !== undefined) {
+        gross = Number(deal.profit) / 100;
+      }
+
+      const comm = detail?.commission !== undefined
+        ? Number(detail.commission) / divisor
+        : Number(deal.commission || 0) / 100;
+      const swap = detail?.swap !== undefined
+        ? Number(detail.swap) / divisor
+        : Number(deal.swap || 0) / 100;
+      const netProfit = Number((gross + comm + swap).toFixed(2));
+
+      // Calculate pips and resolve trade direction accurately (on cTrader, closing deal side 2/SELL indicates an original BUY position)
+      let pips = Number(detail?.profitInPips || deal.pips || 0);
+      const tradeSide: 'BUY' | 'SELL' = (Number(deal.tradeSide) === 2 || String(deal.tradeSide).toUpperCase() === 'SELL') ? 'BUY' : 'SELL';
+      if (!pips && entryPrice > 0 && exitPrice > 0) {
+        const symClean = symbol.replace('/', '').toUpperCase();
+        const isJpy = symClean.includes('JPY');
+        const pipMultiplier = isJpy ? 0.01 : 0.0001;
+        const diff = tradeSide === 'BUY' ? (exitPrice - entryPrice) : (entryPrice - exitPrice);
+        pips = Number((diff / pipMultiplier).toFixed(1));
+      }
+
+      // Determine exit status: TP_HIT, PROFIT_LOCKED, or SL_HIT
+      const isProfit = netProfit >= 0;
+      const commentStr = String(deal.comment || deal.label || '');
+      const isTicket1 = commentStr.includes('QAI_T1') || commentStr.includes('TP1');
+      const status: 'TP_HIT' | 'PROFIT_LOCKED' | 'SL_HIT' = isProfit
+        ? (isTicket1 ? 'PROFIT_LOCKED' : 'TP_HIT')
+        : 'SL_HIT';
+
+      // Mark as broadcasted immediately and persist to disk
+      this.broadcastedClosedDeals.add(dealId);
+      this.saveBroadcastedClosedDealsToDisk();
+
+      const { telegramNotificationService } = await import('./telegramNotificationService');
+      const sent = await telegramNotificationService.broadcastTradeEvent({
+        pair: symbol as CurrencyPair,
+        direction: tradeSide,
+        timeframe: 'M5',
+        entryPrice,
+        stopLoss: status === 'SL_HIT' ? exitPrice : 0,
+        takeProfit1: status !== 'SL_HIT' ? exitPrice : 0,
+        confidence: 85,
+        pnlDollars: netProfit,
+        pnlPips: pips,
+        status,
+        brokerOrderId: dealId
+      });
+
+      console.log(`📡 [CTRADER-FEED] Dispatched ${status} alert to Telegram for ${symbol} (Deal #${dealId}, Net PnL: $${netProfit}, Pips: ${pips}, sent=${sent}).`);
+      return true;
+    } catch (err: any) {
+      console.warn(`[CTRADER-FEED] Error processing closed deal #${dealId}:`, err.message);
+      return false;
+    }
+  }
+
+  /**
+   * Forces synchronization of recent closed deals from cTrader to Telegram.
+   * Useful when user requests audit or resync of trade notifications.
+   */
+  public async broadcastRecentClosedDeals(hours: number = 24): Promise<{ processed: number; broadcasted: number; deals: any[] }> {
+    const rawDeals = await this.fetchRawClosedDeals(1, 50);
+    const closed = (rawDeals || []).filter((d: any) => d.closePositionDetail != null);
+    const cutoff = Date.now() - hours * 60 * 60 * 1000;
+    let broadcastedCount = 0;
+    const sentDeals: any[] = [];
+
+    for (const deal of closed) {
+      const execTime = Number(deal.executionTimestamp || deal.createTimestamp || deal.timestamp || 0);
+      if (execTime >= cutoff) {
+        const dealId = String(deal.dealId || deal.positionId || '');
+        const success = await this.processClosedDeal(deal, false);
+        if (success) {
+          broadcastedCount++;
+          sentDeals.push({ dealId, symbol: deal.symbol, execTime });
+        }
+      }
+    }
+
+    return {
+      processed: closed.length,
+      broadcasted: broadcastedCount,
+      deals: sentDeals
+    };
   }
 
   /**

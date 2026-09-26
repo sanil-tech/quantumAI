@@ -438,9 +438,11 @@ export class TradeObservationService {
   }
 }
 
+import { getDbPool } from '@iati/database';
+
 /**
  * Global default instance for application-wide telemetry capture.
  */
 export const defaultTradeObservationService = new TradeObservationService(
-  new InMemoryTradeObservationRepository()
+  new PostgresTradeObservationRepository(getDbPool())
 );

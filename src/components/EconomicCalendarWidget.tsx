@@ -4,7 +4,7 @@ import {
   Calendar, Clock, ShieldAlert, Cpu, Filter, Search, CheckCircle, Zap,
   ChevronDown, ChevronUp, ExternalLink, Globe, AlertTriangle, ShieldCheck,
   TrendingUp, TrendingDown, RefreshCw, BarChart2, Radio, Lightbulb, Compass,
-  Sparkles, ArrowUpRight, ArrowDownRight, Info, HelpCircle
+  Sparkles, ArrowUpRight, ArrowDownRight, Info, HelpCircle, Send, Bell
 } from 'lucide-react';
 import { Language, translations } from '../lib/translations';
 import { TradingViewEconomicCalendar } from './TradingViewEconomicCalendar';
@@ -149,15 +149,21 @@ export const getMarketReactionGuide = (ev: EconomicEvent): MarketReactionGuide =
       ? `Bacaan ${ev.title} mencatat angka lebih tinggi daripada unjuran, mencerminkan aktiviti ekonomi yang cergas dan meningkatkan tarikan pelaburan terhadap ${curr}.`
       : `Kadar bacaan ${ev.title} jatuh lebih rendah daripada unjuran, menandakan pasaran buruh/ekonomi yang lebih kukuh daripada dijangkakan.`,
     samplePairs: curr === 'USD'
-      ? `EUR/USD ⬇️ TURUN, GBP/USD ⬇️ TURUN, USD/JPY ⬆️ NAIK, XAU/USD (Emas) ⬇️ TURUN`
+      ? `EUR/USD ⬇️ TURUN, GBP/USD ⬇️ TURUN, USD/JPY ⬆️ NAIK, USD/CHF ⬆️ NAIK, XAU/USD (Emas) ⬇️ TURUN`
       : curr === 'EUR'
-      ? `EUR/USD ⬆️ NAIK, EUR/JPY ⬆️ NAIK, EUR/GBP ⬆️ NAIK`
+      ? `EUR/USD ⬆️ NAIK, EUR/JPY ⬆️ NAIK, EUR/GBP ⬆️ NAIK, EUR/CHF ⬆️ NAIK`
       : curr === 'GBP'
-      ? `GBP/USD ⬆️ NAIK, GBP/JPY ⬆️ NAIK, EUR/GBP ⬇️ TURUN`
+      ? `GBP/USD ⬆️ NAIK, GBP/JPY ⬆️ NAIK, EUR/GBP ⬇️ TURUN, GBP/CHF ⬆️ NAIK`
       : curr === 'JPY'
       ? `USD/JPY ⬇️ TURUN, GBP/JPY ⬇️ TURUN, EUR/JPY ⬇️ TURUN`
+      : curr === 'CHF'
+      ? `USD/CHF ⬇️ TURUN, EUR/CHF ⬇️ TURUN, GBP/CHF ⬇️ TURUN, CHF/JPY ⬆️ NAIK`
+      : curr === 'CAD'
+      ? `USD/CAD ⬇️ TURUN, EUR/CAD ⬇️ TURUN, GBP/CAD ⬇️ TURUN, CAD/JPY ⬆️ NAIK`
       : curr === 'AUD'
       ? `AUD/USD ⬆️ NAIK, AUD/JPY ⬆️ NAIK, EUR/AUD ⬇️ TURUN`
+      : curr === 'NZD'
+      ? `NZD/USD ⬆️ NAIK, NZD/JPY ⬆️ NAIK, EUR/NZD ⬇️ TURUN`
       : `${curr}/USD ⬆️ NAIK, EUR/${curr} ⬇️ TURUN`
   };
 
@@ -169,15 +175,21 @@ export const getMarketReactionGuide = (ev: EconomicEvent): MarketReactionGuide =
       ? `Bacaan ${ev.title} tersasar di bawah jangkaan, mencetuskan kebimbangan kelembapan ekonomi dan tekanan jualan terhadap ${curr}.`
       : `Kadar bacaan ${ev.title} melonjak melebihi unjuran, mencerminkan kelemahan ekonomi dan risiko pengurangan aktiviti pasaran.`,
     samplePairs: curr === 'USD'
-      ? `EUR/USD ⬆️ NAIK, GBP/USD ⬆️ NAIK, USD/JPY ⬇️ TURUN, XAU/USD (Emas) ⬆️ NAIK`
+      ? `EUR/USD ⬆️ NAIK, GBP/USD ⬆️ NAIK, USD/JPY ⬇️ TURUN, USD/CHF ⬇️ TURUN, XAU/USD (Emas) ⬆️ NAIK`
       : curr === 'EUR'
-      ? `EUR/USD ⬇️ TURUN, EUR/JPY ⬇️ TURUN, EUR/GBP ⬇️ TURUN`
+      ? `EUR/USD ⬇️ TURUN, EUR/JPY ⬇️ TURUN, EUR/GBP ⬇️ TURUN, EUR/CHF ⬇️ TURUN`
       : curr === 'GBP'
-      ? `GBP/USD ⬇️ TURUN, GBP/JPY ⬇️ TURUN, EUR/GBP ⬆️ NAIK`
+      ? `GBP/USD ⬇️ TURUN, GBP/JPY ⬇️ TURUN, EUR/GBP ⬆️ NAIK, GBP/CHF ⬇️ TURUN`
       : curr === 'JPY'
       ? `USD/JPY ⬆️ NAIK, GBP/JPY ⬆️ NAIK, EUR/JPY ⬆️ NAIK`
+      : curr === 'CHF'
+      ? `USD/CHF ⬆️ NAIK, EUR/CHF ⬆️ NAIK, GBP/CHF ⬆️ NAIK, CHF/JPY ⬇️ TURUN`
+      : curr === 'CAD'
+      ? `USD/CAD ⬆️ NAIK, EUR/CAD ⬆️ NAIK, GBP/CAD ⬆️ NAIK, CAD/JPY ⬇️ TURUN`
       : curr === 'AUD'
       ? `AUD/USD ⬇️ TURUN, AUD/JPY ⬇️ TURUN, EUR/AUD ⬆️ NAIK`
+      : curr === 'NZD'
+      ? `NZD/USD ⬇️ TURUN, NZD/JPY ⬇️ TURUN, EUR/NZD ⬆️ NAIK`
       : `${curr}/USD ⬇️ TURUN, EUR/${curr} ⬆️ NAIK`
   };
 
@@ -223,6 +235,37 @@ export const EconomicCalendarWidget: React.FC<EconomicCalendarWidgetProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedTimezone, setSelectedTimezone] = useState<Timezone>('UTC+8');
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
+  const [isBroadcastingOutcome, setIsBroadcastingOutcome] = useState(false);
+  const [broadcastOutcomeMessage, setBroadcastOutcomeMessage] = useState<string | null>(null);
+
+  const handleBroadcastOutcome = async (eventId?: string) => {
+    setIsBroadcastingOutcome(true);
+    try {
+      const res = await fetch('/api/telegram/news-outcome/broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setBroadcastOutcomeMessage(`✅ Berjaya disiarkan ke Telegram (${data.count} acara)`);
+      } else {
+        setBroadcastOutcomeMessage(`⚠️ ${data.message || 'Gagal menyiarkan'}`);
+      }
+    } catch (err: any) {
+      setBroadcastOutcomeMessage(`❌ Ralat: ${err.message}`);
+    } finally {
+      setIsBroadcastingOutcome(false);
+      setTimeout(() => setBroadcastOutcomeMessage(null), 5000);
+    }
+  };
+
+  const releasedOutcomes = useMemo(() => {
+    return events
+      .filter((e) => e.actual && e.status === 'RELEASED')
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 4);
+  }, [events]);
 
   // Time formatting helper based on selected timezone
   const formatTimezone = (timestamp: number) => {
@@ -533,6 +576,117 @@ export const EconomicCalendarWidget: React.FC<EconomicCalendarWidgetProps> = ({
               </button>
             ))}
           </div>
+
+          {/* 4b. LIVE MACRO OUTCOME & PRICE IMPACT NOTIFICATION BANNER */}
+          {releasedOutcomes.length > 0 && (
+            <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950/40 border border-amber-500/30 rounded-xl p-4 space-y-3 shadow-lg">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                    <Radio className="w-4 h-4 text-amber-400 animate-pulse" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-black text-white tracking-wide flex items-center gap-1.5 uppercase font-mono">
+                      <span>Pemberitahuan Keputusan Ekonomi Makro &amp; Impak Harga Pasaran</span>
+                      <span className="px-1.5 py-0.2 rounded text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
+                        RASMI
+                      </span>
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      Keputusan rasmi telah diumumkan. Berikut adalah rumusan impak langsung terhadap pergerakan harga mata wang:
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {broadcastOutcomeMessage && (
+                    <span className="text-[11px] font-mono font-bold text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-lg">
+                      {broadcastOutcomeMessage}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => handleBroadcastOutcome()}
+                    disabled={isBroadcastingOutcome}
+                    className="px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5 shadow-sm disabled:opacity-50 cursor-pointer"
+                    title="Siarkan notifikasi keputusan berita ke Telegram"
+                  >
+                    <Send className="w-3 h-3" />
+                    <span>{isBroadcastingOutcome ? 'Menyiarkan...' : 'Siarkan ke Telegram'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Grid of released events */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {releasedOutcomes.map((ev) => {
+                  const guide = getMarketReactionGuide(ev);
+                  const isBullish = guide.actualVsForecastBias === 'BULLISH';
+                  const isBearish = guide.actualVsForecastBias === 'BEARISH';
+
+                  return (
+                    <div
+                      key={ev.id}
+                      onClick={() => setExpandedEventId(expandedEventId === ev.id ? null : ev.id)}
+                      className={`p-3 rounded-xl border transition-all cursor-pointer ${
+                        isBullish
+                          ? 'bg-emerald-950/20 hover:bg-emerald-950/30 border-emerald-500/30'
+                          : isBearish
+                          ? 'bg-rose-950/20 hover:bg-rose-950/30 border-rose-500/30'
+                          : 'bg-slate-900 hover:bg-slate-850 border-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-base">{ev.flag || '🌐'}</span>
+                          <span className="font-mono font-bold text-xs text-white px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700">
+                            {ev.currency}
+                          </span>
+                          <span className="text-[11px] font-mono text-slate-400">
+                            {formatTimezone(ev.timestamp)}
+                          </span>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-black border ${guide.summaryBadge.bgClass} ${guide.summaryBadge.textClass} ${guide.summaryBadge.borderClass}`}>
+                          {guide.summaryBadge.label}
+                        </span>
+                      </div>
+
+                      <div className="text-xs font-bold text-slate-200 truncate mb-2">
+                        {ev.title}
+                      </div>
+
+                      {/* Numbers breakdown */}
+                      <div className="grid grid-cols-3 gap-1.5 text-center font-mono py-1.5 px-2 bg-slate-950/70 border border-slate-800/80 rounded-lg text-[11px] mb-2">
+                        <div>
+                          <span className="text-[9px] text-slate-400 block uppercase">Sebenar</span>
+                          <span className={`font-black ${isBullish ? 'text-emerald-400' : isBearish ? 'text-rose-400' : 'text-white'}`}>
+                            {ev.actual}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] text-slate-400 block uppercase">Jangkaan</span>
+                          <span className="text-slate-300 font-bold">{ev.forecast || 'N/A'}</span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] text-slate-400 block uppercase">Sebelum</span>
+                          <span className="text-slate-400">{ev.previous || 'N/A'}</span>
+                        </div>
+                      </div>
+
+                      {/* Price Impact Summary */}
+                      <div className="text-[11px] space-y-1">
+                        <div className="text-slate-300 leading-tight">
+                          {isBullish ? guide.bullishScenario.marketBehavior : isBearish ? guide.bearishScenario.marketBehavior : 'Keputusan sejajar unjuran konsensus pasaran.'}
+                        </div>
+                        <div className="pt-1 border-t border-slate-800/60 font-mono text-[10px] text-amber-300 font-bold">
+                          Kesan: {isBullish ? guide.bullishScenario.samplePairs : isBearish ? guide.bearishScenario.samplePairs : `Julat normal ${ev.currency}`}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Standard Financial Table Grid */}
           <div className="bg-slate-900/60 border border-slate-800/90 rounded-xl overflow-hidden shadow-inner">

@@ -8,6 +8,7 @@ import { learningService } from './learningService';
 import { RiskGovernanceEngine } from '../../../apps/risk-governance/src/modules/governanceEngine';
 import { canonicalExecutionRouter } from '../routes/execution';
 import { TradeProposal } from '@iati/core-types';
+import { signalLoggingService } from './signalLoggingService';
 
 interface AutoTradeConfig {
   enabled: boolean;
@@ -98,7 +99,21 @@ export class AutonomousTradeExecutor {
         return;
       }
 
-      console.log(`📊 [SIGNAL] ${signal.direction} ${this.config.pair} @ ${signal.confidence}% confidence`);
+      const proposalId = `auto_${Date.now()}`;
+      const signalLogId = signalLoggingService.logSignal(
+        this.config.pair,
+        signal.direction,
+        signal.confidence,
+        indicators,
+        signal.reasons,
+        latestPrice,
+        signal.stopLoss,
+        signal.takeProfit1,
+        this.config.timeframe,
+        proposalId
+      );
+
+      console.log(`📊 [SIGNAL] ${signal.direction} ${this.config.pair} @ ${signal.confidence}% confidence (Log: ${signalLogId})`);
 
       // Check existing open trades
       const openTrades = await this.tradingRepo.getOpenPositions(
@@ -107,13 +122,14 @@ export class AutonomousTradeExecutor {
 
       if (openTrades.length >= this.config.maxOpenTrades) {
         console.log(`⚠️ Max open trades (${this.config.maxOpenTrades}) reached`);
+        signalLoggingService.updateSignalStatus(signalLogId, 'SKIPPED', 'Max open trades reached');
         this.scheduleNext();
         return;
       }
 
       // STEP 4: Risk Governance validation
       const proposal: TradeProposal = {
-        id: `auto_${Date.now()}`,
+        id: proposalId,
         symbol: this.config.pair,
         direction: signal.direction,
         confidence: signal.confidence,
@@ -131,7 +147,9 @@ export class AutonomousTradeExecutor {
       );
 
       if (decision.status !== 'APPROVED' || !decision.token) {
+        const rejectionMsg = decision.rejection_reasons?.join(', ') || 'Risk Governance Veto';
         console.log(`❌ [VETO] Trade rejected by Risk Governance:`, decision.rejection_reasons);
+        signalLoggingService.updateSignalStatus(signalLogId, 'VETOED', rejectionMsg);
         this.scheduleNext();
         return;
       }
@@ -140,14 +158,23 @@ export class AutonomousTradeExecutor {
       const executionResult = await this.executeTrade(
         signal,
         latestPrice,
-        decision.token
+        decision.token,
+        proposalId
       );
 
       if (!executionResult.success) {
         console.error(`❌ [EXECUTION FAILED]`, executionResult.error);
+        signalLoggingService.updateSignalStatus(signalLogId, 'FAILED', executionResult.error);
         this.scheduleNext();
         return;
       }
+
+      signalLoggingService.updateSignalStatus(signalLogId, 'EXECUTED', undefined, {
+        tradeId: executionResult.tradeId,
+        executedAt: new Date(),
+        actualEntry: latestPrice,
+        slippage: 0
+      });
 
       console.log(
         `✅ [EXECUTED] ${signal.direction} ${this.config.pair} Entry: ${latestPrice}, SL: ${signal.stopLoss.toFixed(5)}, TP: ${signal.takeProfit1.toFixed(5)}`
@@ -226,35 +253,54 @@ export class AutonomousTradeExecutor {
     }
 
     const direction = bullishScore > 0 ? 'BUY' : 'SELL';
-    const pipMultiplier = this.config.pair.includes('JPY') ? 0.01 : 0.0001;
-    const slPips = 30;
-    const tpPips = 60;
+    const pairUpper = this.config.pair.toUpperCase();
+    const isJpy = pairUpper.includes('JPY');
+    const isGold = pairUpper.includes('XAU') || pairUpper.includes('GOLD');
+    const pipMultiplier = isJpy ? 0.01 : (isGold ? 0.1 : 0.0001);
+    const decimals = isGold ? 2 : (isJpy ? 3 : 5);
+
+    // Dynamic ATR-based Stop Loss + Liquidity Buffer (1.5x ATR)
+    const rawAtr = Number(indicators.atr) || (currentPrice * (isGold ? 0.003 : isJpy ? 0.002 : 0.0015));
+    const atrBuffer = rawAtr * 1.5;
+
+    // Minimum noise floors: Forex Majors 25 pips, Cross JPY 45 pips, Gold 120 pips ($12.00)
+    const minSlPips = isGold ? 120 : (isJpy ? 45 : 25);
+    const calculatedSlDistance = Math.max(atrBuffer, minSlPips * pipMultiplier);
 
     const stopLoss = direction === 'BUY'
-      ? currentPrice - (slPips * pipMultiplier)
-      : currentPrice + (slPips * pipMultiplier);
+      ? Number((currentPrice - calculatedSlDistance).toFixed(decimals))
+      : Number((currentPrice + calculatedSlDistance).toFixed(decimals));
 
-    const takeProfit = direction === 'BUY'
-      ? currentPrice + (tpPips * pipMultiplier)
-      : currentPrice - (tpPips * pipMultiplier);
+    // Minimum 1:1.8 Risk:Reward for Take Profit
+    const tpDistance = calculatedSlDistance * 1.8;
+    const takeProfit1 = direction === 'BUY'
+      ? Number((currentPrice + tpDistance).toFixed(decimals))
+      : Number((currentPrice - tpDistance).toFixed(decimals));
+
+    const takeProfit2 = direction === 'BUY'
+      ? Number((currentPrice + (tpDistance * 1.5)).toFixed(decimals))
+      : Number((currentPrice - (tpDistance * 1.5)).toFixed(decimals));
 
     return {
       direction,
       confidence,
-      reasons,
+      reasons: [
+        ...reasons,
+        `[DYNAMIC SL] Protected with 1.5x ATR liquidity buffer (${(calculatedSlDistance / pipMultiplier).toFixed(1)} pips)`
+      ],
       invalidationLevels: [stopLoss],
       stopLoss,
-      takeProfit1: takeProfit,
-      takeProfit2: takeProfit * 0.5
+      takeProfit1,
+      takeProfit2
     };
   }
 
   /**
    * STEP 5: Execute trade via canonical ExecutionRouter
    */
-  private async executeTrade(signal: TradingSignal, entryPrice: number, token: any) {
+  private async executeTrade(signal: TradingSignal, entryPrice: number, token: any, customProposalId?: string) {
     try {
-      const proposalId = `auto_${Date.now()}`;
+      const proposalId = customProposalId || `auto_${Date.now()}`;
       const tradeId = `auto_trade_${Date.now()}`;
 
       // Save position to PostgreSQL
