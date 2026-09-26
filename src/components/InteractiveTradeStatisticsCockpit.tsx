@@ -186,6 +186,10 @@ export const InteractiveTradeStatisticsCockpit: React.FC<Props> = ({
   // Dynamic counts for each timeframe period
   const timeframeCounts = useMemo(() => {
     const now = Date.now();
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const startOfTodayMs = startOfToday.getTime();
+
     let count30D = 0;
     let count7D = 0;
     let count1D = 0;
@@ -193,7 +197,7 @@ export const InteractiveTradeStatisticsCockpit: React.FC<Props> = ({
       const diff = now - d.closeTime;
       if (diff <= 30 * 24 * 60 * 60 * 1000) count30D++;
       if (diff <= 7 * 24 * 60 * 60 * 1000) count7D++;
-      if (diff <= 24 * 60 * 60 * 1000) count1D++;
+      if (d.closeTime >= startOfTodayMs) count1D++;
     }
     return {
       ALL: deals.length,
@@ -207,11 +211,15 @@ export const InteractiveTradeStatisticsCockpit: React.FC<Props> = ({
   const filteredByTimeframe = useMemo(() => {
     if (!deals.length) return [];
     const now = Date.now();
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const startOfTodayMs = startOfToday.getTime();
+
     return deals.filter(deal => {
       if (timeframe === 'ALL') return true;
       if (timeframe === '30D') return now - deal.closeTime <= 30 * 24 * 60 * 60 * 1000;
       if (timeframe === '7D') return now - deal.closeTime <= 7 * 24 * 60 * 60 * 1000;
-      if (timeframe === '1D') return now - deal.closeTime <= 24 * 60 * 60 * 1000;
+      if (timeframe === '1D') return deal.closeTime >= startOfTodayMs;
       return true;
     });
   }, [deals, timeframe]);
