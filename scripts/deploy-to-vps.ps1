@@ -22,10 +22,14 @@ $files = @(
   @{ src = "$LOCAL\src\components\AdaptiveLearningModal.tsx"; dst = "$VPS_PATH/src/components/" },
   @{ src = "$LOCAL\src\components\UserDashboard.tsx"; dst = "$VPS_PATH/src/components/" },
   @{ src = "$LOCAL\src\components\Header.tsx"; dst = "$VPS_PATH/src/components/" },
-  @{ src = "$LOCAL\src\components\VipSubscriberCockpit.tsx"; dst = "$VPS_PATH/src/components/" }
+  @{ src = "$LOCAL\src\components\VipSubscriberCockpit.tsx"; dst = "$VPS_PATH/src/components/" },
+  @{ src = "$LOCAL\src\components\InteractiveTradeStatisticsCockpit.tsx"; dst = "$VPS_PATH/src/components/" },
+  @{ src = "$LOCAL\src\components\onboarding\ClientExperienceHub.tsx"; dst = "$VPS_PATH/src/components/onboarding/" },
+  @{ src = "$LOCAL\src\components\onboarding\CommercialOnboardingModal.tsx"; dst = "$VPS_PATH/src/components/onboarding/" }
 )
 
 Write-Host "=== QuantumAI VPS Deploy ===" -ForegroundColor Cyan
+ssh $VPS_HOST "mkdir -p $VPS_PATH/src/components/onboarding $VPS_PATH/src/server/services/validation $VPS_PATH/apps/decision-agent/src/services"
 
 $ok = 0; $fail = 0
 foreach ($f in $files) {
